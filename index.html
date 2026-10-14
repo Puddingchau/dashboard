@@ -1103,6 +1103,27 @@
       accent-color: var(--accent-primary);
       cursor: pointer;
     }
+    /* Priority order for incomplete todos (visible filtered list) */
+    .todo-num {
+      flex-shrink: 0;
+      min-width: 1.35rem;
+      height: 1.35rem;
+      padding: 0 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent-badge-text, #1D4ED8);
+      background: var(--accent-badge, #BFDBFE);
+      border-radius: 999px;
+      box-sizing: border-box;
+    }
+    .todo-item.done .todo-num {
+      display: none;
+    }
     .todo-body { flex: 1; min-width: 0; }
     .todo-title {
       font-weight: 600;
@@ -3602,12 +3623,18 @@ function renderTodos() {
     list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
     return;
   }
+  let openOrd = 0;
   list.innerHTML = items.map(t => {
     const d = parseDateOnly(t.due);
     const dd = daysDiff(d);
     const dragCls = t.done ? '' : ' todo-draggable';
+    const ord = t.done ? 0 : (++openOrd);
+    const numHtml = t.done
+      ? ''
+      : '<span class="todo-num" aria-label="次序 ' + ord + '">' + ord + '</span>';
     return (
       '<div class="todo-item' + (t.done ? ' done' : '') + dragCls + '" data-id="' + escapeHtml(t.id) + '">' +
+        numHtml +
         '<input type="checkbox" class="todo-check" ' + (t.done ? 'checked' : '') + ' aria-label="完成" />' +
         '<div class="todo-body">' +
           '<div class="todo-title">' + escapeHtml(t.title) + '</div>' +
