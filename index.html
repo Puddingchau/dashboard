@@ -165,45 +165,139 @@
 
     /* 雨窗 — rainy window cafe: soft blue-grey rain, warm lamp amber, frosted glass, hygge */
     body.theme-rain-cafe {
-      --bg-gradient: linear-gradient(165deg, #DCE6EE 0%, #C5D4E0 42%, #A8B8C8 78%, #B8A890 100%);
+      /* Dark blue-grey fallback + photo; fixed ::before keeps viewport cover on mobile */
+      --bg-gradient: none;
+      background-color: #1E2C3A;
+      background-image: url('rain-cafe-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      /* Avoid body background-attachment:fixed (Safari mobile bug); use ::before instead */
+      background-attachment: scroll;
       --accent-primary: #C9892A;
-      --accent-light: #F5EDE0;
+      --accent-light: rgba(245, 237, 224, 0.72);
       --accent-badge: #E8D4B0;
       --accent-badge-text: #7A5420;
-      --card-bg: rgba(255, 252, 248, 0.72);
-      --card-border: rgba(180, 195, 210, 0.55);
-      --card-shadow: rgba(70, 90, 110, 0.18);
+      --card-bg: rgba(255, 252, 248, 0.42);
+      --card-border: rgba(255, 255, 255, 0.28);
+      --card-shadow: rgba(20, 35, 55, 0.35);
       --button-bg: linear-gradient(135deg, #6B8A9E, #C9892A);
       --accent: #C9892A;
-      --accent-soft: #F5EDE0;
-      --text: #3A4550;
-      --text-strong: #2A333C;
-      --muted: #6B7A88;
-      --row-bg: rgba(245, 248, 250, 0.65);
-      --surface-2: #E8EEF2;
-      --header-bg: rgba(232, 238, 242, 0.88);
+      --accent-soft: rgba(245, 237, 224, 0.55);
+      --text: #2A333C;
+      --text-strong: #1E262E;
+      --muted: #5A6A78;
+      --row-bg: rgba(255, 255, 255, 0.28);
+      --surface-2: rgba(255, 255, 255, 0.52);
+      --header-bg: rgba(190, 210, 228, 0.42);
       --amber: #E8A838;
-      --border-soft: rgba(107, 138, 158, 0.22);
+      --border-soft: rgba(255, 255, 255, 0.22);
+      isolation: isolate;
     }
-    body.theme-rain-cafe .glass-card {
-      background: rgba(255, 252, 248, 0.58);
-      backdrop-filter: blur(14px) saturate(1.15);
-      -webkit-backdrop-filter: blur(14px) saturate(1.15);
-      border: 1px solid rgba(190, 205, 218, 0.5);
+    /* Fixed full-viewport photo layer (works on mobile; no body attachment:fixed) */
+    body.theme-rain-cafe::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      background: url('rain-cafe-bg.jpg') center / cover no-repeat;
+    }
+    /* Disable old CSS bokeh orbs — photo provides the lights */
+    body.theme-rain-cafe::after {
+      content: none;
+      display: none;
+    }
+    body.theme-rain-cafe .app {
+      position: relative;
+      z-index: 1;
+    }
+    body.theme-rain-cafe .footer-note {
+      color: rgba(220, 232, 242, 0.78);
+    }
+    /* Frosted translucent glass panels */
+    body.theme-rain-cafe .glass-card,
+    body.theme-rain-cafe .feature-block {
+      background: rgba(255, 255, 255, 0.38);
+      backdrop-filter: blur(24px) saturate(1.35);
+      -webkit-backdrop-filter: blur(24px) saturate(1.35);
+      border: 1px solid rgba(255, 255, 255, 0.28);
       box-shadow:
-        0 8px 28px -10px rgba(70, 90, 110, 0.22),
-        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+        0 10px 36px -12px rgba(20, 35, 55, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.58),
+        inset 1px 0 0 rgba(255, 255, 255, 0.16);
+    }
+    /* Inner card inside feature block stays clear so outer frost shows through */
+    body.theme-rain-cafe .block-body-inner > .card.glass-card {
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: none;
+      box-shadow: none;
     }
     body.theme-rain-cafe .page-header {
-      background: rgba(220, 230, 238, 0.78);
-      backdrop-filter: blur(14px) saturate(1.1);
-      -webkit-backdrop-filter: blur(14px) saturate(1.1);
-      border-bottom-color: rgba(180, 195, 210, 0.45);
-      box-shadow: 0 4px 18px rgba(70, 90, 110, 0.12);
+      background: rgba(200, 218, 232, 0.4);
+      backdrop-filter: blur(26px) saturate(1.3);
+      -webkit-backdrop-filter: blur(26px) saturate(1.3);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.26);
+      box-shadow:
+        0 6px 24px rgba(20, 35, 55, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
     }
     body.theme-rain-cafe .hdr-glass {
-      background: rgba(255, 250, 244, 0.55);
-      border-color: rgba(200, 180, 140, 0.35);
+      background: rgba(255, 250, 244, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      box-shadow:
+        0 4px 16px -6px rgba(20, 35, 55, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+    /* Inner rows / chips / modals — rain-cafe frost only */
+    body.theme-rain-cafe .todo-item,
+    body.theme-rain-cafe .event-item,
+    body.theme-rain-cafe .course-card,
+    body.theme-rain-cafe .chip:not(.active):not(.cat-manage),
+    body.theme-rain-cafe .subtabs {
+      background: rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(18px) saturate(1.25);
+      -webkit-backdrop-filter: blur(18px) saturate(1.25);
+      border-color: rgba(255, 255, 255, 0.24);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+    body.theme-rain-cafe .bus-card {
+      backdrop-filter: blur(16px) saturate(1.2);
+      -webkit-backdrop-filter: blur(16px) saturate(1.2);
+      border-color: rgba(255, 255, 255, 0.26);
+    }
+    /* Preserve direction accents; only add frost transparency around skyblue/other gradients */
+    body.theme-rain-cafe .bus-card--skyblue {
+      border-color: rgba(14, 165, 233, 0.55);
+      /* keep skyblue gradient rule; ensure glass blur remains */
+    }
+    body.theme-rain-cafe .modal {
+      background: rgba(255, 252, 248, 0.48);
+      backdrop-filter: blur(26px) saturate(1.35);
+      -webkit-backdrop-filter: blur(26px) saturate(1.35);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow:
+        0 24px 48px -12px rgba(10, 20, 35, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+    body.theme-rain-cafe .modal-backdrop {
+      background: rgba(12, 22, 36, 0.55);
+      backdrop-filter: blur(10px) saturate(1.15);
+      -webkit-backdrop-filter: blur(10px) saturate(1.15);
+    }
+    body.theme-rain-cafe .sc-icon {
+      background: rgba(255, 255, 255, 0.35);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+    body.theme-rain-cafe .note-banner {
+      background: rgba(245, 237, 224, 0.45);
+      backdrop-filter: blur(14px) saturate(1.15);
+      -webkit-backdrop-filter: blur(14px) saturate(1.15);
+      border: 1px solid rgba(255, 255, 255, 0.22);
     }
 
 
@@ -2260,7 +2354,7 @@ const TCS_DATA = {
 };
 
 const STORAGE_KEY = 'dash-hub-v1';
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 const TCS_SEARCH = 'https://tcs.edb.gov.hk/tcs/portal/publiccalendar/searchPublicCal/load.htm?pdType=0&leveltype=3&homePageSelection=2&fromMenu=Y';
 
 const SEED_BUS = [
@@ -3308,6 +3402,11 @@ function normalizeState(data) {
   };
   const rawTheme = THEME_MIGRATE[data.theme] || data.theme;
   base.theme = THEMES.includes(rawTheme) ? rawTheme : 'rain-cafe';
+  // One-shot (schema < 5): force rain-cafe so users stuck on an old theme see the frost look.
+  // After save, schema is 5 and theme chips work as usual.
+  if (prevSchema < 5) {
+    base.theme = 'rain-cafe';
+  }
   base.schemaVersion = SCHEMA_VERSION;
   return base;
 }
