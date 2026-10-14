@@ -2230,8 +2230,11 @@
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
-      margin: 0 8px 8px;
+      margin: 28px 8px 0;
       padding: 0 8px;
+    }
+    html:not(.view-only) .footer-note {
+      margin-top: 12px;
     }
     .share-owner-toggle {
       display: inline-flex;
@@ -2337,16 +2340,6 @@
       <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google Drive</button>
       <button type="button" class="btn btn-ghost btn-sm" id="gdriveSyncNowBtn" hidden>立即同步</button>
       <span id="gdriveSyncStatus" style="font-size:12px;color:var(--muted);align-self:center">未連接</span>
-      <button type="button" class="btn btn-ghost btn-sm" id="btnCopyViewLink">複製只睇連結</button>
-      <span id="copyViewLinkNote" style="font-size:12px;color:var(--muted);align-self:center" aria-live="polite"></span>
-    </div>
-    <div class="share-owner" id="shareOwner">
-      <label class="share-owner-toggle"><input type="checkbox" id="shareEnabledToggle" /> 允許只睇分享</label>
-      <input type="password" id="sharePasswordNew" placeholder="分享密碼（留空＝唔改）" autocomplete="new-password" maxlength="200" />
-      <button type="button" class="btn btn-ghost btn-sm" id="btnSaveShare">儲存分享設定</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="btnCopyShareConfig">複製閘門設定</button>
-      <p class="share-owner-hint">朋友用 ?view=1 自己輸入密碼，連結唔會帶密碼。關掉分享或改密碼會令舊密碼失效；朋友頁面讀 share-config.json。</p>
-      <p id="shareOwnerStatus" aria-live="polite"></p>
     </div>
 
     <div class="feature-stack" id="featureStack">
@@ -2520,6 +2513,17 @@
     </section>
 
     </div><!-- /.feature-stack -->
+
+    <div class="share-owner" id="shareOwner">
+      <label class="share-owner-toggle"><input type="checkbox" id="shareEnabledToggle" /> 允許只睇分享</label>
+      <input type="password" id="sharePasswordNew" placeholder="分享密碼（留空＝唔改）" autocomplete="new-password" maxlength="200" />
+      <button type="button" class="btn btn-ghost btn-sm" id="btnSaveShare">儲存分享設定</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btnCopyViewLink">複製只睇連結</button>
+      <span id="copyViewLinkNote" style="font-size:12px;color:var(--muted);align-self:center" aria-live="polite"></span>
+      <button type="button" class="btn btn-ghost btn-sm" id="btnCopyShareConfig">複製閘門設定</button>
+      <p class="share-owner-hint">朋友用 ?view=1 自己輸入密碼，連結唔會帶密碼。關掉分享或改密碼會令舊密碼失效；朋友頁面讀 share-config.json。</p>
+      <p id="shareOwnerStatus" aria-live="polite"></p>
+    </div>
 
     <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入 · 布丁仔</p>
   </div>
