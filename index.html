@@ -4207,7 +4207,8 @@ function isTodoDueWithinWeek(t) {
 function matchesTodoTab(t) {
   const noDue = !(t && t.due);
   if (todoTab === 'week') {
-    if (noDue) return !t.done;
+    // No-due items belong on 今日/七天; keep completed visible (strikethrough at bottom)
+    if (noDue) return true;
     return isTodoDueWithinWeek(t);
   }
   if (todoTab === 'tomorrow') {
@@ -4215,8 +4216,8 @@ function matchesTodoTab(t) {
     if (noDue) return false;
     return isTodoDueTomorrow(t);
   }
-  // today (default)
-  if (noDue) return !t.done;
+  // today (default) — completed stay visible when they belong (no due / due today)
+  if (noDue) return true;
   return isTodoDueToday(t);
 }
 
