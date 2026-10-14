@@ -2502,7 +2502,7 @@ const TCS_DATA = {
 };
 
 const STORAGE_KEY = 'dash-hub-v1';
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 const GDRIVE_SYNC_FILENAME = '布丁仔-sync.json';
 const GDRIVE_OAUTH_CLIENT_ID = '508206831418-cmm0ra1v21lajj6ned33l33d8ohdtll8.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -3623,11 +3623,28 @@ function normalizeState(data) {
   } else {
     base.events = SEED_EVENTS.map(e => normalizeEvent({ ...e }));
   }
-  // Ensure seeded school events exist (stable id) for Pages / returning users.
-  // Also skip when user already has same title+date (soft time) under a different id —
-  // otherwise phone localStorage copies of seeds duplicate (e.g. Siufan共備).
-  // When skipping, enrich empty work/time from the seed so user copies gain seed text.
+  // Sync school seeds with HTML: drop removed e_seed_* ids, overwrite same-id
+  // title/date/time/work from SEED_EVENTS (so phone localStorage follows Pages).
+  // Then ensure missing seeds exist; skip when user already has same title+date
+  // under a different id (avoid Siufan共備 duplicates), enrich empty work/time.
   {
+    const seedById = new Map(SEED_EVENTS.map(s => [s.id, normalizeEvent({ ...s })]));
+    base.events = base.events.filter(e => {
+      const id = String(e.id || '');
+      if (!id.startsWith('e_seed_')) return true;
+      return seedById.has(id);
+    }).map(e => {
+      const id = String(e.id || '');
+      if (!id.startsWith('e_seed_') || !seedById.has(id)) return e;
+      const n = seedById.get(id);
+      const out = Object.assign({}, e, {
+        title: n.title,
+        date: n.date,
+        time: n.time,
+        work: n.work
+      });
+      return out;
+    });
     const have = new Set(base.events.map(e => e.id));
     SEED_EVENTS.forEach(seed => {
       const n = normalizeEvent({ ...seed });
