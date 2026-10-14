@@ -1948,7 +1948,7 @@
     .cat-row span { flex: 1; font-weight: 600; font-size: 14px; }
 
 
-    /* ===== Month calendar ===== */
+/* ===== Month calendar ===== */
     .cal-toolbar {
       display: flex;
       align-items: center;
@@ -2046,6 +2046,25 @@
     }
     .cal-dot.event { background: #f59e0b; }
     .cal-dot.todo { background: #38bdf8; }
+    .cal-dot.holiday { background: #fb7185; }
+    /* Public holiday: soft wine — distinct from sun red text, today amber ring, selected accent */
+    .cal-day.holiday:not(.other-month) {
+      background: rgba(136, 19, 55, 0.42);
+    }
+    .cal-day.holiday:not(.other-month):hover {
+      background: rgba(159, 18, 57, 0.55);
+    }
+    .cal-day.holiday .cal-day-num {
+      color: #fda4af;
+    }
+    .cal-day.holiday.today:not(.selected) {
+      background: rgba(136, 19, 55, 0.5);
+      box-shadow: inset 0 0 0 2px var(--amber, var(--accent-primary));
+    }
+    .cal-day.holiday.selected {
+      background: rgba(159, 18, 57, 0.55);
+      box-shadow: 0 0 0 2px var(--accent-primary);
+    }
     .cal-day-panel {
       margin-top: 12px;
       padding-top: 10px;
@@ -2087,6 +2106,10 @@
     .cal-tag.todo {
       background: #1e3a4f;
       color: #7dd3fc;
+    }
+    .cal-tag.holiday {
+      background: #4c0519;
+      color: #fda4af;
     }
     .cal-day-item .cal-item-text {
       flex: 1;
@@ -4696,6 +4719,55 @@ function renderEvents() {
 }
 
 
+
+/* ===== HK general public holidays (政府憲報公眾假期；唔含校本假期) =====
+ * Source: GovHK https://www.gov.hk/tc/about/abouthk/holiday/2026.htm
+ *         https://www.gov.hk/tc/about/abouthk/holiday/2027.htm
+ * (gazetted general holidays; Sundays omitted — already styled as weekend)
+ */
+const PUBLIC_HOLIDAYS = [
+  // 2026
+  { date: '2026-01-01', title: '一月一日' },
+  { date: '2026-02-17', title: '農曆年初一' },
+  { date: '2026-02-18', title: '農曆年初二' },
+  { date: '2026-02-19', title: '農曆年初三' },
+  { date: '2026-04-03', title: '耶穌受難節' },
+  { date: '2026-04-04', title: '耶穌受難節翌日' },
+  { date: '2026-04-06', title: '清明節翌日' },
+  { date: '2026-04-07', title: '復活節星期一翌日' },
+  { date: '2026-05-01', title: '勞動節' },
+  { date: '2026-05-25', title: '佛誕翌日' },
+  { date: '2026-06-19', title: '端午節' },
+  { date: '2026-07-01', title: '香港特別行政區成立紀念日' },
+  { date: '2026-09-26', title: '中秋節翌日' },
+  { date: '2026-10-01', title: '國慶日' },
+  { date: '2026-10-19', title: '重陽節翌日' },
+  { date: '2026-12-25', title: '聖誕節' },
+  { date: '2026-12-26', title: '聖誕節後第一個周日' },
+  // 2027
+  { date: '2027-01-01', title: '一月一日' },
+  { date: '2027-02-06', title: '農曆年初一' },
+  { date: '2027-02-08', title: '農曆年初三' },
+  { date: '2027-02-09', title: '農曆年初四' },
+  { date: '2027-03-26', title: '耶穌受難節' },
+  { date: '2027-03-27', title: '耶穌受難節翌日' },
+  { date: '2027-03-29', title: '復活節星期一' },
+  { date: '2027-04-05', title: '清明節' },
+  { date: '2027-05-01', title: '勞動節' },
+  { date: '2027-05-13', title: '佛誕' },
+  { date: '2027-06-09', title: '端午節' },
+  { date: '2027-07-01', title: '香港特別行政區成立紀念日' },
+  { date: '2027-09-16', title: '中秋節翌日' },
+  { date: '2027-10-01', title: '國慶日' },
+  { date: '2027-10-08', title: '重陽節' },
+  { date: '2027-12-25', title: '聖誕節' },
+  { date: '2027-12-27', title: '聖誕節後第一個周日' }
+];
+
+function holidaysForYMD(ymd) {
+  return PUBLIC_HOLIDAYS.filter(function (h) { return h.date === ymd; });
+}
+
 /* ===== Month calendar ===== */
 const CAL_WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 let calView = (function () {
@@ -4717,6 +4789,10 @@ function countMarksInViewMonth() {
     const d = parseDateOnly(t.due);
     if (d && d.getFullYear() === y && d.getMonth() === m) days.add(d.getDate());
   });
+  PUBLIC_HOLIDAYS.forEach(function (h) {
+    const d = parseDateOnly(h.date);
+    if (d && d.getFullYear() === y && d.getMonth() === m) days.add(d.getDate());
+  });
   return days.size;
 }
 
@@ -4727,7 +4803,8 @@ function marksForYMD(ymd) {
     const d = parseDateOnly(t.due);
     return d && toYMD(d) === ymd;
   });
-  return { events: events, todos: todos };
+  const holidays = holidaysForYMD(ymd);
+  return { events: events, todos: todos, holidays: holidays };
 }
 
 function shiftCalMonth(delta) {
@@ -4782,15 +4859,18 @@ function renderCalendar() {
     const marks = marksForYMD(ymd);
     const hasE = marks.events.length > 0;
     const hasT = marks.todos.length > 0;
+    const hasH = marks.holidays.length > 0;
     const cls = [
       'cal-day',
       cell.other ? 'other-month' : '',
       ymd === todayYMD ? 'today' : '',
       ymd === calSelectedYMD ? 'selected' : '',
       dow === 0 ? 'sun' : '',
-      dow === 6 ? 'sat' : ''
+      dow === 6 ? 'sat' : '',
+      hasH ? 'holiday' : ''
     ].filter(Boolean).join(' ');
     let dots = '';
+    if (hasH) dots += '<span class="cal-dot holiday" title="公眾假期"></span>';
     if (hasE) dots += '<span class="cal-dot event" title="活動"></span>';
     if (hasT) dots += '<span class="cal-dot todo" title="To-Do"></span>';
     // Grid cells: day number + indicator dots only (titles live in calDayPanel after tap)
@@ -4831,6 +4911,14 @@ function renderCalDayPanel() {
   panel.hidden = false;
 
   const rows = [];
+  (marks.holidays || []).forEach(function (h) {
+    rows.push(
+      '<div class="cal-day-item">' +
+        '<span class="cal-tag holiday">假期</span>' +
+        '<div class="cal-item-text">' + escapeHtml(h.title || '公眾假期') + '</div>' +
+      '</div>'
+    );
+  });
   marks.events.forEach(function (e) {
     rows.push(
       '<div class="cal-day-item">' +
@@ -4850,7 +4938,7 @@ function renderCalDayPanel() {
     );
   });
   if (!rows.length) {
-    items.innerHTML = '<div class="cal-empty">當日暫無活動或待辦</div>';
+    items.innerHTML = '<div class="cal-empty">當日暫無假期、活動或待辦</div>';
   } else {
     items.innerHTML = rows.join('');
   }
