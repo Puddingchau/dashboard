@@ -2180,6 +2180,12 @@
       </div>
     </header>
 
+    <div class="sync-actions" style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px;margin-bottom:4px;padding:0 8px">
+      <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google Drive</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="gdriveSyncNowBtn" hidden>立即同步</button>
+      <span id="gdriveSyncStatus" style="font-size:12px;color:var(--muted);align-self:center">未連接</span>
+    </div>
+
     <div class="feature-stack" id="featureStack">
 
     <!-- 1. To-Do Lists -->
@@ -2352,15 +2358,7 @@
 
     </div><!-- /.feature-stack -->
 
-    <div class="sync-actions" style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:20px;padding:0 8px">
-      <button type="button" class="btn btn-ghost btn-sm" id="btnExportData">匯出資料</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="btnImportData">匯入資料</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google Drive</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="gdriveSyncNowBtn" hidden>立即同步</button>
-      <span id="gdriveSyncStatus" style="font-size:12px;color:var(--muted);align-self:center">未連接</span>
-      <input type="file" id="importFileInput" accept="application/json,.json" hidden />
-    </div>
-    <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入；可用匯出／匯入在裝置間搬資料 · 布丁仔</p>
+    <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入 · 布丁仔</p>
   </div>
 
   <!-- Modal -->
@@ -3714,7 +3712,7 @@ function buildExportPayload() {
   };
 }
 
-/** Same payload as 匯出資料 — todos + events + busStops + shortcuts + categories + theme. */
+/** Sync payload — todos + events + busStops + shortcuts + categories + theme. */
 function buildSyncPayload() {
   return buildExportPayload();
 }
@@ -7193,50 +7191,7 @@ function tryGdriveSilentRestore() {
 
 
 function bindSyncUi() {
-  const btnEx = document.getElementById('btnExportData');
-  const btnIm = document.getElementById('btnImportData');
-  const fileIn = document.getElementById('importFileInput');
-  if (btnEx) {
-    btnEx.addEventListener('click', () => {
-      const payload = buildExportPayload();
-      const text = JSON.stringify(payload, null, 2);
-      downloadSyncJson(payload, 'pudding-dashboard-sync.json');
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).catch(() => {});
-        }
-      } catch (e) {}
-    });
-  }
-  if (btnIm && fileIn) {
-    btnIm.addEventListener('click', () => fileIn.click());
-    fileIn.addEventListener('change', () => {
-      const file = fileIn.files && fileIn.files[0];
-      fileIn.value = '';
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const remote = JSON.parse(String(reader.result || ''));
-          if (!remote || typeof remote !== 'object') throw new Error('bad json');
-          const hasExtras = Array.isArray(remote.shortcuts) || Array.isArray(remote.categories) || Array.isArray(remote.busStops);
-          let applyExtras = false;
-          if (hasExtras) {
-            if (!window.confirm('匯入會合併待辦／活動，並可覆蓋捷徑設定，繼續？')) return;
-            applyExtras = true;
-          }
-          const changed = applyRemoteSyncPayload(remote, { applyExtras });
-          if (changed || applyExtras) {
-            saveState();
-            reRenderAfterSync(applyExtras);
-          }
-        } catch (err) {
-          alert('匯入失敗：檔案格式無效');
-        }
-      };
-      reader.readAsText(file);
-    });
-  }
+  /* Export/import buttons removed; Drive sync uses buildExportPayload / applyRemoteSyncPayload. */
 }
 
 /* ===== Init ===== */
