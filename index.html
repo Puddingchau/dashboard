@@ -1335,6 +1335,29 @@
       /* pan-y: allow vertical page scroll; drag handler preventDefault only while dragging */
       touch-action: pan-y;
     }
+
+    /* Direction accents: 東涌/東湧 vs other (readable on rain-cafe + other themes) */
+    .bus-card--tungchung {
+      border-color: rgba(13, 148, 136, 0.55);
+      background:
+        linear-gradient(90deg, rgba(45, 212, 191, 0.22) 0%, rgba(45, 212, 191, 0.06) 28%, var(--card-bg, #ffffff) 70%);
+      box-shadow: inset 3px 0 0 0 rgba(15, 118, 110, 0.85);
+    }
+    .bus-card--other {
+      border-color: rgba(180, 83, 9, 0.42);
+      background:
+        linear-gradient(90deg, rgba(251, 191, 36, 0.22) 0%, rgba(253, 230, 138, 0.10) 28%, var(--card-bg, #ffffff) 70%);
+      box-shadow: inset 3px 0 0 0 rgba(217, 119, 6, 0.78);
+    }
+    body.theme-dusk .bus-card--other,
+    body.theme-sky .bus-card--other,
+    body.theme-cloud .bus-card--other,
+    body.theme-clear .bus-card--other {
+      border-color: rgba(139, 92, 246, 0.42);
+      background:
+        linear-gradient(90deg, rgba(196, 181, 253, 0.28) 0%, rgba(237, 233, 254, 0.14) 28%, var(--card-bg, #ffffff) 70%);
+      box-shadow: inset 3px 0 0 0 rgba(124, 58, 237, 0.72);
+    }
     .bus-card:active, .bus-card:focus-visible {
       border-color: var(--accent-primary, #3B82F6);
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
@@ -5718,6 +5741,13 @@ function openBusAddModal() {
   };
 }
 
+
+function busCardDirectionClass(b) {
+  const d = String((b && b.direction) || '');
+  if (d.includes('東涌') || d.includes('東湧')) return 'bus-card--tungchung';
+  return 'bus-card--other';
+}
+
 function renderBus() {
   const list = document.getElementById('busList');
   const buses = Array.isArray(state.busStops) ? state.busStops : cloneSeedBus();
@@ -5738,7 +5768,7 @@ function renderBus() {
     const eta = formatBusEtaHtml(b, cached || null);
     const badge = busOperatorBadgeHtml(b);
     return (
-      '<div class="bus-card" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '" draggable="true">' +
+      '<div class="bus-card ' + busCardDirectionClass(b) + '" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '" draggable="true">' +
         '<div class="bus-row">' +
           '<div class="bus-card-main">' +
             '<div class="bus-summary-row">' + badge +
