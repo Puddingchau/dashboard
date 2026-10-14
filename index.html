@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <style>
-    /* ===== Themes (rain-cafe / sky / cloud / clear / dusk / toy) ===== */
+    /* ===== Themes (sunny-beach / rain-cafe / sky / cloud / clear / dusk / toy) ===== */
     :root {
       --primary: #6B7A88;
       --accent: var(--accent-primary, #C9892A);
@@ -298,6 +298,144 @@
       backdrop-filter: blur(14px) saturate(1.15);
       -webkit-backdrop-filter: blur(14px) saturate(1.15);
       border: 1px solid rgba(255, 255, 255, 0.22);
+    }
+
+    /* ===== sunny-beach — photo + frost (parallel to rain-cafe) ===== */
+    body.theme-sunny-beach {
+      /* Sky-blue fallback + photo; fixed ::before keeps viewport cover on mobile */
+      --bg-gradient: none;
+      background-color: #87CEEB;
+      background-image: url('sunny-beach-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      /* Avoid body background-attachment:fixed (Safari mobile bug); use ::before instead */
+      background-attachment: scroll;
+      --accent-primary: #E8A020;
+      --accent-light: rgba(253, 230, 138, 0.72);
+      --accent-badge: #FDE68A;
+      --accent-badge-text: #92400E;
+      --card-bg: rgba(255, 255, 255, 0.45);
+      --card-border: rgba(255, 255, 255, 0.42);
+      --card-shadow: rgba(14, 116, 144, 0.22);
+      --button-bg: linear-gradient(135deg, #38BDF8, #E8A020);
+      --accent: #E8A020;
+      --accent-soft: rgba(253, 230, 138, 0.55);
+      --text: #1E3A4C;
+      --text-strong: #0F2740;
+      --muted: #4A6A7A;
+      --row-bg: rgba(255, 255, 255, 0.38);
+      --surface-2: rgba(255, 255, 255, 0.58);
+      --header-bg: rgba(255, 255, 255, 0.4);
+      --amber: #E8A020;
+      --border-soft: rgba(255, 255, 255, 0.32);
+      isolation: isolate;
+    }
+    /* Fixed full-viewport photo layer (works on mobile; no body attachment:fixed) */
+    body.theme-sunny-beach::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      background: url('sunny-beach-bg.jpg') center / cover no-repeat;
+    }
+    /* Disable old CSS bokeh orbs — photo provides the scene */
+    body.theme-sunny-beach::after {
+      content: none;
+      display: none;
+    }
+    body.theme-sunny-beach .app {
+      position: relative;
+      z-index: 1;
+    }
+    body.theme-sunny-beach .footer-note {
+      color: rgba(30, 58, 76, 0.85);
+      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.55);
+    }
+    /* Frosted translucent glass panels — slightly denser for bright beach */
+    body.theme-sunny-beach .glass-card,
+    body.theme-sunny-beach .feature-block {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(24px) saturate(1.35);
+      -webkit-backdrop-filter: blur(24px) saturate(1.35);
+      border: 1px solid rgba(255, 255, 255, 0.42);
+      box-shadow:
+        0 10px 36px -12px rgba(14, 116, 144, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.65),
+        inset 1px 0 0 rgba(255, 255, 255, 0.2);
+    }
+    /* Inner card inside feature block stays clear so outer frost shows through */
+    body.theme-sunny-beach .block-body-inner > .card.glass-card {
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: none;
+      box-shadow: none;
+    }
+    body.theme-sunny-beach .page-header {
+      background: rgba(186, 230, 253, 0.42);
+      backdrop-filter: blur(26px) saturate(1.3);
+      -webkit-backdrop-filter: blur(26px) saturate(1.3);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.36);
+      box-shadow:
+        0 6px 24px rgba(14, 116, 144, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+    body.theme-sunny-beach .hdr-glass {
+      background: rgba(255, 255, 255, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.42);
+      box-shadow:
+        0 4px 16px -6px rgba(14, 116, 144, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+    /* Inner rows / chips / modals — sunny-beach frost only */
+    body.theme-sunny-beach .todo-item,
+    body.theme-sunny-beach .event-item,
+    body.theme-sunny-beach .course-card,
+    body.theme-sunny-beach .chip:not(.active):not(.cat-manage),
+    body.theme-sunny-beach .subtabs {
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(18px) saturate(1.25);
+      -webkit-backdrop-filter: blur(18px) saturate(1.25);
+      border-color: rgba(255, 255, 255, 0.36);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+    body.theme-sunny-beach .bus-card {
+      backdrop-filter: blur(16px) saturate(1.2);
+      -webkit-backdrop-filter: blur(16px) saturate(1.2);
+      border-color: rgba(255, 255, 255, 0.36);
+    }
+    /* Preserve direction accents; only add frost transparency around skyblue/other gradients */
+    body.theme-sunny-beach .bus-card--skyblue {
+      border-color: rgba(14, 165, 233, 0.55);
+      /* keep skyblue gradient rule; ensure glass blur remains */
+    }
+    body.theme-sunny-beach .modal {
+      background: rgba(255, 255, 255, 0.52);
+      backdrop-filter: blur(26px) saturate(1.35);
+      -webkit-backdrop-filter: blur(26px) saturate(1.35);
+      border: 1px solid rgba(255, 255, 255, 0.42);
+      box-shadow:
+        0 24px 48px -12px rgba(14, 116, 144, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+    body.theme-sunny-beach .modal-backdrop {
+      background: rgba(14, 116, 144, 0.4);
+      backdrop-filter: blur(10px) saturate(1.15);
+      -webkit-backdrop-filter: blur(10px) saturate(1.15);
+    }
+    body.theme-sunny-beach .sc-icon {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+    body.theme-sunny-beach .note-banner {
+      background: rgba(253, 230, 138, 0.42);
+      backdrop-filter: blur(14px) saturate(1.15);
+      -webkit-backdrop-filter: blur(14px) saturate(1.15);
+      border: 1px solid rgba(255, 255, 255, 0.36);
     }
 
 
@@ -616,6 +754,7 @@
     .theme-chip[data-theme="dusk"] { background: linear-gradient(135deg, #4F6FA8, #D4E0EF); }
     .theme-chip[data-theme="toy"] { background: linear-gradient(135deg, #A0673B 0%, #E8B84A 45%, #87B8E0 100%); }
     .theme-chip[data-theme="rain-cafe"] { background: linear-gradient(135deg, #6B8A9E 0%, #C5D4E0 45%, #E8B84A 100%); }
+    .theme-chip[data-theme="sunny-beach"] { background: linear-gradient(135deg, #38BDF8 0%, #FDE68A 50%, #34D399 100%); }
 
     /* Feature sections — responsive CSS grid (wireframe: todo|events|calendar / training+bus|shortcuts) */
     .feature-stack {
@@ -1981,7 +2120,7 @@
     ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 10px; }
   </style>
 </head>
-<body id="appBody" class="theme-rain-cafe">
+<body id="appBody" class="theme-sunny-beach">
   <div class="app">
     <header class="page-header">
       <div class="page-header-inner">
@@ -1994,7 +2133,8 @@
             </div>
           </div>
           <div class="theme-chips theme-chips-mobile" id="themeChipsMobile" role="group" aria-label="主題">
-            <button type="button" class="theme-chip active" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+            <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+            <button type="button" class="theme-chip active" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
             <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
             <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
             <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
@@ -2028,7 +2168,8 @@
         </div>
 
         <div class="theme-chips theme-chips-desktop" id="themeChips" role="group" aria-label="主題">
-          <button type="button" class="theme-chip active" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+          <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+          <button type="button" class="theme-chip active" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
           <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
           <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
           <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
@@ -2354,7 +2495,7 @@ const TCS_DATA = {
 };
 
 const STORAGE_KEY = 'dash-hub-v1';
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 const TCS_SEARCH = 'https://tcs.edb.gov.hk/tcs/portal/publiccalendar/searchPublicCal/load.htm?pdType=0&leveltype=3&homePageSelection=2&fromMenu=Y';
 
 const SEED_BUS = [
@@ -3320,7 +3461,7 @@ function normalizeState(data) {
     trainingExpanded: false,
     busExpanded: false,
     todoTab: 'today',
-    theme: 'rain-cafe'
+    theme: 'sunny-beach'
   };
   if (!data || typeof data !== 'object') return base;
 
@@ -3391,7 +3532,7 @@ function normalizeState(data) {
   base.trainingExpanded = !!data.trainingExpanded;
   base.busExpanded = !!data.busExpanded;
   base.todoTab = normalizeTodoTab(data.todoTab);
-  const THEMES = ['rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
+  const THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
   const THEME_MIGRATE = {
     mist: 'sky', mint: 'cloud', sand: 'clear', lilac: 'dusk',
     steel: 'sky', navy: 'sky', charcoal: 'cloud', copper: 'clear',
@@ -3401,11 +3542,16 @@ function normalizeState(data) {
     toys: 'toy'
   };
   const rawTheme = THEME_MIGRATE[data.theme] || data.theme;
-  base.theme = THEMES.includes(rawTheme) ? rawTheme : 'rain-cafe';
+  base.theme = THEMES.includes(rawTheme) ? rawTheme : 'sunny-beach';
   // One-shot (schema < 5): force rain-cafe so users stuck on an old theme see the frost look.
   // After save, schema is 5 and theme chips work as usual.
   if (prevSchema < 5) {
     base.theme = 'rain-cafe';
+  }
+  // One-shot (schema < 6): force sunny-beach so users see the beach photo frost look once.
+  // After save, schema is 6 and theme chips work as usual.
+  if (prevSchema < 6) {
+    base.theme = 'sunny-beach';
   }
   base.schemaVersion = SCHEMA_VERSION;
   return base;
@@ -3424,7 +3570,7 @@ function saveState() {
       trainingExpanded: !!state.trainingExpanded,
       busExpanded: !!state.busExpanded,
       todoTab: normalizeTodoTab(todoTab),
-      theme: state.theme || 'rain-cafe'
+      theme: state.theme || 'sunny-beach'
     }));
   } catch (e) {
     console.warn('localStorage save failed', e);
@@ -3437,10 +3583,10 @@ function saveState() {
 
 
 /* ===== Theme ===== */
-const THEME_PRESETS = ['rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
+const THEME_PRESETS = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
 
 function applyTheme(preset, persist) {
-  const t = THEME_PRESETS.includes(preset) ? preset : 'rain-cafe';
+  const t = THEME_PRESETS.includes(preset) ? preset : 'sunny-beach';
   state.theme = t;
   const body = document.getElementById('appBody') || document.body;
   THEME_PRESETS.forEach(p => body.classList.remove('theme-' + p));
@@ -3449,8 +3595,8 @@ function applyTheme(preset, persist) {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === t);
   });
   const meta = document.querySelector('meta[name="theme-color"]');
-  const colors = { 'rain-cafe': '#C5D4E0', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
-  if (meta) meta.setAttribute('content', colors[t] || '#C5D4E0');
+  const colors = { 'sunny-beach': '#87CEEB', 'rain-cafe': '#C5D4E0', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
+  if (meta) meta.setAttribute('content', colors[t] || '#87CEEB');
   if (persist !== false) saveState();
 }
 
@@ -6394,7 +6540,7 @@ function startHeaderInfo() {
 }
 
 /* ===== Init ===== */
-applyTheme(state.theme || 'rain-cafe', false);
+applyTheme(state.theme || 'sunny-beach', false);
 todoTab = normalizeTodoTab(state.todoTab);
 syncTodoTabUI();
 syncExpandableSections();
