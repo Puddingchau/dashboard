@@ -1285,13 +1285,44 @@
       border: 1px solid var(--border-soft);
       min-width: 0;
       cursor: pointer;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
       -webkit-user-select: none;
       user-select: none;
+      /* pan-y: allow vertical page scroll; drag handler preventDefault only while dragging */
+      touch-action: pan-y;
     }
     .bus-card:active, .bus-card:focus-visible {
       border-color: var(--accent-primary, #3B82F6);
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
+      outline: none;
+    }
+    .bus-card.dragging {
+      opacity: 0.72;
+      transform: scale(1.02);
+      box-shadow: 0 8px 20px -6px var(--card-shadow, rgba(59, 130, 246, 0.28));
+      z-index: 2;
+      touch-action: none;
+    }
+    .bus-card.drag-over {
+      border-color: var(--accent-primary, #3B82F6);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.28);
+    }
+    .bus-card .bus-del {
+      flex: 0 0 auto;
+      padding: 4px 6px;
+      min-height: 28px;
+      font-size: 13px;
+      line-height: 1;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .bus-card .bus-del:hover, .bus-card .bus-del:focus-visible {
+      color: #b91c1c;
+      background: #fef2f2;
       outline: none;
     }
     .bus-row {
@@ -1349,13 +1380,35 @@
     }
     #bus .section-toolbar {
       margin-bottom: 8px;
-      justify-content: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
     }
-    #bus .section-toolbar > .btn.btn-sm {
+    #bus .section-toolbar .bus-toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-left: auto;
+    }
+    #bus .section-toolbar > .btn.btn-sm,
+    #bus .section-toolbar .bus-toolbar-right > .btn.btn-sm {
       min-height: 32px;
       padding: 4px 10px;
       font-size: 12px;
     }
+    .bus-list-hint {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .bus-add-status {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 1.2em;
+    }
+    .bus-add-status.is-error { color: #b45309; }
+    .bus-add-status.is-ok { color: var(--accent-badge-text, #1D4ED8); }
     .bus-card-main {
       flex: 1 1 auto;
       min-width: 0;
@@ -1915,9 +1968,13 @@
           九巴／龍運到站時間（官方 API）。展開後會用定位找各線最近站；約每 60 秒自動更新。夜間無班次屬正常。
         </div>
         <div class="section-toolbar">
-          <button type="button" class="btn btn-ghost btn-sm" id="btnBusRelocate">重新定位</button>
-          <button type="button" class="btn btn-ghost btn-sm" id="btnRefreshBusEta">更新到站</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btnAddBus">＋ 新增</button>
+          <div class="bus-toolbar-right">
+            <button type="button" class="btn btn-ghost btn-sm" id="btnBusRelocate">重新定位</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnRefreshBusEta">更新到站</button>
+          </div>
         </div>
+        <p class="bus-list-hint">長按或拖曳可重新排序 · 點卡片睇沿線</p>
         <div class="bus-list" id="busList"></div>
       </div>
         </div>
@@ -2842,6 +2899,7 @@ let activeCat = 'all';
 let todoTab = 'today';
 let todoDragId = null;
 let dragId = null;
+let busDragId = null;
 let longPressTimer = null;
 
 function cloneSeedBus() {
@@ -2921,52 +2979,36 @@ function normalizeBusEntry(b, fallbackId) {
   return base;
 }
 
-/** Migrate old route-keyed object → array; ensure five seed cards exist; attach kmbStopId. */
+/** Migrate old route-keyed object → array; seed only on first load; then persist user order/edits/deletes. */
 function migrateBusStops(raw) {
-  // Already new array format with schemaVersion >= 2
+  // Persisted array: keep order, allow deletes (do not re-inject missing seeds)
   if (Array.isArray(raw)) {
-    const byId = {};
+    const out = [];
+    const seen = {};
     raw.forEach(b => {
       const n = normalizeBusEntry(b);
-      if (n.id) byId[n.id] = n;
-    });
-    // Ensure seed five exist (prefer seed defaults if missing)
-    const out = SEED_BUS.map(seed => {
-      if (byId[seed.id]) {
-        // keep user edits but fill blanks from seed (incl. kmbStopId)
-        const u = byId[seed.id];
-        const merged = {
-          id: seed.id,
-          route: u.route || seed.route,
-          direction: u.direction || seed.direction,
-          stopName: u.stopName || seed.stopName,
-          stopId: u.stopId || seed.stopId,
-          kmbStopId: u.kmbStopId || seed.kmbStopId,
-          destKeywords: (u.destKeywords && u.destKeywords.length) ? u.destKeywords : seed.destKeywords.slice(),
-          apiDir: u.apiDir || seed.apiDir
-        };
-        if (u.nearbyDistM != null) merged.nearbyDistM = u.nearbyDistM;
-        if (u.nearbySeq != null) merged.nearbySeq = u.nearbySeq;
-        if (u.serviceType != null) merged.serviceType = u.serviceType;
-        if (!merged.kmbStopId) merged.kmbStopId = resolveKmbStopId(merged);
-        return merged;
+      if (!n.id || seen[n.id]) return;
+      if (!(n.route || n.stopName || n.stopId || n.kmbStopId)) return;
+      // Fill blanks from seed when this id is a known preset
+      const seed = SEED_BUS.find(s => s.id === n.id);
+      if (seed) {
+        n.route = n.route || seed.route;
+        n.direction = n.direction || seed.direction;
+        n.stopName = n.stopName || seed.stopName;
+        n.stopId = n.stopId || seed.stopId;
+        n.kmbStopId = n.kmbStopId || seed.kmbStopId;
+        if (!n.destKeywords || !n.destKeywords.length) n.destKeywords = seed.destKeywords.slice();
+        n.apiDir = n.apiDir || seed.apiDir;
+        if (!n.kmbStopId) n.kmbStopId = resolveKmbStopId(n);
       }
-      return { ...seed, destKeywords: seed.destKeywords.slice() };
-    });
-    // Keep any extra user-added cards not in seed
-    raw.forEach(b => {
-      const n = normalizeBusEntry(b);
-      if (n.id && !SEED_BUS.some(s => s.id === n.id) && (n.route || n.stopName || n.stopId)) {
-        out.push(n);
-      }
+      seen[n.id] = true;
+      out.push(n);
     });
     return out;
   }
-  // Old object keyed by route — discard empties, seed the five presets
-  // (user may have typed stop names under route keys; try soft merge by route+stopId)
+  // Old object keyed by route — soft merge into seeds (first load / legacy)
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     const seeded = cloneSeedBus();
-    // If user filled a stop for a route, apply to first matching seed of that route if seed stop empty / match
     Object.keys(raw).forEach(route => {
       const u = raw[route] || {};
       const stopId = String(u.stopId || '').trim();
@@ -2983,6 +3025,7 @@ function migrateBusStops(raw) {
     });
     return seeded;
   }
+  // Missing / null → seed defaults (first load)
   return cloneSeedBus();
 }
 
@@ -4531,14 +4574,23 @@ async function fetchRouteStops(route, apiDir, serviceType) {
   return stops;
 }
 
-async function fetchRouteStopsWithProbe(route, apiDir) {
-  let stops = await fetchRouteStops(route, apiDir, 1);
-  if (stops && stops.length) return { serviceType: 1, stops: stops };
-  try {
-    stops = await fetchRouteStops(route, apiDir, 2);
-    if (stops && stops.length) return { serviceType: 2, stops: stops };
-  } catch (e) { /* keep empty */ }
-  return { serviceType: 1, stops: stops || [] };
+async function fetchRouteStopsWithProbe(route, apiDir, preferredServiceType) {
+  const prefer = Number(preferredServiceType);
+  const tryOrder = [];
+  if (Number.isFinite(prefer) && prefer >= 1) tryOrder.push(prefer);
+  [1, 2, 3].forEach(function (st) {
+    if (tryOrder.indexOf(st) === -1) tryOrder.push(st);
+  });
+  let lastStops = [];
+  for (let i = 0; i < tryOrder.length; i++) {
+    const st = tryOrder[i];
+    try {
+      const stops = await fetchRouteStops(route, apiDir, st);
+      lastStops = stops || [];
+      if (lastStops.length) return { serviceType: st, stops: lastStops };
+    } catch (e) { /* try next */ }
+  }
+  return { serviceType: tryOrder[0] || 1, stops: lastStops };
 }
 
 function requestBrowserGeo() {
@@ -4651,7 +4703,7 @@ async function resolveNearbyStopsForBuses(opts) {
         continue;
       }
       try {
-        const probed = await fetchRouteStopsWithProbe(route, apiDir);
+        const probed = await fetchRouteStopsWithProbe(route, apiDir, b.serviceType);
         const nearest = pickNearestRouteStop(probed.stops, busGeo, stopsMap);
         if (nearest && nearest.info) {
           const parsed = parseStopNameTc(nearest.info.n);
@@ -4813,6 +4865,13 @@ function bindBusEtaControls() {
       }
     });
   }
+  const addBtn = document.getElementById('btnAddBus');
+  if (addBtn && !addBtn._busAddBound) {
+    addBtn._busAddBound = true;
+    addBtn.addEventListener('click', function () {
+      openBusAddModal();
+    });
+  }
 }
 
 function busCardMetaLine(b) {
@@ -4823,6 +4882,357 @@ function busCardMetaLine(b) {
   if (busGeo && busGeo.source === 'gps') bits.push('定位最近站');
   else if (busGeo && busGeo.source === 'fallback') bits.push('天水圍後備最近站');
   return bits.join(' · ');
+}
+
+const KMB_ROUTE_LIST_CACHE_KEY = 'kmb-route-list-cache-v1';
+const KMB_ROUTE_LIST_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/** @type {any[]|null} */
+let kmbRouteListMem = null;
+
+async function loadKmbRouteList(force) {
+  const now = Date.now();
+  if (!force && kmbRouteListMem && kmbRouteListMem.length) return kmbRouteListMem;
+  if (!force) {
+    try {
+      const raw = localStorage.getItem(KMB_ROUTE_LIST_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.at && (now - parsed.at) < KMB_ROUTE_LIST_CACHE_TTL_MS && Array.isArray(parsed.data) && parsed.data.length) {
+          kmbRouteListMem = parsed.data;
+          return kmbRouteListMem;
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+  const res = await fetch(KMB_ETA_BASE + '/route/', { cache: force ? 'no-store' : 'default' });
+  if (!res.ok) throw new Error('路線清單 HTTP ' + res.status);
+  const json = await res.json();
+  const rows = Array.isArray(json && json.data) ? json.data : [];
+  const compact = rows.map(function (r) {
+    return {
+      route: String(r.route || ''),
+      bound: String(r.bound || '').toUpperCase(),
+      service_type: String(r.service_type || '1'),
+      orig_tc: String(r.orig_tc || ''),
+      dest_tc: String(r.dest_tc || '')
+    };
+  }).filter(function (r) { return r.route && (r.bound === 'O' || r.bound === 'I'); });
+  kmbRouteListMem = compact;
+  try {
+    localStorage.setItem(KMB_ROUTE_LIST_CACHE_KEY, JSON.stringify({ at: now, data: compact }));
+  } catch (e) { /* quota */ }
+  return compact;
+}
+
+async function lookupKmbRouteVariants(route) {
+  const r = String(route || '').trim().toUpperCase();
+  if (!r) return [];
+  const list = await loadKmbRouteList(false);
+  const matched = list.filter(function (x) { return String(x.route).toUpperCase() === r; });
+  if (matched.length) return matched;
+  // Fallback: probe outbound/inbound service 1–2 when list miss (rare)
+  const out = [];
+  const bounds = ['outbound', 'inbound'];
+  for (let bi = 0; bi < bounds.length; bi++) {
+    for (let st = 1; st <= 2; st++) {
+      try {
+        const url = KMB_ETA_BASE + '/route/' + encodeURIComponent(r) + '/' + bounds[bi] + '/' + st;
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) continue;
+        const json = await res.json();
+        const d = json && json.data;
+        if (!d || !d.route) continue;
+        out.push({
+          route: String(d.route || r),
+          bound: String(d.bound || (bounds[bi] === 'inbound' ? 'I' : 'O')).toUpperCase(),
+          service_type: String(d.service_type || st),
+          orig_tc: String(d.orig_tc || ''),
+          dest_tc: String(d.dest_tc || '')
+        });
+      } catch (e) { /* skip */ }
+    }
+  }
+  return out;
+}
+
+function destKeywordsFromDest(destTc) {
+  const d = String(destTc || '').trim();
+  if (!d) return [];
+  const keys = [d];
+  const short = d.replace(/[()（）\s].*$/, '').trim();
+  if (short && short !== d && short.length >= 2) keys.push(short);
+  return keys;
+}
+
+function reorderBuses(fromId, toId) {
+  if (!Array.isArray(state.busStops)) return;
+  const fromIdx = state.busStops.findIndex(function (s) { return s.id === fromId; });
+  const toIdx = state.busStops.findIndex(function (s) { return s.id === toId; });
+  if (fromIdx < 0 || toIdx < 0) return;
+  const item = state.busStops.splice(fromIdx, 1)[0];
+  state.busStops.splice(toIdx, 0, item);
+  saveState();
+  renderBus();
+  updateBlockSummaries();
+}
+
+function deleteBusRoute(busId) {
+  const b = (state.busStops || []).find(function (x) { return x.id === busId; });
+  if (!b) return;
+  const label = (b.route || '') + (b.direction ? ' ' + b.direction : '');
+  if (!confirm('確定刪除此路線？\n' + (label || busId))) return;
+  state.busStops = (state.busStops || []).filter(function (x) { return x.id !== busId; });
+  saveState();
+  renderBus();
+  updateBlockSummaries();
+  if (state.busExpanded) refreshAllBusEtas({ force: true });
+}
+
+function bindBusDnD(card, list) {
+  const id = card.getAttribute('data-id');
+  card.setAttribute('draggable', 'true');
+
+  card.addEventListener('dragstart', function (e) {
+    if (e.target.closest('.bus-del')) {
+      e.preventDefault();
+      return;
+    }
+    busDragId = id;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+  });
+  card.addEventListener('dragend', function () {
+    card.classList.remove('dragging');
+    list.querySelectorAll('.drag-over').forEach(function (x) { x.classList.remove('drag-over'); });
+    busDragId = null;
+  });
+  card.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    card.classList.add('drag-over');
+  });
+  card.addEventListener('dragleave', function () { card.classList.remove('drag-over'); });
+  card.addEventListener('drop', function (e) {
+    e.preventDefault();
+    card.classList.remove('drag-over');
+    const from = busDragId || e.dataTransfer.getData('text/plain');
+    const to = id;
+    if (from && to && from !== to) reorderBuses(from, to);
+  });
+
+  let startX, startY;
+  card.addEventListener('touchstart', function (e) {
+    if (e.target.closest('.bus-del')) return;
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    longPressTimer = setTimeout(function () {
+      busDragId = id;
+      card.classList.add('dragging');
+      if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
+    }, 420);
+  }, { passive: true });
+  card.addEventListener('touchmove', function (e) {
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+      if (!busDragId) clearTimeout(longPressTimer);
+    }
+    if (busDragId) {
+      e.preventDefault();
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el && el.closest('.bus-card');
+      list.querySelectorAll('.drag-over').forEach(function (x) { x.classList.remove('drag-over'); });
+      if (target && target.getAttribute('data-id') !== busDragId) target.classList.add('drag-over');
+    }
+  }, { passive: false });
+  card.addEventListener('touchend', function (e) {
+    clearTimeout(longPressTimer);
+    if (busDragId) {
+      const t = e.changedTouches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el && el.closest('.bus-card');
+      const to = target && target.getAttribute('data-id');
+      if (to && to !== busDragId) reorderBuses(busDragId, to);
+      list.querySelectorAll('.bus-card').forEach(function (x) { x.classList.remove('dragging', 'drag-over'); });
+      busDragId = null;
+      e.preventDefault();
+    }
+  });
+  card.addEventListener('touchcancel', function () {
+    clearTimeout(longPressTimer);
+    card.classList.remove('dragging');
+    busDragId = null;
+  });
+}
+
+function openBusAddModal() {
+  openModal(
+    '<h3>新增巴士路線</h3>' +
+    '<form class="form-stack" id="busAddForm">' +
+      '<div><label class="field-label">路線號碼</label>' +
+        '<input type="text" name="route" required maxlength="10" placeholder="例如 69M" autocomplete="off" style="text-transform:uppercase" /></div>' +
+      '<div class="modal-actions" style="justify-content:flex-start;margin-top:0">' +
+        '<button type="button" class="btn btn-ghost btn-sm" id="busLookupBtn">查詢路線</button>' +
+      '</div>' +
+      '<p class="bus-add-status" id="busAddStatus"></p>' +
+      '<div><label class="field-label">方向／目的地</label>' +
+        '<select name="variant" id="busVariantSelect" required disabled>' +
+          '<option value="">請先查詢路線</option>' +
+        '</select></div>' +
+      '<div><label class="field-label">服務類型 service_type（可選，預設 1）</label>' +
+        '<input type="number" name="serviceType" id="busServiceType" min="1" max="99" step="1" value="1" /></div>' +
+      '<div class="modal-actions">' +
+        '<button type="button" class="btn btn-ghost" id="busAddCancel">取消</button>' +
+        '<button type="submit" class="btn btn-primary" id="busAddSubmit" disabled>新增</button>' +
+      '</div>' +
+    '</form>'
+  );
+
+  const form = document.getElementById('busAddForm');
+  const statusEl = document.getElementById('busAddStatus');
+  const select = document.getElementById('busVariantSelect');
+  const stInput = document.getElementById('busServiceType');
+  const submitBtn = document.getElementById('busAddSubmit');
+  const lookupBtn = document.getElementById('busLookupBtn');
+  const routeInput = form.querySelector('[name="route"]');
+  /** @type {any[]} */
+  let variants = [];
+
+  function setStatus(msg, cls) {
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.className = 'bus-add-status' + (cls ? ' ' + cls : '');
+  }
+
+  function fillVariants(rows) {
+    variants = rows || [];
+    select.innerHTML = '';
+    if (!variants.length) {
+      select.innerHTML = '<option value="">找不到此路線</option>';
+      select.disabled = true;
+      submitBtn.disabled = true;
+      return;
+    }
+    variants.forEach(function (v, i) {
+      const bound = String(v.bound || '').toUpperCase();
+      const boundLabel = bound === 'I' ? '回程 I' : '去程 O';
+      const dest = v.dest_tc || '—';
+      const st = v.service_type || '1';
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = '往' + dest + '（' + boundLabel + ' · 服務 ' + st + '）';
+      select.appendChild(opt);
+    });
+    select.disabled = false;
+    submitBtn.disabled = false;
+    select.selectedIndex = 0;
+    stInput.value = String(variants[0].service_type || '1');
+  }
+
+  select.addEventListener('change', function () {
+    const v = variants[Number(select.value)];
+    if (v) stInput.value = String(v.service_type || '1');
+  });
+
+  async function doLookup() {
+    const route = String(routeInput.value || '').trim().toUpperCase();
+    routeInput.value = route;
+    if (!route) {
+      setStatus('請輸入路線號碼', 'is-error');
+      return;
+    }
+    lookupBtn.disabled = true;
+    setStatus('查詢中…');
+    try {
+      const rows = await lookupKmbRouteVariants(route);
+      if (!rows.length) {
+        fillVariants([]);
+        setStatus('找不到「' + route + '」——請確認是九巴／龍運路線', 'is-error');
+        return;
+      }
+      fillVariants(rows);
+      setStatus('找到 ' + rows.length + ' 個方向／服務組合', 'is-ok');
+    } catch (err) {
+      fillVariants([]);
+      setStatus('查詢失敗，請稍後再試', 'is-error');
+    } finally {
+      lookupBtn.disabled = false;
+    }
+  }
+
+  document.getElementById('busAddCancel').onclick = closeModal;
+  lookupBtn.onclick = function () { doLookup(); };
+  routeInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      doLookup();
+    }
+  });
+
+  form.onsubmit = async function (e) {
+    e.preventDefault();
+    const route = String(routeInput.value || '').trim().toUpperCase();
+    if (!route) {
+      setStatus('請輸入路線號碼', 'is-error');
+      return;
+    }
+    if (!variants.length) {
+      setStatus('請先查詢並選擇方向', 'is-error');
+      await doLookup();
+      return;
+    }
+    const v = variants[Number(select.value)];
+    if (!v) {
+      setStatus('請選擇方向', 'is-error');
+      return;
+    }
+    const apiDir = String(v.bound || '').toUpperCase() === 'I' ? 'I' : 'O';
+    let serviceType = Number(stInput.value);
+    if (!Number.isFinite(serviceType) || serviceType < 1) serviceType = Number(v.service_type) || 1;
+    const destTc = String(v.dest_tc || '').trim();
+    const direction = destTc ? ('往' + destTc) : (apiDir === 'I' ? '回程（Inbound）' : '去程（Outbound）');
+    const entry = normalizeBusEntry({
+      id: uid('bus'),
+      route: route,
+      direction: direction,
+      apiDir: apiDir,
+      serviceType: serviceType,
+      destKeywords: destKeywordsFromDest(destTc),
+      stopName: '',
+      stopId: '',
+      kmbStopId: ''
+    });
+    if (!Array.isArray(state.busStops)) state.busStops = cloneSeedBus();
+    // Avoid exact duplicate route+dir+service
+    const dup = state.busStops.some(function (b) {
+      return String(b.route || '').toUpperCase() === route &&
+        resolveBusApiDir(b) === apiDir &&
+        String(b.serviceType || 1) === String(serviceType);
+    });
+    if (dup && !confirm('已有相同路線／方向／服務，仍要再加一張卡？')) return;
+
+    submitBtn.disabled = true;
+    setStatus('新增中，正在找最近站…');
+    state.busStops.push(entry);
+    saveState();
+    closeModal();
+    renderBus();
+    updateBlockSummaries();
+    try {
+      if (!state.busExpanded) {
+        state.busExpanded = true;
+        applyExpandableSection('bus', true);
+        saveState();
+      }
+      await resolveNearbyStopsForBuses({ forceGeo: !busGeo });
+      renderBus();
+      await refreshAllBusEtas({ force: true });
+      startBusNearbyAndEta(false);
+    } catch (err) {
+      updateBusLocationNote('已新增路線，最近站稍後再試');
+      renderBus();
+    }
+  };
 }
 
 function renderBus() {
@@ -4844,7 +5254,7 @@ function renderBus() {
     const cached = kid ? busEtaByStop[kid] : null;
     const eta = formatBusEtaHtml(b, cached || null);
     return (
-      '<div class="bus-card" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '">' +
+      '<div class="bus-card" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '" draggable="true">' +
         '<div class="bus-row">' +
           '<div class="bus-card-main">' +
             '<div class="bus-summary" title="' + escapeHtml(summary) + '">' + escapeHtml(summary) + '</div>' +
@@ -4852,22 +5262,38 @@ function renderBus() {
           '</div>' +
           '<div class="bus-eta' + (eta.cls ? ' ' + eta.cls : '') + '">' + eta.html + '</div>' +
           '<div class="bus-card-affordance" aria-hidden="true"><span>睇沿線</span><span class="chev">›</span></div>' +
+          '<button type="button" class="bus-del" data-bus-del="' + escapeHtml(b.id) + '" aria-label="刪除路線" title="刪除">🗑</button>' +
         '</div>' +
       '</div>'
     );
   }).join('');
 
   list.querySelectorAll('.bus-card').forEach(function (card) {
+    const id = card.getAttribute('data-id');
     const open = function () {
-      openBusRouteSheet(card.getAttribute('data-id'));
+      if (busDragId || card.classList.contains('dragging')) return;
+      openBusRouteSheet(id);
     };
-    card.addEventListener('click', open);
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('.bus-del')) return;
+      if (card.classList.contains('dragging')) return;
+      open();
+    });
     card.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         open();
       }
     });
+    const delBtn = card.querySelector('[data-bus-del]');
+    if (delBtn) {
+      delBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteBusRoute(id);
+      });
+    }
+    bindBusDnD(card, list);
   });
 
   bindBusEtaControls();
@@ -4914,10 +5340,12 @@ function directionLabelForApiDir(bus, apiDir) {
     if (String(bus.route).toUpperCase() === 'E37') return '往機場(地面運輸中心)';
     if (String(bus.route).toUpperCase() === '69X') return '往高鐵(西九龍站)';
     if (String(bus.route).toUpperCase() === '265B') return '往旺角(柏景灣)';
+    if (bus.destOutbound) return '往' + bus.destOutbound;
     return '去程（Outbound）';
   }
   if (d === 'I') {
     if (String(bus.route).toUpperCase() === 'E36A') return '往元朗(德業街)';
+    if (bus.destInbound) return '往' + bus.destInbound;
     return '回程（Inbound）';
   }
   return '路線';
@@ -4975,7 +5403,7 @@ async function openBusRouteSheet(busId) {
     for (let i = 0; i < dirs.length; i++) {
       const d = dirs[i];
       try {
-        const probed = await fetchRouteStopsWithProbe(route, d);
+        const probed = await fetchRouteStopsWithProbe(route, d, d === watchedDir ? bus.serviceType : undefined);
         dirData[d] = probed;
         if (d === watchedDir && probed.serviceType) serviceType = probed.serviceType;
       } catch (e) {
