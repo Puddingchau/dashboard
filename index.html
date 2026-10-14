@@ -4796,7 +4796,9 @@ function renderCalendar() {
 
   grid.querySelectorAll('.cal-day').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      calSelectedYMD = btn.getAttribute('data-ymd');
+      const ymd = btn.getAttribute('data-ymd');
+      // Tap same selected day again → collapse day activity panel
+      calSelectedYMD = (ymd === calSelectedYMD) ? null : ymd;
       renderCalendar();
     });
   });
