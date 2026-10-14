@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     /* ===== Themes (sunny-beach / rain-cafe / sky / cloud / clear / dusk / toy) ===== */
     :root {
@@ -2354,6 +2355,9 @@
     <div class="sync-actions" style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:20px;padding:0 8px">
       <button type="button" class="btn btn-ghost btn-sm" id="btnExportData">匯出資料</button>
       <button type="button" class="btn btn-ghost btn-sm" id="btnImportData">匯入資料</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google Drive</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="gdriveSyncNowBtn" hidden>立即同步</button>
+      <span id="gdriveSyncStatus" style="font-size:12px;color:var(--muted);align-self:center">未連接</span>
       <input type="file" id="importFileInput" accept="application/json,.json" hidden />
     </div>
     <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入；可用匯出／匯入在裝置間搬資料 · 布丁仔</p>
@@ -2501,6 +2505,10 @@ const TCS_DATA = {
 
 const STORAGE_KEY = 'dash-hub-v1';
 const SCHEMA_VERSION = 7;
+const GDRIVE_SYNC_FILENAME = '布丁仔-sync.json';
+const GDRIVE_OAUTH_CLIENT_ID = ''; // filled after Google Cloud setup
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const GDRIVE_FILE_ID_KEY = 'dash-hub-gdrive-file-id';
 const TCS_SEARCH = 'https://tcs.edb.gov.hk/tcs/portal/publiccalendar/searchPublicCal/load.htm?pdType=0&leveltype=3&homePageSelection=2&fromMenu=Y';
 
 const SEED_BUS = [
@@ -3621,6 +3629,16 @@ function buildExportPayload() {
   };
 }
 
+/** Same payload as 匯出資料 — always includes todos + events. */
+function buildSyncPayload() {
+  return buildExportPayload();
+}
+
+/** Merge remote sync JSON (todos + events by id); thin wrapper for GDrive / import. */
+function mergeSyncPayload(remote, opts) {
+  return applyRemoteSyncPayload(remote, opts || { applyExtras: false });
+}
+
 function saveState() {
   try {
     const payload = {
@@ -3648,6 +3666,7 @@ function saveState() {
   try {
     if (document.getElementById('calGrid')) renderCalendar();
   } catch (e) {}
+  try { scheduleGdriveAutoPush(); } catch (e) {}
 }
 
 
@@ -6744,6 +6763,315 @@ function downloadSyncJson(obj, filename) {
   }, 500);
 }
 
+
+/* ===== Google Drive sync (todos + events) ===== */
+const GDRIVE_TOKEN_SESSION_KEY = 'dash-hub-gdrive-token';
+let gdriveAccessToken = null;
+let gdriveTokenClient = null;
+let gdriveFileId = null;
+let gdriveAutoPushTimer = null;
+let gdriveSyncInFlight = false;
+
+function gdriveHasClientId() {
+  return !!(GDRIVE_OAUTH_CLIENT_ID && String(GDRIVE_OAUTH_CLIENT_ID).trim());
+}
+
+function gdriveIsConnected() {
+  return !!(gdriveAccessToken && (gdriveFileId || localStorage.getItem(GDRIVE_FILE_ID_KEY)));
+}
+
+function setGdriveStatus(text) {
+  const el = document.getElementById('gdriveSyncStatus');
+  if (el) el.textContent = text || '';
+}
+
+function updateGdriveUiConnected(connected) {
+  const syncBtn = document.getElementById('gdriveSyncNowBtn');
+  const connectBtn = document.getElementById('gdriveConnectBtn');
+  if (syncBtn) syncBtn.hidden = !connected;
+  if (connectBtn) connectBtn.textContent = connected ? '已連接 Drive' : '連接 Google Drive';
+}
+
+function formatGdriveSyncTime(ts) {
+  const d = ts ? new Date(ts) : new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return hh + ':' + mm;
+}
+
+function storeGdriveToken(token) {
+  gdriveAccessToken = token || null;
+  try {
+    if (token) sessionStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, token);
+    else sessionStorage.removeItem(GDRIVE_TOKEN_SESSION_KEY);
+  } catch (e) {}
+}
+
+function restoreGdriveTokenFromSession() {
+  try {
+    const t = sessionStorage.getItem(GDRIVE_TOKEN_SESSION_KEY);
+    if (t) gdriveAccessToken = t;
+  } catch (e) {}
+  return gdriveAccessToken;
+}
+
+function gdriveAuthHeaders() {
+  return { Authorization: 'Bearer ' + gdriveAccessToken };
+}
+
+async function gdriveApi(url, opts) {
+  opts = opts || {};
+  const headers = Object.assign({}, gdriveAuthHeaders(), opts.headers || {});
+  const res = await fetch(url, Object.assign({}, opts, { headers }));
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    const err = new Error('Drive API ' + res.status + (body ? ': ' + body.slice(0, 200) : ''));
+    err.status = res.status;
+    throw err;
+  }
+  return res;
+}
+
+async function gdriveVerifyOrFindFileId() {
+  const stored = localStorage.getItem(GDRIVE_FILE_ID_KEY) || gdriveFileId;
+  if (stored) {
+    try {
+      const res = await gdriveApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(stored) + '?fields=id,name,trashed');
+      const meta = await res.json();
+      if (meta && meta.id && !meta.trashed) {
+        gdriveFileId = meta.id;
+        localStorage.setItem(GDRIVE_FILE_ID_KEY, meta.id);
+        return meta.id;
+      }
+    } catch (e) {
+      /* fall through to list/create */
+    }
+  }
+  const q = "name='" + GDRIVE_SYNC_FILENAME.replace(/'/g, "\\'") + "' and trashed=false";
+  const listUrl = 'https://www.googleapis.com/drive/v3/files?spaces=drive&pageSize=10&fields=files(id,name)&q=' + encodeURIComponent(q);
+  const listRes = await gdriveApi(listUrl);
+  const listData = await listRes.json();
+  const found = (listData.files && listData.files[0]) || null;
+  if (found && found.id) {
+    gdriveFileId = found.id;
+    localStorage.setItem(GDRIVE_FILE_ID_KEY, found.id);
+    return found.id;
+  }
+  return await gdriveCreateSyncFile();
+}
+
+async function gdriveCreateSyncFile() {
+  const payload = buildSyncPayload();
+  // Ensure todos + events always present
+  if (!Array.isArray(payload.todos)) payload.todos = state.todos || [];
+  if (!Array.isArray(payload.events)) payload.events = state.events || [];
+  const metadata = { name: GDRIVE_SYNC_FILENAME, mimeType: 'application/json' };
+  const boundary = '-------puddingDashBoundary' + Date.now();
+  const body =
+    '--' + boundary + '\r\n' +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(metadata) + '\r\n' +
+    '--' + boundary + '\r\n' +
+    'Content-Type: application/json\r\n\r\n' +
+    JSON.stringify(payload) + '\r\n' +
+    '--' + boundary + '--';
+  const res = await gdriveApi(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+      body: body
+    }
+  );
+  const meta = await res.json();
+  gdriveFileId = meta.id;
+  localStorage.setItem(GDRIVE_FILE_ID_KEY, meta.id);
+  return meta.id;
+}
+
+async function gdrivePull() {
+  const fileId = await gdriveVerifyOrFindFileId();
+  const res = await gdriveApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media');
+  const remote = await res.json();
+  if (!remote || typeof remote !== 'object') return false;
+  // Always merge todos + events (mergeSyncPayload / applyRemoteSyncPayload)
+  const changed = mergeSyncPayload(remote, { applyExtras: false });
+  if (changed) {
+    saveState();
+    reRenderAfterSync(false);
+  }
+  return changed;
+}
+
+async function gdrivePush() {
+  const fileId = await gdriveVerifyOrFindFileId();
+  const payload = buildSyncPayload();
+  if (!Array.isArray(payload.todos)) payload.todos = state.todos || [];
+  if (!Array.isArray(payload.events)) payload.events = state.events || [];
+  await gdriveApi(
+    'https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(fileId) + '?uploadType=media',
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }
+  );
+  return true;
+}
+
+function scheduleGdriveAutoPush() {
+  if (!gdriveIsConnected()) return;
+  if (gdriveAutoPushTimer) clearTimeout(gdriveAutoPushTimer);
+  gdriveAutoPushTimer = setTimeout(function () {
+    gdriveAutoPushTimer = null;
+    if (!gdriveIsConnected() || gdriveSyncInFlight) return;
+    gdriveSyncInFlight = true;
+    gdrivePush()
+      .then(function () {
+        setGdriveStatus('已同步 ' + formatGdriveSyncTime());
+      })
+      .catch(function (e) {
+        console.warn('GDrive auto-push failed', e);
+      })
+      .finally(function () {
+        gdriveSyncInFlight = false;
+      });
+  }, 2500);
+}
+
+function ensureGdriveTokenClient() {
+  if (gdriveTokenClient) return gdriveTokenClient;
+  if (!gdriveHasClientId()) return null;
+  if (!window.google || !google.accounts || !google.accounts.oauth2) return null;
+  gdriveTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GDRIVE_OAUTH_CLIENT_ID,
+    scope: GDRIVE_SCOPE,
+    callback: function (resp) {
+      if (resp && resp.access_token) {
+        storeGdriveToken(resp.access_token);
+        updateGdriveUiConnected(true);
+        setGdriveStatus('同步中…');
+        gdriveSyncInFlight = true;
+        gdrivePull()
+          .then(function () {
+            setGdriveStatus('已同步 ' + formatGdriveSyncTime());
+          })
+          .catch(function (e) {
+            console.warn('GDrive pull after connect failed', e);
+            setGdriveStatus('已連接（拉取失敗）');
+          })
+          .finally(function () {
+            gdriveSyncInFlight = false;
+          });
+      } else if (resp && resp.error) {
+        setGdriveStatus('授權失敗');
+        console.warn('GDrive auth error', resp);
+      }
+    }
+  });
+  return gdriveTokenClient;
+}
+
+function requestGdriveToken(opts) {
+  opts = opts || {};
+  const client = ensureGdriveTokenClient();
+  if (!client) return false;
+  const req = {};
+  if (opts.prompt !== undefined) req.prompt = opts.prompt;
+  client.requestAccessToken(req);
+  return true;
+}
+
+async function gdriveSyncNow() {
+  if (!gdriveAccessToken) {
+    setGdriveStatus('請先連接');
+    return;
+  }
+  setGdriveStatus('同步中…');
+  gdriveSyncInFlight = true;
+  try {
+    await gdrivePull();
+    await gdrivePush();
+    setGdriveStatus('已同步 ' + formatGdriveSyncTime());
+  } catch (e) {
+    console.warn('GDrive sync now failed', e);
+    setGdriveStatus('同步失敗');
+  } finally {
+    gdriveSyncInFlight = false;
+  }
+}
+
+function bindGdriveUi() {
+  const connectBtn = document.getElementById('gdriveConnectBtn');
+  const syncBtn = document.getElementById('gdriveSyncNowBtn');
+  if (connectBtn) {
+    connectBtn.addEventListener('click', function () {
+      if (!gdriveHasClientId()) {
+        alert('尚未設定 Google OAuth Client ID，請稍後再試。');
+        setGdriveStatus('待設定 OAuth Client ID');
+        return;
+      }
+      if (!window.google || !google.accounts || !google.accounts.oauth2) {
+        alert('Google 登入元件尚未載入，請稍後再試。');
+        return;
+      }
+      requestGdriveToken({ prompt: 'consent' });
+    });
+  }
+  if (syncBtn) {
+    syncBtn.addEventListener('click', function () {
+      gdriveSyncNow();
+    });
+  }
+  if (!gdriveHasClientId()) {
+    setGdriveStatus('待設定 OAuth Client ID');
+  }
+}
+
+function tryGdriveSilentRestore() {
+  if (!gdriveHasClientId()) return;
+  restoreGdriveTokenFromSession();
+  const hasFileId = !!localStorage.getItem(GDRIVE_FILE_ID_KEY);
+  if (!gdriveAccessToken && !hasFileId) return;
+
+  function attempt() {
+    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+      setTimeout(attempt, 400);
+      return;
+    }
+    ensureGdriveTokenClient();
+    // Silent token refresh if GIS available; ignore failures
+    try {
+      const client = gdriveTokenClient;
+      if (!client) return;
+      const prevCb = client.callback;
+      client.callback = function (resp) {
+        client.callback = prevCb;
+        if (resp && resp.access_token) {
+          storeGdriveToken(resp.access_token);
+          updateGdriveUiConnected(true);
+          gdrivePull()
+            .then(function () {
+              setGdriveStatus('已同步 ' + formatGdriveSyncTime());
+            })
+            .catch(function () {
+              /* ignore silent pull failures */
+              if (gdriveAccessToken) {
+                updateGdriveUiConnected(true);
+                setGdriveStatus('已連接');
+              }
+            });
+        }
+      };
+      client.requestAccessToken({ prompt: '' });
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  attempt();
+}
+
+
 function bindSyncUi() {
   const btnEx = document.getElementById('btnExportData');
   const btnIm = document.getElementById('btnImportData');
@@ -6811,7 +7139,9 @@ if (state.busExpanded) startBusNearbyAndEta(true);
 startHeaderInfo();
 updateBlockSummaries();
 bindSyncUi();
+bindGdriveUi();
 autoImportFromCloud();
+tryGdriveSilentRestore();
 
 /* Hash deep-link: scroll (expand training/bus if targeted) */
 scrollToSectionFromHash();
