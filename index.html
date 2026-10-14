@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#E8F4FC" />
+  <meta name="theme-color" content="#C5D4E0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="description" content="Fred Chau 個人流動儀表板" />
@@ -12,11 +12,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <style>
-    /* ===== Sky themes (sky / cloud / clear / dusk) ===== */
+    /* ===== Themes (rain-cafe / sky / cloud / clear / dusk / toy) ===== */
     :root {
-      --primary: #64748b;
-      --accent: var(--accent-primary, #3B82F6);
-      --accent-soft: var(--accent-light, #E8F4FC);
+      --primary: #6B7A88;
+      --accent: var(--accent-primary, #C9892A);
+      --accent-soft: var(--accent-light, #F5EDE0);
       --lavender: #e8e4f5;
       --pink: #fce8e8;
       --mint: #e0f2ef;
@@ -24,31 +24,31 @@
       --peach: #ffedd5;
       --lilac: #ede9fe;
       --baby-blue: #e0f2fe;
-      --muted: #64748b;
-      --text: #334155;
-      --text-strong: #1e293b;
-      --border-soft: rgba(59, 130, 246, 0.14);
-      --shadow: 0 8px 24px -8px var(--card-shadow, rgba(59, 130, 246, 0.16));
+      --muted: #6B7A88;
+      --text: #3A4550;
+      --text-strong: #2A333C;
+      --border-soft: rgba(107, 138, 158, 0.22);
+      --shadow: 0 8px 24px -8px var(--card-shadow, rgba(70, 90, 110, 0.2));
       --radius: 0.5rem;
       --radius-sm: 0.35rem;
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --max-w: 100%;
       --app-pad-x: 14px;
-      --card: var(--card-bg, #ffffff);
-      --bg-gradient: linear-gradient(165deg, #F5FBFE 0%, #E8F4FC 45%, #B8D9F0 100%);
-      --accent-primary: #3B82F6;
-      --accent-light: #E8F4FC;
-      --accent-badge: #BFDBFE;
-      --accent-badge-text: #1D4ED8;
-      --card-bg: #ffffff;
-      --card-border: #D6EBF8;
-      --card-shadow: rgba(59, 130, 246, 0.14);
-      --button-bg: linear-gradient(135deg, #3B82F6, #60A5FA);
-      --header-bg: rgba(255, 255, 255, 0.92);
-      --row-bg: #F5FBFE;
-      --surface-2: #E8F4FC;
-      --amber: #f59e0b;
+      --card: var(--card-bg, rgba(255, 252, 248, 0.72));
+      --bg-gradient: linear-gradient(165deg, #DCE6EE 0%, #C5D4E0 42%, #A8B8C8 78%, #B8A890 100%);
+      --accent-primary: #C9892A;
+      --accent-light: #F5EDE0;
+      --accent-badge: #E8D4B0;
+      --accent-badge-text: #7A5420;
+      --card-bg: rgba(255, 252, 248, 0.72);
+      --card-border: rgba(180, 195, 210, 0.55);
+      --card-shadow: rgba(70, 90, 110, 0.18);
+      --button-bg: linear-gradient(135deg, #6B8A9E, #C9892A);
+      --header-bg: rgba(232, 238, 242, 0.88);
+      --row-bg: rgba(245, 248, 250, 0.65);
+      --surface-2: #E8EEF2;
+      --amber: #E8A838;
     }
 
     /* 天空 — default: soft daytime sky blue + clear blue accent */
@@ -161,6 +161,49 @@
       --header-bg: rgba(255, 254, 250, 0.94);
       --amber: #E8B84A;
       --border-soft: rgba(160, 103, 59, 0.16);
+    }
+
+    /* 雨窗 — rainy window cafe: soft blue-grey rain, warm lamp amber, frosted glass, hygge */
+    body.theme-rain-cafe {
+      --bg-gradient: linear-gradient(165deg, #DCE6EE 0%, #C5D4E0 42%, #A8B8C8 78%, #B8A890 100%);
+      --accent-primary: #C9892A;
+      --accent-light: #F5EDE0;
+      --accent-badge: #E8D4B0;
+      --accent-badge-text: #7A5420;
+      --card-bg: rgba(255, 252, 248, 0.72);
+      --card-border: rgba(180, 195, 210, 0.55);
+      --card-shadow: rgba(70, 90, 110, 0.18);
+      --button-bg: linear-gradient(135deg, #6B8A9E, #C9892A);
+      --accent: #C9892A;
+      --accent-soft: #F5EDE0;
+      --text: #3A4550;
+      --text-strong: #2A333C;
+      --muted: #6B7A88;
+      --row-bg: rgba(245, 248, 250, 0.65);
+      --surface-2: #E8EEF2;
+      --header-bg: rgba(232, 238, 242, 0.88);
+      --amber: #E8A838;
+      --border-soft: rgba(107, 138, 158, 0.22);
+    }
+    body.theme-rain-cafe .glass-card {
+      background: rgba(255, 252, 248, 0.58);
+      backdrop-filter: blur(14px) saturate(1.15);
+      -webkit-backdrop-filter: blur(14px) saturate(1.15);
+      border: 1px solid rgba(190, 205, 218, 0.5);
+      box-shadow:
+        0 8px 28px -10px rgba(70, 90, 110, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+    body.theme-rain-cafe .page-header {
+      background: rgba(220, 230, 238, 0.78);
+      backdrop-filter: blur(14px) saturate(1.1);
+      -webkit-backdrop-filter: blur(14px) saturate(1.1);
+      border-bottom-color: rgba(180, 195, 210, 0.45);
+      box-shadow: 0 4px 18px rgba(70, 90, 110, 0.12);
+    }
+    body.theme-rain-cafe .hdr-glass {
+      background: rgba(255, 250, 244, 0.55);
+      border-color: rgba(200, 180, 140, 0.35);
     }
 
 
@@ -478,6 +521,7 @@
     .theme-chip[data-theme="clear"] { background: linear-gradient(135deg, #2563EB, #B8D9F0); }
     .theme-chip[data-theme="dusk"] { background: linear-gradient(135deg, #4F6FA8, #D4E0EF); }
     .theme-chip[data-theme="toy"] { background: linear-gradient(135deg, #A0673B 0%, #E8B84A 45%, #87B8E0 100%); }
+    .theme-chip[data-theme="rain-cafe"] { background: linear-gradient(135deg, #6B8A9E 0%, #C5D4E0 45%, #E8B84A 100%); }
 
     /* Feature sections — responsive CSS grid (wireframe: todo|events|calendar / training+bus|shortcuts) */
     .feature-stack {
@@ -1291,6 +1335,29 @@
       /* pan-y: allow vertical page scroll; drag handler preventDefault only while dragging */
       touch-action: pan-y;
     }
+
+    /* Direction accents: 東涌/東湧 vs other (readable on rain-cafe + other themes) */
+    .bus-card--tungchung {
+      border-color: rgba(13, 148, 136, 0.55);
+      background:
+        linear-gradient(90deg, rgba(45, 212, 191, 0.22) 0%, rgba(45, 212, 191, 0.06) 28%, var(--card-bg, #ffffff) 70%);
+      box-shadow: inset 3px 0 0 0 rgba(15, 118, 110, 0.85);
+    }
+    .bus-card--other {
+      border-color: rgba(180, 83, 9, 0.42);
+      background:
+        linear-gradient(90deg, rgba(251, 191, 36, 0.22) 0%, rgba(253, 230, 138, 0.10) 28%, var(--card-bg, #ffffff) 70%);
+      box-shadow: inset 3px 0 0 0 rgba(217, 119, 6, 0.78);
+    }
+    body.theme-dusk .bus-card--other,
+    body.theme-sky .bus-card--other,
+    body.theme-cloud .bus-card--other,
+    body.theme-clear .bus-card--other {
+      border-color: rgba(139, 92, 246, 0.42);
+      background:
+        linear-gradient(90deg, rgba(196, 181, 253, 0.28) 0%, rgba(237, 233, 254, 0.14) 28%, var(--card-bg, #ffffff) 70%);
+      box-shadow: inset 3px 0 0 0 rgba(124, 58, 237, 0.72);
+    }
     .bus-card:active, .bus-card:focus-visible {
       border-color: var(--accent-primary, #3B82F6);
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
@@ -1820,7 +1887,7 @@
     ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 10px; }
   </style>
 </head>
-<body id="appBody" class="theme-sky">
+<body id="appBody" class="theme-rain-cafe">
   <div class="app">
     <header class="page-header">
       <div class="page-header-inner">
@@ -1833,11 +1900,12 @@
             </div>
           </div>
           <div class="theme-chips theme-chips-mobile" id="themeChipsMobile" role="group" aria-label="主題">
-            <button type="button" class="theme-chip active" data-theme="sky" title="天空" aria-label="天空主題"></button>
-          <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
-          <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
-          <button type="button" class="theme-chip" data-theme="dusk" title="暮藍" aria-label="暮藍主題"></button>
-          <button type="button" class="theme-chip" data-theme="toy" title="玩具" aria-label="Toy Story 主題"></button>
+            <button type="button" class="theme-chip active" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+            <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
+            <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
+            <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
+            <button type="button" class="theme-chip" data-theme="dusk" title="暮藍" aria-label="暮藍主題"></button>
+            <button type="button" class="theme-chip" data-theme="toy" title="玩具" aria-label="Toy Story 主題"></button>
           </div>
         </div>
 
@@ -1866,7 +1934,8 @@
         </div>
 
         <div class="theme-chips theme-chips-desktop" id="themeChips" role="group" aria-label="主題">
-          <button type="button" class="theme-chip active" data-theme="sky" title="天空" aria-label="天空主題"></button>
+          <button type="button" class="theme-chip active" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+          <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
           <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
           <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
           <button type="button" class="theme-chip" data-theme="dusk" title="暮藍" aria-label="暮藍主題"></button>
@@ -3157,7 +3226,7 @@ function normalizeState(data) {
     trainingExpanded: false,
     busExpanded: false,
     todoTab: 'today',
-    theme: 'sky'
+    theme: 'rain-cafe'
   };
   if (!data || typeof data !== 'object') return base;
 
@@ -3228,7 +3297,7 @@ function normalizeState(data) {
   base.trainingExpanded = !!data.trainingExpanded;
   base.busExpanded = !!data.busExpanded;
   base.todoTab = normalizeTodoTab(data.todoTab);
-  const THEMES = ['sky', 'cloud', 'clear', 'dusk', 'toy'];
+  const THEMES = ['rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
   const THEME_MIGRATE = {
     mist: 'sky', mint: 'cloud', sand: 'clear', lilac: 'dusk',
     steel: 'sky', navy: 'sky', charcoal: 'cloud', copper: 'clear',
@@ -3238,7 +3307,7 @@ function normalizeState(data) {
     toys: 'toy'
   };
   const rawTheme = THEME_MIGRATE[data.theme] || data.theme;
-  base.theme = THEMES.includes(rawTheme) ? rawTheme : 'sky';
+  base.theme = THEMES.includes(rawTheme) ? rawTheme : 'rain-cafe';
   base.schemaVersion = SCHEMA_VERSION;
   return base;
 }
@@ -3256,7 +3325,7 @@ function saveState() {
       trainingExpanded: !!state.trainingExpanded,
       busExpanded: !!state.busExpanded,
       todoTab: normalizeTodoTab(todoTab),
-      theme: state.theme || 'sky'
+      theme: state.theme || 'rain-cafe'
     }));
   } catch (e) {
     console.warn('localStorage save failed', e);
@@ -3269,10 +3338,10 @@ function saveState() {
 
 
 /* ===== Theme ===== */
-const THEME_PRESETS = ['sky', 'cloud', 'clear', 'dusk', 'toy'];
+const THEME_PRESETS = ['rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
 
 function applyTheme(preset, persist) {
-  const t = THEME_PRESETS.includes(preset) ? preset : 'sky';
+  const t = THEME_PRESETS.includes(preset) ? preset : 'rain-cafe';
   state.theme = t;
   const body = document.getElementById('appBody') || document.body;
   THEME_PRESETS.forEach(p => body.classList.remove('theme-' + p));
@@ -3281,8 +3350,8 @@ function applyTheme(preset, persist) {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === t);
   });
   const meta = document.querySelector('meta[name="theme-color"]');
-  const colors = { sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
-  if (meta) meta.setAttribute('content', colors[t] || '#E8F4FC');
+  const colors = { 'rain-cafe': '#C5D4E0', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
+  if (meta) meta.setAttribute('content', colors[t] || '#C5D4E0');
   if (persist !== false) saveState();
 }
 
@@ -5672,6 +5741,13 @@ function openBusAddModal() {
   };
 }
 
+
+function busCardDirectionClass(b) {
+  const d = String((b && b.direction) || '');
+  if (d.includes('東涌') || d.includes('東湧')) return 'bus-card--tungchung';
+  return 'bus-card--other';
+}
+
 function renderBus() {
   const list = document.getElementById('busList');
   const buses = Array.isArray(state.busStops) ? state.busStops : cloneSeedBus();
@@ -5692,7 +5768,7 @@ function renderBus() {
     const eta = formatBusEtaHtml(b, cached || null);
     const badge = busOperatorBadgeHtml(b);
     return (
-      '<div class="bus-card" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '" draggable="true">' +
+      '<div class="bus-card ' + busCardDirectionClass(b) + '" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '" draggable="true">' +
         '<div class="bus-row">' +
           '<div class="bus-card-main">' +
             '<div class="bus-summary-row">' + badge +
@@ -6219,7 +6295,7 @@ function startHeaderInfo() {
 }
 
 /* ===== Init ===== */
-applyTheme(state.theme || 'sky', false);
+applyTheme(state.theme || 'rain-cafe', false);
 todoTab = normalizeTodoTab(state.todoTab);
 syncTodoTabUI();
 syncExpandableSections();
