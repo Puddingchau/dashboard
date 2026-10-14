@@ -1605,6 +1605,7 @@
         <div class="section-toolbar">
           <div class="subtabs" role="tablist" id="todosFilterTabs" aria-label="To-Do Lists 篩選">
             <button type="button" class="subtab active" data-todotab="today">今天</button>
+            <button type="button" class="subtab" data-todotab="tomorrow">明天</button>
             <button type="button" class="subtab" data-todotab="week">七天內</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnAddTodo">＋ 新增</button>
@@ -2548,6 +2549,12 @@ function normalizeEventsFilter(raw) {
   return 'today';
 }
 
+const TODO_TABS = ['today', 'tomorrow', 'week'];
+
+function normalizeTodoTab(raw) {
+  return TODO_TABS.includes(raw) ? raw : 'today';
+}
+
 function addDaysYMD(baseDate, days) {
   const d = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + days);
   return d;
@@ -2875,8 +2882,7 @@ function normalizeState(data) {
     : (['shortcuts', 'todos', 'events', 'training', 'bus', 'calendar'].includes(exp) ? exp : null);
   base.trainingExpanded = !!data.trainingExpanded;
   base.busExpanded = !!data.busExpanded;
-  if (data.todoTab === 'week' || data.todoTab === 'today') base.todoTab = data.todoTab;
-  else base.todoTab = 'today';
+  base.todoTab = normalizeTodoTab(data.todoTab);
   const THEMES = ['sky', 'cloud', 'clear', 'dusk', 'toy'];
   const THEME_MIGRATE = {
     mist: 'sky', mint: 'cloud', sand: 'clear', lilac: 'dusk',
@@ -2904,7 +2910,7 @@ function saveState() {
       busStops: state.busStops,
       trainingExpanded: !!state.trainingExpanded,
       busExpanded: !!state.busExpanded,
-      todoTab: (todoTab === 'week' ? 'week' : 'today'),
+      todoTab: normalizeTodoTab(todoTab),
       theme: state.theme || 'sky'
     }));
   } catch (e) {
@@ -3353,6 +3359,12 @@ function isTodoDueToday(t) {
   return daysDiff(d) === 0;
 }
 
+function isTodoDueTomorrow(t) {
+  const d = parseDateOnly(t && t.due);
+  if (!d) return false;
+  return daysDiff(d) === 1;
+}
+
 function isTodoDueWithinWeek(t) {
   const d = parseDateOnly(t && t.due);
   if (!d) return false;
@@ -3366,13 +3378,20 @@ function matchesTodoTab(t) {
     if (noDue) return !t.done;
     return isTodoDueWithinWeek(t);
   }
+  if (todoTab === 'tomorrow') {
+    // 「明天」：只顯示到期日為明天的待辦（不含無到期日）
+    if (noDue) return false;
+    return isTodoDueTomorrow(t);
+  }
   // today (default)
   if (noDue) return !t.done;
   return isTodoDueToday(t);
 }
 
 function todosFilterHintText() {
-  return todoTab === 'week' ? '顯示七天內的待辦' : '顯示今天的待辦';
+  if (todoTab === 'week') return '顯示七天內的待辦';
+  if (todoTab === 'tomorrow') return '顯示明天的待辦';
+  return '顯示今天的待辦';
 }
 
 function syncTodoTabUI() {
@@ -3384,7 +3403,7 @@ function syncTodoTabUI() {
 }
 
 function setTodoTab(tab) {
-  todoTab = (tab === 'week') ? 'week' : 'today';
+  todoTab = normalizeTodoTab(tab);
   if (state) state.todoTab = todoTab;
   syncTodoTabUI();
   saveState();
@@ -3577,9 +3596,9 @@ function renderTodos() {
   const items = openItems.concat(doneItems);
 
   if (!items.length) {
-    const emptyMsg = todoTab === 'week'
-      ? '七天內暫無待辦'
-      : '今天暫無待辦，輕鬆一下吧';
+    let emptyMsg = '今天暫無待辦，輕鬆一下吧';
+    if (todoTab === 'week') emptyMsg = '七天內暫無待辦';
+    else if (todoTab === 'tomorrow') emptyMsg = '明天暫無待辦';
     list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
     return;
   }
@@ -4545,7 +4564,7 @@ function startHeaderInfo() {
 
 /* ===== Init ===== */
 applyTheme(state.theme || 'sky', false);
-todoTab = (state.todoTab === 'week') ? 'week' : 'today';
+todoTab = normalizeTodoTab(state.todoTab);
 syncTodoTabUI();
 syncExpandableSections();
 bindExpandableHeaders();
