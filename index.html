@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#2F4256" />
+  <meta name="theme-color" content="#C5D4E0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="description" content="Fred Chau 個人流動儀表板" />
@@ -163,10 +163,17 @@
       --border-soft: rgba(160, 103, 59, 0.16);
     }
 
-    /* 雨窗 — rainy window cafe photo, warm lamp amber, frosted glass, hygge */
+    /* 雨窗 — rainy window cafe: soft blue-grey rain, warm lamp amber, frosted glass, hygge */
     body.theme-rain-cafe {
-      /* Dark fallback while rain-cafe-bg.jpg loads; the photo itself is a fixed layer */
-      --bg-gradient: #1E2C3A;
+      /* Dark blue-grey fallback + photo; fixed ::before keeps viewport cover on mobile */
+      --bg-gradient: none;
+      background-color: #1E2C3A;
+      background-image: url('rain-cafe-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      /* Avoid body background-attachment:fixed (Safari mobile bug); use ::before instead */
+      background-attachment: scroll;
       --accent-primary: #C9892A;
       --accent-light: rgba(245, 237, 224, 0.72);
       --accent-badge: #E8D4B0;
@@ -187,30 +194,26 @@
       --border-soft: rgba(255, 255, 255, 0.22);
       isolation: isolate;
     }
-    /* Real rainy-window photo. Fixed layer (not background-attachment) so mobile scroll stays free. */
+    /* Fixed full-viewport photo layer (works on mobile; no body attachment:fixed) */
     body.theme-rain-cafe::before {
       content: "";
       position: fixed;
       inset: 0;
       pointer-events: none;
-      z-index: 0;
-      background: url("rain-cafe-bg.jpg") center center / cover no-repeat;
+      z-index: -1;
+      background: url('rain-cafe-bg.jpg') center / cover no-repeat;
+    }
+    /* Disable old CSS bokeh orbs — photo provides the lights */
+    body.theme-rain-cafe::after {
+      content: none;
+      display: none;
     }
     body.theme-rain-cafe .app {
       position: relative;
       z-index: 1;
     }
     body.theme-rain-cafe .footer-note {
-      color: #2A333C;
-      background: rgba(255, 252, 248, 0.46);
-      backdrop-filter: blur(16px) saturate(1.2);
-      -webkit-backdrop-filter: blur(16px) saturate(1.2);
-      border: 1px solid rgba(255, 255, 255, 0.28);
-      border-radius: 999px;
-      display: table;
-      margin-left: auto;
-      margin-right: auto;
-      padding: 6px 14px;
+      color: rgba(220, 232, 242, 0.78);
     }
     /* Frosted translucent glass panels */
     body.theme-rain-cafe .glass-card,
@@ -3446,8 +3449,8 @@ function applyTheme(preset, persist) {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === t);
   });
   const meta = document.querySelector('meta[name="theme-color"]');
-  const colors = { 'rain-cafe': '#2F4256', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
-  if (meta) meta.setAttribute('content', colors[t] || '#2F4256');
+  const colors = { 'rain-cafe': '#C5D4E0', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
+  if (meta) meta.setAttribute('content', colors[t] || '#C5D4E0');
   if (persist !== false) saveState();
 }
 
