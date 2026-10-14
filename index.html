@@ -165,7 +165,15 @@
 
 
     *, *::before, *::after { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: calc(72px + var(--safe-top)); }
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: calc(72px + var(--safe-top));
+      height: auto;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: auto;
+    }
     body {
       color-scheme: light;
       margin: 0;
@@ -178,7 +186,33 @@
       padding-top: var(--safe-top);
       padding-bottom: calc(24px + var(--safe-bottom));
       min-height: 100vh;
+      min-height: 100dvh;
+      height: auto;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: auto;
       transition: background 0.4s ease, color 0.4s ease;
+    }
+    /* iOS Safari: fixed background attachment often breaks scrolling/paint under sticky headers */
+    @media (max-width: 1023px) {
+      body { background-attachment: scroll; }
+    }
+    /* Mobile: never trap vertical scroll inside shortcuts (or other) inner panes */
+    @media (max-width: 639px) {
+      #shortcuts .block-body,
+      #shortcuts .block-body-inner,
+      #todos .block-body-inner,
+      #events .block-body-inner,
+      #calendar .block-body-inner {
+        overflow: visible !important;
+        max-height: none !important;
+        flex: none !important;
+        min-height: 0;
+      }
+      .shortcut-grid {
+        touch-action: pan-y;
+      }
     }
     .font-display, .page-header h1, .block-label, .summary-num, .modal h3, .bus-summary {
       font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
@@ -800,7 +834,8 @@
       cursor: grab;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: none;
+      /* pan-y: allow vertical page scroll on mobile; long-press drag still uses preventDefault when active */
+      touch-action: pan-y;
       transition: background .15s, box-shadow .15s, opacity .15s, transform .15s;
       text-decoration: none;
       color: inherit;
@@ -1081,7 +1116,8 @@
       cursor: grab;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: none;
+      /* pan-y: allow vertical page scroll; drag handler preventDefault only while dragging */
+      touch-action: pan-y;
       transition: opacity .15s, box-shadow .15s, transform .15s;
     }
     .todo-item.todo-draggable:active, .todo-item.todo-draggable.dragging {
