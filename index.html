@@ -822,24 +822,24 @@
       justify-self: stretch;
     }
 
-    /* Mobile / narrow: calendar first, then todos → events → shortcuts → training+bus */
+    /* Mobile / narrow: todos → events → calendar → shortcuts → training+bus */
     @media (max-width: 639px) {
-      #calendar { grid-row: 1; order: 1; }
-      #todos { grid-row: 2; order: 2; }
-      #events { grid-row: 3; order: 3; }
+      #todos { grid-row: 1; order: 1; }
+      #events { grid-row: 2; order: 2; }
+      #calendar { grid-row: 3; order: 3; }
       #shortcuts { grid-row: 4; order: 4; }
       #leftStack { grid-row: 5; order: 5; }
     }
 
-    /* Tablet: calendar on top full-width, then 2-col */
+    /* Tablet: todos|events on top, calendar full-width below, then training+bus / shortcuts */
     @media (min-width: 640px) and (max-width: 1023px) {
       .feature-stack {
         grid-template-columns: 1fr 1fr;
         gap: 14px;
       }
-      #calendar { grid-column: 1 / -1; grid-row: 1; }
-      #todos { grid-column: 1; grid-row: 2; }
-      #events { grid-column: 2; grid-row: 2; }
+      #todos { grid-column: 1; grid-row: 1; }
+      #events { grid-column: 2; grid-row: 1; }
+      #calendar { grid-column: 1 / -1; grid-row: 2; }
       #leftStack { grid-column: 1 / -1; grid-row: 3; align-self: start; justify-self: stretch; width: 100%; min-width: 0; max-width: none; }
       #shortcuts { grid-column: 1 / -1; grid-row: 4; align-self: stretch; height: auto; }
       #shortcuts .block-body {
@@ -2504,7 +2504,7 @@ const TCS_DATA = {
 };
 
 const STORAGE_KEY = 'dash-hub-v1';
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 const GDRIVE_SYNC_FILENAME = '布丁仔-sync.json';
 const GDRIVE_OAUTH_CLIENT_ID = '508206831418-cmm0ra1v21lajj6ned33l33d8ohdtll8.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -4207,7 +4207,8 @@ function isTodoDueWithinWeek(t) {
 function matchesTodoTab(t) {
   const noDue = !(t && t.due);
   if (todoTab === 'week') {
-    if (noDue) return !t.done;
+    // No-due items belong on 今日/七天; keep completed visible (strikethrough at bottom)
+    if (noDue) return true;
     return isTodoDueWithinWeek(t);
   }
   if (todoTab === 'tomorrow') {
@@ -4215,8 +4216,8 @@ function matchesTodoTab(t) {
     if (noDue) return false;
     return isTodoDueTomorrow(t);
   }
-  // today (default)
-  if (noDue) return !t.done;
+  // today (default) — completed stay visible when they belong (no due / due today)
+  if (noDue) return true;
   return isTodoDueToday(t);
 }
 
@@ -4608,6 +4609,12 @@ function sortEventsNearestFirst(list) {
 }
 
 function renderEvents() {
+  try {
+    const before = (state.events || []).length;
+    state.events = dedupeEventsByTitleDate(state.events || []);
+    if ((state.events || []).length !== before) saveState();
+  } catch (e) {}
+
   const list = document.getElementById('eventList');
   // Normalize / migrate legacy from/to → date/time/work
   let dirty = false;
@@ -4687,7 +4694,7 @@ let calView = (function () {
   const t = todayLocal();
   return { year: t.getFullYear(), month: t.getMonth() }; // month 0-11
 })();
-let calSelectedYMD = toYMD(todayLocal());
+let calSelectedYMD = null; // day panel only after tap; grid cells show dots only
 
 function countMarksInViewMonth() {
   const y = calView.year;
@@ -4778,6 +4785,7 @@ function renderCalendar() {
     let dots = '';
     if (hasE) dots += '<span class="cal-dot event" title="活動"></span>';
     if (hasT) dots += '<span class="cal-dot todo" title="To-Do"></span>';
+    // Grid cells: day number + indicator dots only (titles live in calDayPanel after tap)
     return (
       '<button type="button" class="' + cls + '" data-ymd="' + escapeHtml(ymd) + '" aria-label="' + escapeHtml(ymd) + '">' +
         '<span class="cal-day-num">' + cell.date.getDate() + '</span>' +
