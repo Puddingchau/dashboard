@@ -1,6 +1,9 @@
 {
-  "updatedAt": 1791993247613,
+  "updatedAt": 1791993523615,
   "schemaVersion": 7,
+  "theme": "sunny-beach",
+  "todoTab": "open",
+  "eventsFilter": "today",
   "todos": [
     {
       "id": "t_seed_p3_math",
@@ -627,6 +630,193 @@
       "time": "14:30",
       "work": "P.4、P.5 Siufan 共備。",
       "updatedAt": 1791993247613
+    }
+  ],
+  "busStops": [
+    {
+      "id": "bus_e36a_yl",
+      "route": "E36A",
+      "operator": "KMB",
+      "direction": "往元朗(德業街)",
+      "stopName": "昇薈",
+      "stopId": "TC155",
+      "kmbStopId": "CC57C2DF592993CB",
+      "destKeywords": [
+        "元朗"
+      ],
+      "apiDir": "I"
+    },
+    {
+      "id": "bus_e36a_tc",
+      "route": "E36A",
+      "operator": "KMB",
+      "direction": "往東涌(逸東)",
+      "stopName": "天耀邨耀民樓",
+      "stopId": "TN580",
+      "kmbStopId": "8C8037479F88F500",
+      "destKeywords": [
+        "東涌"
+      ],
+      "apiDir": "O"
+    },
+    {
+      "id": "bus_e37_ap",
+      "route": "E37",
+      "operator": "KMB",
+      "direction": "往機場(地面運輸中心)",
+      "stopName": "天耀邨耀民樓",
+      "stopId": "TN580",
+      "kmbStopId": "8C8037479F88F500",
+      "destKeywords": [
+        "機場"
+      ],
+      "apiDir": "O"
+    },
+    {
+      "id": "bus_69x_wk",
+      "route": "69X",
+      "operator": "KMB",
+      "direction": "往高鐵(西九龍站)",
+      "stopName": "天瑞總站",
+      "stopId": "TN931",
+      "kmbStopId": "507A1E5DF62D2B4A",
+      "destKeywords": [
+        "高鐵",
+        "西九"
+      ],
+      "apiDir": "O"
+    },
+    {
+      "id": "bus_265b_mk",
+      "route": "265B",
+      "operator": "KMB",
+      "direction": "往旺角(柏景灣)",
+      "stopName": "翠湖居",
+      "stopId": "TN560",
+      "kmbStopId": "0F46D557819BD600",
+      "destKeywords": [
+        "旺角",
+        "柏景"
+      ],
+      "apiDir": "O"
+    }
+  ],
+  "shortcuts": [
+    {
+      "id": "s1",
+      "title": "Gemini",
+      "url": "https://gemini.google.com/app",
+      "category": "work"
+    },
+    {
+      "id": "s2",
+      "title": "Google",
+      "url": "https://www.google.com/",
+      "category": "work"
+    },
+    {
+      "id": "s3",
+      "title": "ILOVEPDF",
+      "url": "https://www.ilovepdf.com/zh-tw",
+      "category": "work"
+    },
+    {
+      "id": "s4",
+      "title": "Gmail",
+      "url": "https://mail.google.com/mail/",
+      "category": "work"
+    },
+    {
+      "id": "s5",
+      "title": "Hotmail",
+      "url": "https://www.outlook.com/",
+      "category": "work"
+    },
+    {
+      "id": "s6",
+      "title": "Esmart 2.0",
+      "url": "https://ebookweb.ephhk.com/bookviewer.php",
+      "category": "school"
+    },
+    {
+      "id": "s7",
+      "title": "現代教育",
+      "url": "https://www.mers.hk/login/gateway/pmath_th.php",
+      "category": "school"
+    },
+    {
+      "id": "s8",
+      "title": "Google Classroom",
+      "url": "https://classroom.google.com/?pli=1",
+      "category": "school"
+    },
+    {
+      "id": "s9",
+      "title": "天水圍官立小學",
+      "url": "https://www.tswgps.edu.hk/",
+      "category": "school"
+    },
+    {
+      "id": "s10",
+      "title": "Brightly(教師版面)",
+      "url": "https://dashboard.learnbrightly.ai/",
+      "category": "school"
+    },
+    {
+      "id": "s11",
+      "title": "Brightly(學生版面)",
+      "url": "https://app.learnbrightly.ai/",
+      "category": "school"
+    },
+    {
+      "id": "s12",
+      "title": "慧學慧教",
+      "url": "http://tswgps.eclassroom.ai",
+      "category": "school"
+    },
+    {
+      "id": "s13",
+      "title": "EDB Eservice",
+      "url": "https://eservices.edb.gov.hk/edis/es/login?locale=zh",
+      "category": "school"
+    },
+    {
+      "id": "s14",
+      "title": "EDB Portal",
+      "url": "https://auth-sts.edb.gov.hk/adfs/ls/",
+      "category": "school"
+    },
+    {
+      "id": "s15",
+      "title": "Youtube",
+      "url": "https://www.youtube.com/",
+      "category": "life"
+    },
+    {
+      "id": "s16",
+      "title": "香港天文台",
+      "url": "https://www.hko.gov.hk/tc/index.html",
+      "category": "life"
+    },
+    {
+      "id": "s17",
+      "title": "Google Map",
+      "url": "https://www.google.com/maps",
+      "category": "life"
+    }
+  ],
+  "categories": [
+    {
+      "id": "work",
+      "name": "工作"
+    },
+    {
+      "id": "school",
+      "name": "學校"
+    },
+    {
+      "id": "life",
+      "name": "個人"
     }
   ]
 }

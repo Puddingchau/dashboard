@@ -3181,7 +3181,10 @@ function normalizeEvent(e) {
     const m = time.match(/^(\d{1,2}):(\d{2})/);
     if (m) time = pad2(+m[1]) + ':' + pad2(+m[2]);
   }
-  return { id: (e && e.id) || uid('e'), title, date, time, work };
+  const out = { id: (e && e.id) || uid('e'), title, date, time, work };
+  if (e && e.updatedAt != null) out.updatedAt = e.updatedAt;
+  if (e && e.createdAt != null) out.createdAt = e.createdAt;
+  return out;
 }
 
 const EVENTS_FILTERS = ['today', 'tomorrow', 'dayAfter', 'week', 'month'];
@@ -3477,6 +3480,63 @@ function migrateBusStops(raw) {
   return cloneSeedBus();
 }
 
+
+/** Normalize event title for dedupe (trim + collapse whitespace). */
+function normEventTitle(t) {
+  return String(t || '').trim().replace(/\s+/g, ' ');
+}
+
+/** Same school activity: title + date; time soft-matches if either empty. */
+function eventsSameTitleDate(a, b) {
+  if (!a || !b) return false;
+  if (normEventTitle(a.title) !== normEventTitle(b.title)) return false;
+  if (String(a.date || '') !== String(b.date || '')) return false;
+  const ta = String(a.time || '');
+  const tb = String(b.time || '');
+  if (!ta || !tb) return true;
+  return ta === tb;
+}
+
+/**
+ * One-pass dedupe: same title+date(+soft time) → keep ONE.
+ * Prefer non-empty work, else e_seed_* id, else newer updatedAt.
+ */
+function dedupeEventsByTitleDate(events) {
+  if (!Array.isArray(events) || events.length < 2) return events || [];
+  const kept = [];
+  events.forEach(ev => {
+    if (!ev) return;
+    const idx = kept.findIndex(k => eventsSameTitleDate(k, ev));
+    if (idx < 0) {
+      kept.push(ev);
+      return;
+    }
+    const cur = kept[idx];
+    const curWork = String(cur.work || '').trim();
+    const evWork = String(ev.work || '').trim();
+    let preferEv = false;
+    if (evWork && !curWork) preferEv = true;
+    else if (curWork && !evWork) preferEv = false;
+    else if (String(ev.id || '').indexOf('e_seed_') === 0 && String(cur.id || '').indexOf('e_seed_') !== 0) preferEv = true;
+    else if (String(cur.id || '').indexOf('e_seed_') === 0 && String(ev.id || '').indexOf('e_seed_') !== 0) preferEv = false;
+    else {
+      const evTs = Number(ev.updatedAt) || Number(ev.createdAt) || 0;
+      const curTs = Number(cur.updatedAt) || Number(cur.createdAt) || 0;
+      if (evTs > curTs) preferEv = true;
+    }
+    if (preferEv) {
+      // Keep richer work if winner somehow empty and loser has work
+      if (!String(ev.work || '').trim() && curWork) ev = Object.assign({}, ev, { work: cur.work });
+      if (!String(ev.time || '') && cur.time) ev = Object.assign({}, ev, { time: cur.time });
+      kept[idx] = ev;
+    } else {
+      if (!curWork && evWork) kept[idx] = Object.assign({}, cur, { work: ev.work });
+      if (!String(cur.time || '') && ev.time) kept[idx] = Object.assign({}, kept[idx], { time: ev.time });
+    }
+  });
+  return kept;
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -3572,13 +3632,31 @@ function normalizeState(data) {
   } else {
     base.events = SEED_EVENTS.map(e => normalizeEvent({ ...e }));
   }
-  // Ensure seeded school events exist (stable id) for Pages / returning users
+  // Ensure seeded school events exist (stable id) for Pages / returning users.
+  // Also skip when user already has same title+date (soft time) under a different id —
+  // otherwise phone localStorage copies of seeds duplicate (e.g. Siufan共備).
+  // When skipping, enrich empty work/time from the seed so user copies gain seed text.
   {
     const have = new Set(base.events.map(e => e.id));
     SEED_EVENTS.forEach(seed => {
-      if (!have.has(seed.id)) base.events.push(normalizeEvent({ ...seed }));
+      const n = normalizeEvent({ ...seed });
+      if (have.has(n.id)) return;
+      const matchIdx = base.events.findIndex(e => eventsSameTitleDate(e, n));
+      if (matchIdx >= 0) {
+        const cur = base.events[matchIdx];
+        const patch = {};
+        if (!String(cur.work || '').trim() && String(n.work || '').trim()) patch.work = n.work;
+        if (!String(cur.time || '') && n.time) patch.time = n.time;
+        if (Object.keys(patch).length) {
+          base.events[matchIdx] = Object.assign({}, cur, patch);
+        }
+        return;
+      }
+      base.events.push(n);
+      have.add(n.id);
     });
   }
+  base.events = dedupeEventsByTitleDate(base.events);
   // Prefer new key; migrate old eventsViewDays
   if (data.eventsFilter != null) {
     base.eventsFilter = normalizeEventsFilter(data.eventsFilter);
@@ -3624,11 +3702,11 @@ function buildExportPayload() {
   return {
     updatedAt: Date.now(),
     schemaVersion: SCHEMA_VERSION,
-    todos: state.todos,
-    events: state.events,
-    shortcuts: state.shortcuts,
-    categories: state.categories,
-    busStops: state.busStops,
+    todos: Array.isArray(state.todos) ? state.todos : [],
+    events: Array.isArray(state.events) ? state.events : [],
+    shortcuts: Array.isArray(state.shortcuts) ? state.shortcuts : [],
+    categories: Array.isArray(state.categories) ? state.categories : [],
+    busStops: Array.isArray(state.busStops) ? state.busStops : [],
     theme: state.theme || 'sunny-beach',
     todoTab: normalizeTodoTab(typeof todoTab !== 'undefined' ? todoTab : state.todoTab),
     eventsFilter: state.eventsFilter || 'today',
@@ -3636,12 +3714,12 @@ function buildExportPayload() {
   };
 }
 
-/** Same payload as 匯出資料 — always includes todos + events. */
+/** Same payload as 匯出資料 — todos + events + busStops + shortcuts + categories + theme. */
 function buildSyncPayload() {
   return buildExportPayload();
 }
 
-/** Merge remote sync JSON (todos + events by id); thin wrapper for GDrive / import. */
+/** Merge remote sync JSON (todos/events/bus/shortcuts by id when applyExtras); GDrive / import. */
 function mergeSyncPayload(remote, opts) {
   return applyRemoteSyncPayload(remote, opts || { applyExtras: false });
 }
@@ -6694,7 +6772,10 @@ function applyRemoteSyncPayload(remote, opts) {
   }
   if (Array.isArray(remote.events) && remote.events.length) {
     const r = mergeByIdPreferNewer(state.events, remote.events.map(normalizeEvent));
-    if (r.changed) { state.events = r.arr; changed = true; }
+    let next = r.arr;
+    const deduped = dedupeEventsByTitleDate(next);
+    const dedupeChanged = deduped.length !== next.length;
+    if (r.changed || dedupeChanged) { state.events = deduped; changed = true; }
   }
   const remoteUpdated = Number(remote.updatedAt) || 0;
   if (remoteUpdated && remoteUpdated > (Number(state.syncUpdatedAt) || 0)) {
@@ -6702,12 +6783,22 @@ function applyRemoteSyncPayload(remote, opts) {
     changed = true;
   }
   if (opts.applyExtras) {
-    if (Array.isArray(remote.shortcuts)) { state.shortcuts = remote.shortcuts; changed = true; }
+    // Soft-merge: prefer mergeByIdPreferNewer so empty remote does not wipe phone additions
+    if (Array.isArray(remote.shortcuts) && remote.shortcuts.length) {
+      const r = mergeByIdPreferNewer(state.shortcuts, remote.shortcuts);
+      if (r.changed) { state.shortcuts = r.arr; changed = true; }
+    }
     if (Array.isArray(remote.categories)) {
       state.categories = migrateCategories(remote.categories.filter(c => c && c.id !== 'all'));
       changed = true;
     }
-    if (Array.isArray(remote.busStops)) { state.busStops = migrateBusStops(remote.busStops); changed = true; }
+    if (Array.isArray(remote.busStops) && remote.busStops.length) {
+      const migrated = migrateBusStops(remote.busStops);
+      const r = mergeByIdPreferNewer(state.busStops, migrated);
+      if (r.changed) { state.busStops = r.arr; changed = true; }
+    } else if (Array.isArray(remote.busStops) && !remote.busStops.length) {
+      // empty remote: keep local busStops (do not wipe)
+    }
     if (remote.theme) { state.theme = remote.theme; changed = true; }
     if (remote.todoTab != null) {
       state.todoTab = normalizeTodoTab(remote.todoTab);
@@ -6747,10 +6838,11 @@ async function autoImportFromCloud() {
     if (!res.ok) return;
     const remote = await res.json();
     if (!remote || remote.updatedAt == null) return;
-    const changed = applyRemoteSyncPayload(remote, { applyExtras: false });
+    // Pages sync-data.json applies busStops/shortcuts/categories/theme too
+    const changed = applyRemoteSyncPayload(remote, { applyExtras: true });
     if (changed) {
       saveState();
-      reRenderAfterSync(false);
+      reRenderAfterSync(true);
     }
   } catch (e) {
     /* fail silently if 404/offline */
@@ -6869,9 +6961,12 @@ async function gdriveVerifyOrFindFileId() {
 
 async function gdriveCreateSyncFile() {
   const payload = buildSyncPayload();
-  // Ensure todos + events always present
+  // Sync covers todos + events + busStops + shortcuts (+ categories/theme in payload)
   if (!Array.isArray(payload.todos)) payload.todos = state.todos || [];
   if (!Array.isArray(payload.events)) payload.events = state.events || [];
+  if (!Array.isArray(payload.busStops)) payload.busStops = state.busStops || [];
+  if (!Array.isArray(payload.shortcuts)) payload.shortcuts = state.shortcuts || [];
+  if (!Array.isArray(payload.categories)) payload.categories = state.categories || [];
   const metadata = { name: GDRIVE_SYNC_FILENAME, mimeType: 'application/json' };
   const boundary = '-------puddingDashBoundary' + Date.now();
   const body =
@@ -6901,11 +6996,11 @@ async function gdrivePull() {
   const res = await gdriveApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media');
   const remote = await res.json();
   if (!remote || typeof remote !== 'object') return false;
-  // Always merge todos + events (mergeSyncPayload / applyRemoteSyncPayload)
-  const changed = mergeSyncPayload(remote, { applyExtras: false });
+  // Merge todos+events+bus+shortcuts+categories+theme (applyExtras)
+  const changed = mergeSyncPayload(remote, { applyExtras: true });
   if (changed) {
     saveState();
-    reRenderAfterSync(false);
+    reRenderAfterSync(true);
   }
   return changed;
 }
@@ -6913,8 +7008,12 @@ async function gdrivePull() {
 async function gdrivePush() {
   const fileId = await gdriveVerifyOrFindFileId();
   const payload = buildSyncPayload();
+  // Sync covers todos + events + busStops + shortcuts (+ categories/theme)
   if (!Array.isArray(payload.todos)) payload.todos = state.todos || [];
   if (!Array.isArray(payload.events)) payload.events = state.events || [];
+  if (!Array.isArray(payload.busStops)) payload.busStops = state.busStops || [];
+  if (!Array.isArray(payload.shortcuts)) payload.shortcuts = state.shortcuts || [];
+  if (!Array.isArray(payload.categories)) payload.categories = state.categories || [];
   await gdriveApi(
     'https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(fileId) + '?uploadType=media',
     {
@@ -6961,11 +7060,15 @@ function ensureGdriveTokenClient() {
         gdriveSyncInFlight = true;
         gdrivePull()
           .then(function () {
+            // After pull, push so phone/local data uploads to Drive
+            return gdrivePush();
+          })
+          .then(function () {
             setGdriveStatus('已同步 ' + formatGdriveSyncTime());
           })
           .catch(function (e) {
-            console.warn('GDrive pull after connect failed', e);
-            setGdriveStatus('已連接（拉取失敗）');
+            console.warn('GDrive pull/push after connect failed', e);
+            setGdriveStatus('已連接（同步失敗）');
           })
           .finally(function () {
             gdriveSyncInFlight = false;
