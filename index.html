@@ -2504,7 +2504,7 @@ const TCS_DATA = {
 };
 
 const STORAGE_KEY = 'dash-hub-v1';
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 const GDRIVE_SYNC_FILENAME = '布丁仔-sync.json';
 const GDRIVE_OAUTH_CLIENT_ID = '508206831418-cmm0ra1v21lajj6ned33l33d8ohdtll8.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -4609,6 +4609,12 @@ function sortEventsNearestFirst(list) {
 }
 
 function renderEvents() {
+  try {
+    const before = (state.events || []).length;
+    state.events = dedupeEventsByTitleDate(state.events || []);
+    if ((state.events || []).length !== before) saveState();
+  } catch (e) {}
+
   const list = document.getElementById('eventList');
   // Normalize / migrate legacy from/to → date/time/work
   let dirty = false;
