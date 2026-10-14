@@ -1339,10 +1339,15 @@
       font-weight: 700;
       color: var(--text-strong, #1e293b);
       letter-spacing: 0.02em;
-      white-space: nowrap;
+      white-space: normal;
       overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
       text-overflow: ellipsis;
       line-height: 1.35;
+      max-height: calc(1.35em * 2);
     }
     .bus-eta {
       flex: 0 0 auto;
@@ -1351,10 +1356,10 @@
       color: #ffffff;
       background: linear-gradient(135deg, #3B82F6, #2563EB);
       border-radius: 999px;
-      padding: 4px 11px;
+      padding: 4px 10px;
       line-height: 1.35;
       min-height: 0;
-      max-width: 38%;
+      max-width: 34%;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1410,7 +1415,7 @@
     .bus-add-status.is-error { color: #b45309; }
     .bus-add-status.is-ok { color: var(--accent-badge-text, #1D4ED8); }
     .bus-card-main {
-      flex: 1 1 auto;
+      flex: 1 1 0;
       min-width: 0;
       display: flex;
       flex-direction: column;
@@ -1425,6 +1430,39 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .bus-op-badge {
+      display: inline-block;
+      margin-right: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      vertical-align: middle;
+      line-height: 1.4;
+    }
+    .bus-op-badge.is-kmb {
+      color: #9a3412;
+      background: #ffedd5;
+    }
+    .bus-op-badge.is-ctb {
+      color: #1d4ed8;
+      background: #dbeafe;
+    }
+    .bus-summary-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      min-width: 0;
+    }
+    .bus-summary-row .bus-op-badge {
+      margin-top: 2px;
+      flex: 0 0 auto;
+    }
+    .bus-summary-row .bus-summary {
+      flex: 1 1 auto;
+    }
+    #busServiceTypeField.is-hidden { display: none; }
     .bus-card-affordance {
       flex: 0 0 auto;
       display: flex;
@@ -1443,7 +1481,8 @@
     }
     @media (max-width: 400px) {
       .bus-card-affordance span:not(.chev) { display: none; }
-      .bus-eta { max-width: 42%; }
+      .bus-eta { max-width: 36%; }
+      .bus-card-main { flex: 1 1 58%; }
     }
     .bus-route-sheet .bus-route-hint {
       margin: 0 0 10px;
@@ -1805,7 +1844,7 @@
         <div class="header-widgets" id="headerInfoStrip" aria-live="polite">
           <div class="glass-card hdr-glass" title="香港時間／農曆">
             <div class="hdr-datetime">
-              <div class="hdr-clock font-display" id="hdrClock">--:--:--</div>
+              <div class="hdr-clock font-display" id="hdrClock">--:--</div>
               <div class="hdr-date" id="hdrDate">—</div>
             </div>
             <div class="hdr-lunar-block" id="hdrLunarBlock">
@@ -2156,11 +2195,11 @@ const SCHEMA_VERSION = 4;
 const TCS_SEARCH = 'https://tcs.edb.gov.hk/tcs/portal/publiccalendar/searchPublicCal/load.htm?pdType=0&leveltype=3&homePageSelection=2&fromMenu=Y';
 
 const SEED_BUS = [
-  { id: 'bus_e36a_yl', route: 'E36A', direction: '往元朗(德業街)', stopName: '昇薈', stopId: 'TC155', kmbStopId: 'CC57C2DF592993CB', destKeywords: ['元朗'], apiDir: 'I' },
-  { id: 'bus_e36a_tc', route: 'E36A', direction: '往東涌(逸東)', stopName: '天耀邨耀民樓', stopId: 'TN580', kmbStopId: '8C8037479F88F500', destKeywords: ['東涌'], apiDir: 'O' },
-  { id: 'bus_e37_ap', route: 'E37', direction: '往機場(地面運輸中心)', stopName: '天耀邨耀民樓', stopId: 'TN580', kmbStopId: '8C8037479F88F500', destKeywords: ['機場'], apiDir: 'O' },
-  { id: 'bus_69x_wk', route: '69X', direction: '往高鐵(西九龍站)', stopName: '天瑞總站', stopId: 'TN931', kmbStopId: '507A1E5DF62D2B4A', destKeywords: ['高鐵', '西九'], apiDir: 'O' },
-  { id: 'bus_265b_mk', route: '265B', direction: '往旺角(柏景灣)', stopName: '翠湖居', stopId: 'TN560', kmbStopId: '0F46D557819BD600', destKeywords: ['旺角', '柏景'], apiDir: 'O' }
+  { id: 'bus_e36a_yl', route: 'E36A', operator: 'KMB', direction: '往元朗(德業街)', stopName: '昇薈', stopId: 'TC155', kmbStopId: 'CC57C2DF592993CB', destKeywords: ['元朗'], apiDir: 'I' },
+  { id: 'bus_e36a_tc', route: 'E36A', operator: 'KMB', direction: '往東涌(逸東)', stopName: '天耀邨耀民樓', stopId: 'TN580', kmbStopId: '8C8037479F88F500', destKeywords: ['東涌'], apiDir: 'O' },
+  { id: 'bus_e37_ap', route: 'E37', operator: 'KMB', direction: '往機場(地面運輸中心)', stopName: '天耀邨耀民樓', stopId: 'TN580', kmbStopId: '8C8037479F88F500', destKeywords: ['機場'], apiDir: 'O' },
+  { id: 'bus_69x_wk', route: '69X', operator: 'KMB', direction: '往高鐵(西九龍站)', stopName: '天瑞總站', stopId: 'TN931', kmbStopId: '507A1E5DF62D2B4A', destKeywords: ['高鐵', '西九'], apiDir: 'O' },
+  { id: 'bus_265b_mk', route: '265B', operator: 'KMB', direction: '往旺角(柏景灣)', stopName: '翠湖居', stopId: 'TN560', kmbStopId: '0F46D557819BD600', destKeywords: ['旺角', '柏景'], apiDir: 'O' }
 ];
 
 /** Display stop codes → KMB stop UUID (for migration / user edits). */
@@ -2172,6 +2211,8 @@ const KMB_STOP_BY_CODE = {
 };
 
 const KMB_ETA_BASE = 'https://data.etabus.gov.hk/v1/transport/kmb';
+const CTB_ETA_BASE = 'https://rt.data.gov.hk/v2/transport/citybus';
+const CTB_CO = 'CTB';
 
 const DEFAULT_CATS = [
   { id: 'all', name: '全部', system: true },
@@ -2918,6 +2959,47 @@ function resolveKmbStopId(b) {
   return (seedByCode && seedByCode.kmbStopId) || '';
 }
 
+function resolveBusOperator(b) {
+  const op = String((b && b.operator) || '').trim().toUpperCase();
+  if (op === 'CTB' || op === 'CITYBUS' || op === 'NWFB') return 'CTB';
+  if (op === 'KMB' || op === 'LWB') return 'KMB';
+  if (b && String(b.ctbStopId || '').trim() && !String(b.kmbStopId || '').trim()) return 'CTB';
+  return 'KMB';
+}
+
+function resolveCtbStopId(b) {
+  if (!b) return '';
+  const existing = String(b.ctbStopId || '').trim();
+  if (existing) return existing;
+  // Citybus stop ids are 6-digit; allow stopId fallback when it looks like one
+  const code = String(b.stopId || '').trim();
+  if (/^\d{6}$/.test(code)) return code;
+  return '';
+}
+
+function resolveStopApiId(b) {
+  if (resolveBusOperator(b) === 'CTB') return resolveCtbStopId(b);
+  return resolveKmbStopId(b);
+}
+
+function busEtaCacheKey(b) {
+  const op = resolveBusOperator(b);
+  const stop = resolveStopApiId(b);
+  if (!stop) return '';
+  if (op === 'CTB') {
+    return 'CTB|' + stop + '|' + String((b && b.route) || '').trim().toUpperCase();
+  }
+  return 'KMB|' + stop;
+}
+
+function busOperatorBadgeHtml(b) {
+  const op = resolveBusOperator(b);
+  if (op === 'CTB') {
+    return '<span class="bus-op-badge is-ctb" title="城巴">城巴</span>';
+  }
+  return '<span class="bus-op-badge is-kmb" title="九巴／龍運">九巴</span>';
+}
+
 function resolveBusDestKeywords(b) {
   if (Array.isArray(b && b.destKeywords) && b.destKeywords.length) {
     return b.destKeywords.map(String);
@@ -2951,10 +3033,12 @@ function normalizeBusEntry(b, fallbackId) {
   const base = {
     id: (b && b.id) || fallbackId || uid('bus'),
     route: String((b && b.route) || ''),
+    operator: resolveBusOperator(b),
     direction: String((b && b.direction) || ''),
     stopName: String((b && (b.stopName || b.stop)) || ''),
     stopId: String((b && b.stopId) || ''),
     kmbStopId: String((b && b.kmbStopId) || ''),
+    ctbStopId: String((b && b.ctbStopId) || ''),
     destKeywords: Array.isArray(b && b.destKeywords) ? b.destKeywords.map(String) : undefined,
     apiDir: String((b && b.apiDir) || '')
   };
@@ -2967,7 +3051,12 @@ function normalizeBusEntry(b, fallbackId) {
   if (b && b.serviceType != null && String(b.serviceType).trim() !== '') {
     base.serviceType = Number(b.serviceType) || b.serviceType;
   }
-  if (!base.kmbStopId) base.kmbStopId = resolveKmbStopId(base);
+  if (base.operator === 'CTB') {
+    if (!base.ctbStopId) base.ctbStopId = resolveCtbStopId(base);
+    base.kmbStopId = '';
+  } else {
+    if (!base.kmbStopId) base.kmbStopId = resolveKmbStopId(base);
+  }
   if (!base.destKeywords || !base.destKeywords.length) {
     const kw = resolveBusDestKeywords(base);
     if (kw.length) base.destKeywords = kw;
@@ -2988,18 +3077,24 @@ function migrateBusStops(raw) {
     raw.forEach(b => {
       const n = normalizeBusEntry(b);
       if (!n.id || seen[n.id]) return;
-      if (!(n.route || n.stopName || n.stopId || n.kmbStopId)) return;
+      if (!(n.route || n.stopName || n.stopId || n.kmbStopId || n.ctbStopId)) return;
       // Fill blanks from seed when this id is a known preset
       const seed = SEED_BUS.find(s => s.id === n.id);
       if (seed) {
         n.route = n.route || seed.route;
+        n.operator = n.operator || seed.operator || 'KMB';
         n.direction = n.direction || seed.direction;
         n.stopName = n.stopName || seed.stopName;
         n.stopId = n.stopId || seed.stopId;
         n.kmbStopId = n.kmbStopId || seed.kmbStopId;
+        n.ctbStopId = n.ctbStopId || seed.ctbStopId || '';
         if (!n.destKeywords || !n.destKeywords.length) n.destKeywords = seed.destKeywords.slice();
         n.apiDir = n.apiDir || seed.apiDir;
-        if (!n.kmbStopId) n.kmbStopId = resolveKmbStopId(n);
+        if (n.operator === 'CTB') {
+          if (!n.ctbStopId) n.ctbStopId = resolveCtbStopId(n);
+        } else if (!n.kmbStopId) {
+          n.kmbStopId = resolveKmbStopId(n);
+        }
       }
       seen[n.id] = true;
       out.push(n);
@@ -4389,9 +4484,10 @@ function filterStopEtaRows(rows, bus) {
 }
 
 function formatBusEtaHtml(bus, stopPayload) {
-  const kmbId = resolveKmbStopId(bus);
-  if (!kmbId) {
-    return { html: '未設定 KMB 站點 ID', cls: 'is-error' };
+  const stopId = resolveStopApiId(bus);
+  if (!stopId) {
+    const op = resolveBusOperator(bus);
+    return { html: op === 'CTB' ? '未設定城巴站點' : '未設定 KMB 站點 ID', cls: 'is-error' };
   }
   if (!stopPayload) {
     return { html: '載入中…', cls: 'is-loading' };
@@ -4403,12 +4499,14 @@ function formatBusEtaHtml(bus, stopPayload) {
   if (!matched.length) {
     return { html: '暫時沒有班次', cls: '' };
   }
-  const labels = matched.map(function (r) { return formatEtaMinutes(r.eta); }).filter(Boolean);
-  if (!labels.length) {
+  // Card list: only the next bus (第一班)
+  const next = matched[0];
+  const label = formatEtaMinutes(next.eta);
+  if (!label) {
     return { html: '暫時沒有班次', cls: '' };
   }
-  let html = '<span class="eta-times">' + escapeHtml(labels.join(' · ')) + '</span>';
-  const rmk = matched.map(function (r) { return String(r.rmk_tc || '').trim(); }).find(Boolean);
+  let html = '<span class="eta-times">' + escapeHtml(label) + '</span>';
+  const rmk = String(next.rmk_tc || '').trim();
   if (rmk) {
     html += '<span class="eta-rmk">（' + escapeHtml(rmk) + '）</span>';
   }
@@ -4429,6 +4527,277 @@ async function fetchKmbStopEta(kmbStopId) {
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const json = await res.json();
   return Array.isArray(json && json.data) ? json.data : [];
+}
+
+async function fetchCtbStopRouteEta(stopId, route) {
+  const sid = String(stopId || '').trim();
+  const r = String(route || '').trim().toUpperCase();
+  if (!sid || !r) return [];
+  const url = CTB_ETA_BASE + '/eta/' + CTB_CO + '/' + encodeURIComponent(sid) + '/' + encodeURIComponent(r);
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const json = await res.json();
+  return Array.isArray(json && json.data) ? json.data : [];
+}
+
+async function mapPool(items, concurrency, fn) {
+  const list = items || [];
+  const results = new Array(list.length);
+  let cursor = 0;
+  async function worker() {
+    while (true) {
+      const idx = cursor++;
+      if (idx >= list.length) return;
+      results[idx] = await fn(list[idx], idx);
+    }
+  }
+  const n = Math.max(1, Math.min(concurrency || 6, list.length || 1));
+  const workers = [];
+  for (let i = 0; i < n; i++) workers.push(worker());
+  await Promise.all(workers);
+  return results;
+}
+
+const CTB_STOP_CACHE_KEY = 'ctb-stops-cache-v1';
+const CTB_STOP_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CTB_ROUTE_STOP_CACHE_KEY = 'ctb-route-stop-cache-v1';
+const CTB_ROUTE_STOP_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CTB_ROUTE_LIST_CACHE_KEY = 'ctb-route-list-cache-v1';
+const CTB_ROUTE_LIST_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/** @type {Record<string, {id:string,n:string,lat:number,lng:number}>} */
+let ctbStopsById = {};
+/** @type {Record<string, {at:number, stops: {seq:number, stop:string}[]}>} */
+let ctbRouteStopMem = {};
+/** @type {any[]|null} */
+let ctbRouteListMem = null;
+
+function readCtbStopDiskCache() {
+  try {
+    const raw = localStorage.getItem(CTB_STOP_CACHE_KEY);
+    if (!raw) return { at: 0, map: {} };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return { at: 0, map: {} };
+    const map = {};
+    (parsed.data || []).forEach(function (s) {
+      if (s && s.id) map[s.id] = s;
+    });
+    return { at: Number(parsed.at) || 0, map: map };
+  } catch (e) {
+    return { at: 0, map: {} };
+  }
+}
+
+function writeCtbStopDiskCache(map) {
+  try {
+    const compact = Object.keys(map).map(function (id) { return map[id]; });
+    localStorage.setItem(CTB_STOP_CACHE_KEY, JSON.stringify({ at: Date.now(), data: compact }));
+  } catch (e) { /* quota */ }
+}
+
+async function fetchCtbStopDetail(stopId) {
+  const sid = String(stopId || '').trim();
+  if (!sid) return null;
+  if (ctbStopsById[sid] && Number.isFinite(ctbStopsById[sid].lat)) return ctbStopsById[sid];
+  const disk = readCtbStopDiskCache();
+  if (disk.map[sid] && Number.isFinite(disk.map[sid].lat) && (Date.now() - disk.at) < CTB_STOP_CACHE_TTL_MS) {
+    ctbStopsById[sid] = disk.map[sid];
+    return ctbStopsById[sid];
+  }
+  const url = CTB_ETA_BASE + '/stop/' + encodeURIComponent(sid);
+  const res = await fetch(url, { cache: 'default' });
+  if (!res.ok) throw new Error('CTB stop HTTP ' + res.status);
+  const json = await res.json();
+  const d = json && json.data;
+  if (!d || !d.stop) return null;
+  const lat = parseFloat(d.lat);
+  const lng = parseFloat(d.long);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const entry = { id: String(d.stop), n: String(d.name_tc || d.name_en || ''), lat: lat, lng: lng };
+  ctbStopsById[sid] = entry;
+  disk.map[sid] = entry;
+  writeCtbStopDiskCache(disk.map);
+  return entry;
+}
+
+async function ensureCtbStopsMap(stopIds) {
+  const ids = [];
+  const seen = {};
+  (stopIds || []).forEach(function (id) {
+    const s = String(id || '').trim();
+    if (!s || seen[s]) return;
+    seen[s] = true;
+    ids.push(s);
+  });
+  // hydrate from disk first
+  const disk = readCtbStopDiskCache();
+  if ((Date.now() - disk.at) < CTB_STOP_CACHE_TTL_MS) {
+    Object.keys(disk.map).forEach(function (id) {
+      if (!ctbStopsById[id]) ctbStopsById[id] = disk.map[id];
+    });
+  }
+  const missing = ids.filter(function (id) {
+    return !(ctbStopsById[id] && Number.isFinite(ctbStopsById[id].lat));
+  });
+  if (missing.length) {
+    await mapPool(missing, 8, async function (id) {
+      try { await fetchCtbStopDetail(id); } catch (e) { /* skip */ }
+      return id;
+    });
+  }
+  return ctbStopsById;
+}
+
+function readCtbRouteStopDiskCache() {
+  try {
+    const raw = localStorage.getItem(CTB_ROUTE_STOP_CACHE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function writeCtbRouteStopDiskCache(all) {
+  try {
+    localStorage.setItem(CTB_ROUTE_STOP_CACHE_KEY, JSON.stringify(all));
+  } catch (e) { /* ignore */ }
+}
+
+async function fetchCtbRouteStops(route, apiDir) {
+  const r = String(route || '').trim().toUpperCase();
+  const bound = apiDirToBoundPath(apiDir);
+  const key = r + '|' + bound;
+  const now = Date.now();
+  if (ctbRouteStopMem[key] && (now - ctbRouteStopMem[key].at) < CTB_ROUTE_STOP_CACHE_TTL_MS) {
+    return ctbRouteStopMem[key].stops;
+  }
+  const disk = readCtbRouteStopDiskCache();
+  if (disk[key] && disk[key].at && (now - disk[key].at) < CTB_ROUTE_STOP_CACHE_TTL_MS && Array.isArray(disk[key].stops)) {
+    ctbRouteStopMem[key] = disk[key];
+    return disk[key].stops;
+  }
+  const url = CTB_ETA_BASE + '/route-stop/' + CTB_CO + '/' + encodeURIComponent(r) + '/' + bound;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('城巴站序 HTTP ' + res.status);
+  const json = await res.json();
+  const rows = Array.isArray(json && json.data) ? json.data : [];
+  const stops = rows.map(function (row) {
+    return { seq: Number(row.seq) || 0, stop: String(row.stop || '') };
+  }).filter(function (x) { return x.stop; })
+    .sort(function (a, b) { return a.seq - b.seq; });
+  const entry = { at: now, stops: stops };
+  ctbRouteStopMem[key] = entry;
+  disk[key] = entry;
+  writeCtbRouteStopDiskCache(disk);
+  return stops;
+}
+
+async function loadCtbRouteList(force) {
+  const now = Date.now();
+  if (!force && ctbRouteListMem && ctbRouteListMem.length) return ctbRouteListMem;
+  if (!force) {
+    try {
+      const raw = localStorage.getItem(CTB_ROUTE_LIST_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.at && (now - parsed.at) < CTB_ROUTE_LIST_CACHE_TTL_MS && Array.isArray(parsed.data) && parsed.data.length) {
+          ctbRouteListMem = parsed.data;
+          return ctbRouteListMem;
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+  const res = await fetch(CTB_ETA_BASE + '/route/' + CTB_CO, { cache: force ? 'no-store' : 'default' });
+  if (!res.ok) throw new Error('城巴路線清單 HTTP ' + res.status);
+  const json = await res.json();
+  const rows = Array.isArray(json && json.data) ? json.data : [];
+  const compact = rows.map(function (r) {
+    return {
+      route: String(r.route || ''),
+      orig_tc: String(r.orig_tc || ''),
+      dest_tc: String(r.dest_tc || '')
+    };
+  }).filter(function (r) { return r.route; });
+  ctbRouteListMem = compact;
+  try {
+    localStorage.setItem(CTB_ROUTE_LIST_CACHE_KEY, JSON.stringify({ at: now, data: compact }));
+  } catch (e) { /* quota */ }
+  return compact;
+}
+
+async function lookupCtbRouteVariants(route) {
+  const r = String(route || '').trim().toUpperCase();
+  if (!r) return [];
+  let matched = null;
+  try {
+    const list = await loadCtbRouteList(false);
+    matched = list.find(function (x) { return String(x.route).toUpperCase() === r; }) || null;
+  } catch (e) {
+    matched = null;
+  }
+  if (!matched) {
+    try {
+      const url = CTB_ETA_BASE + '/route/' + CTB_CO + '/' + encodeURIComponent(r);
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        const d = json && json.data;
+        if (d && d.route) {
+          matched = {
+            route: String(d.route || r),
+            orig_tc: String(d.orig_tc || ''),
+            dest_tc: String(d.dest_tc || '')
+          };
+        }
+      }
+    } catch (e2) { /* miss */ }
+  }
+  if (!matched) return [];
+  // Verify each direction has stops; Citybus: O→dest, I→orig
+  const out = [];
+  const dirs = [
+    { bound: 'O', dest_tc: matched.dest_tc, orig_tc: matched.orig_tc },
+    { bound: 'I', dest_tc: matched.orig_tc, orig_tc: matched.dest_tc }
+  ];
+  for (let i = 0; i < dirs.length; i++) {
+    const d = dirs[i];
+    try {
+      const stops = await fetchCtbRouteStops(r, d.bound);
+      if (!stops.length) continue;
+      out.push({
+        route: r,
+        bound: d.bound,
+        service_type: '1',
+        orig_tc: d.orig_tc || '',
+        dest_tc: d.dest_tc || '',
+        operator: 'CTB'
+      });
+    } catch (e) { /* skip empty dir */ }
+  }
+  return out;
+}
+
+async function lookupRouteVariants(route, pref) {
+  const r = String(route || '').trim().toUpperCase();
+  const p = String(pref || 'auto').toUpperCase();
+  async function asKmb() {
+    const rows = await lookupKmbRouteVariants(r);
+    return (rows || []).map(function (v) {
+      return Object.assign({}, v, { operator: 'KMB' });
+    });
+  }
+  async function asCtb() {
+    return await lookupCtbRouteVariants(r);
+  }
+  if (p === 'CTB') return asCtb();
+  if (p === 'KMB') return asKmb();
+  // auto: KMB first, then Citybus
+  try {
+    const kmb = await asKmb();
+    if (kmb.length) return kmb;
+  } catch (e) { /* fall through */ }
+  return asCtb();
 }
 
 function haversineMeters(lat1, lng1, lat2, lng2) {
@@ -4684,36 +5053,61 @@ async function resolveNearbyStopsForBuses(opts) {
   }
   const run = (async function () {
     updateBusLocationNote('載入站點資料');
-    let stopsMap;
-    try {
-      stopsMap = await loadKmbStopsCache(forceStops);
-    } catch (err) {
-      updateBusLocationNote('站點清單載入失敗');
-      throw err;
-    }
     await ensureBusGeo(forceGeo);
     const buses = Array.isArray(state.busStops) ? state.busStops : [];
+    const needKmb = buses.some(function (x) { return resolveBusOperator(x) !== 'CTB'; });
+    const needCtb = buses.some(function (x) { return resolveBusOperator(x) === 'CTB'; });
+    let kmbStopsMap = null;
+    if (needKmb) {
+      try {
+        kmbStopsMap = await loadKmbStopsCache(forceStops);
+      } catch (err) {
+        if (!needCtb) {
+          updateBusLocationNote('站點清單載入失敗');
+          throw err;
+        }
+        updateBusLocationNote('九巴站點清單載入失敗，城巴仍繼續');
+      }
+    }
     let resolved = 0;
     for (let i = 0; i < buses.length; i++) {
       const b = normalizeBusEntry(buses[i]);
       const route = String(b.route || '').trim();
       const apiDir = resolveBusApiDir(b);
+      const op = resolveBusOperator(b);
       if (!route || !apiDir) {
         buses[i] = b;
         continue;
       }
       try {
-        const probed = await fetchRouteStopsWithProbe(route, apiDir, b.serviceType);
-        const nearest = pickNearestRouteStop(probed.stops, busGeo, stopsMap);
-        if (nearest && nearest.info) {
-          const parsed = parseStopNameTc(nearest.info.n);
-          b.stopName = parsed.name || nearest.info.n;
-          b.stopId = parsed.code || b.stopId || '';
-          b.kmbStopId = nearest.stopId;
-          b.nearbyDistM = Math.round(nearest.distM);
-          b.nearbySeq = nearest.seq;
-          b.serviceType = probed.serviceType;
-          resolved += 1;
+        if (op === 'CTB') {
+          const stops = await fetchCtbRouteStops(route, apiDir);
+          await ensureCtbStopsMap(stops.map(function (s) { return s.stop; }));
+          const nearest = pickNearestRouteStop(stops, busGeo, ctbStopsById);
+          if (nearest && nearest.info) {
+            b.stopName = nearest.info.n || b.stopName || '';
+            b.ctbStopId = nearest.stopId;
+            b.stopId = nearest.stopId;
+            b.kmbStopId = '';
+            b.nearbyDistM = Math.round(nearest.distM);
+            b.nearbySeq = nearest.seq;
+            b.operator = 'CTB';
+            resolved += 1;
+          }
+        } else if (kmbStopsMap) {
+          const probed = await fetchRouteStopsWithProbe(route, apiDir, b.serviceType);
+          const nearest = pickNearestRouteStop(probed.stops, busGeo, kmbStopsMap);
+          if (nearest && nearest.info) {
+            const parsed = parseStopNameTc(nearest.info.n);
+            b.stopName = parsed.name || nearest.info.n;
+            b.stopId = parsed.code || b.stopId || '';
+            b.kmbStopId = nearest.stopId;
+            b.nearbyDistM = Math.round(nearest.distM);
+            b.nearbySeq = nearest.seq;
+            b.serviceType = probed.serviceType;
+            b.operator = 'KMB';
+            resolved += 1;
+          }
         }
       } catch (e) {
         // keep previous stop for this card
@@ -4735,34 +5129,39 @@ async function resolveNearbyStopsForBuses(opts) {
 async function refreshAllBusEtas(opts) {
   const force = !!(opts && opts.force);
   const buses = Array.isArray(state.busStops) ? state.busStops : [];
-  const stopIds = [];
+  /** @type {{key:string, op:string, stopId:string, route:string}[]} */
+  const jobs = [];
   const seen = {};
   buses.forEach(function (b) {
-    const id = resolveKmbStopId(b);
-    if (id && !seen[id]) {
-      seen[id] = true;
-      stopIds.push(id);
-    }
+    const key = busEtaCacheKey(b);
+    if (!key || seen[key]) return;
+    seen[key] = true;
+    jobs.push({
+      key: key,
+      op: resolveBusOperator(b),
+      stopId: resolveStopApiId(b),
+      route: String(b.route || '').trim().toUpperCase()
+    });
   });
 
   // Show loading on cards that need a fetch
   buses.forEach(function (b) {
     const card = document.querySelector('.bus-card[data-id="' + String(b.id).replace(/"/g, '') + '"]');
     const etaEl = card && card.querySelector('.bus-eta');
-    const kid = resolveKmbStopId(b);
+    const key = busEtaCacheKey(b);
     if (!etaEl) return;
-    if (!kid) {
+    if (!key) {
       setBusEtaEl(etaEl, b, { rows: [], error: 'missing' });
       return;
     }
-    if (force || !busEtaByStop[kid]) {
+    if (force || !busEtaByStop[key]) {
       setBusEtaEl(etaEl, b, null);
     } else {
-      setBusEtaEl(etaEl, b, busEtaByStop[kid]);
+      setBusEtaEl(etaEl, b, busEtaByStop[key]);
     }
   });
 
-  if (!stopIds.length) return;
+  if (!jobs.length) return;
 
   if (busEtaInFlight && !force) {
     try { await busEtaInFlight; } catch (e) {}
@@ -4770,25 +5169,30 @@ async function refreshAllBusEtas(opts) {
   }
 
   const run = (async function () {
-    await Promise.all(stopIds.map(async function (kid) {
+    await Promise.all(jobs.map(async function (job) {
       try {
-        const rows = await fetchKmbStopEta(kid);
-        busEtaByStop[kid] = { rows: rows, at: Date.now() };
+        let rows = [];
+        if (job.op === 'CTB') {
+          rows = await fetchCtbStopRouteEta(job.stopId, job.route);
+        } else {
+          rows = await fetchKmbStopEta(job.stopId);
+        }
+        busEtaByStop[job.key] = { rows: rows, at: Date.now() };
       } catch (err) {
-        busEtaByStop[kid] = { rows: [], error: String(err && err.message || err), at: Date.now() };
+        busEtaByStop[job.key] = { rows: [], error: String(err && err.message || err), at: Date.now() };
       }
     }));
     buses.forEach(function (b) {
       const card = document.querySelector('.bus-card[data-id="' + String(b.id).replace(/"/g, '') + '"]');
       const etaEl = card && card.querySelector('.bus-eta');
-      const kid = resolveKmbStopId(b);
-      if (!etaEl || !kid) return;
-      setBusEtaEl(etaEl, b, busEtaByStop[kid]);
+      const key = busEtaCacheKey(b);
+      if (!etaEl || !key) return;
+      setBusEtaEl(etaEl, b, busEtaByStop[key]);
     });
     const note = document.getElementById('busNote');
     if (note) {
-      const anyErr = stopIds.some(function (id) { return busEtaByStop[id] && busEtaByStop[id].error; });
-      const anyOk = stopIds.some(function (id) { return busEtaByStop[id] && !busEtaByStop[id].error; });
+      const anyErr = jobs.some(function (j) { return busEtaByStop[j.key] && busEtaByStop[j.key].error; });
+      const anyOk = jobs.some(function (j) { return busEtaByStop[j.key] && !busEtaByStop[j.key].error; });
       let locBit = '';
       if (busGeo) {
         locBit = busGeo.source === 'gps' ? '使用定位' : '使用天水圍後備';
@@ -4798,7 +5202,7 @@ async function refreshAllBusEtas(opts) {
       } else if (anyOk && anyErr) {
         note.textContent = (locBit ? locBit + '。' : '') + '部分車站到站時間未能更新，其餘已顯示。可再按「更新到站」重試。';
       } else if (anyErr) {
-        note.textContent = '暫時無法連接九巴到站 API，請稍後再試「更新到站」。';
+        note.textContent = '暫時無法連接到站 API（九巴／城巴），請稍後再試「更新到站」。';
       }
     }
   })();
@@ -5070,7 +5474,13 @@ function openBusAddModal() {
     '<h3>新增巴士路線</h3>' +
     '<form class="form-stack" id="busAddForm">' +
       '<div><label class="field-label">路線號碼</label>' +
-        '<input type="text" name="route" required maxlength="10" placeholder="例如 69M" autocomplete="off" style="text-transform:uppercase" /></div>' +
+        '<input type="text" name="route" required maxlength="10" placeholder="例如 E21D / 69M" autocomplete="off" style="text-transform:uppercase" /></div>' +
+      '<div><label class="field-label">營辦商</label>' +
+        '<select name="operatorPref" id="busOperatorPref">' +
+          '<option value="auto" selected>自動（先九巴再城巴）</option>' +
+          '<option value="KMB">九巴／龍運</option>' +
+          '<option value="CTB">城巴</option>' +
+        '</select></div>' +
       '<div class="modal-actions" style="justify-content:flex-start;margin-top:0">' +
         '<button type="button" class="btn btn-ghost btn-sm" id="busLookupBtn">查詢路線</button>' +
       '</div>' +
@@ -5079,7 +5489,7 @@ function openBusAddModal() {
         '<select name="variant" id="busVariantSelect" required disabled>' +
           '<option value="">請先查詢路線</option>' +
         '</select></div>' +
-      '<div><label class="field-label">服務類型 service_type（可選，預設 1）</label>' +
+      '<div id="busServiceTypeField"><label class="field-label">服務類型 service_type（九巴可選，預設 1）</label>' +
         '<input type="number" name="serviceType" id="busServiceType" min="1" max="99" step="1" value="1" /></div>' +
       '<div class="modal-actions">' +
         '<button type="button" class="btn btn-ghost" id="busAddCancel">取消</button>' +
@@ -5092,8 +5502,10 @@ function openBusAddModal() {
   const statusEl = document.getElementById('busAddStatus');
   const select = document.getElementById('busVariantSelect');
   const stInput = document.getElementById('busServiceType');
+  const stField = document.getElementById('busServiceTypeField');
   const submitBtn = document.getElementById('busAddSubmit');
   const lookupBtn = document.getElementById('busLookupBtn');
+  const opPref = document.getElementById('busOperatorPref');
   const routeInput = form.querySelector('[name="route"]');
   /** @type {any[]} */
   let variants = [];
@@ -5104,6 +5516,16 @@ function openBusAddModal() {
     statusEl.className = 'bus-add-status' + (cls ? ' ' + cls : '');
   }
 
+  function syncServiceTypeVisibility() {
+    const allCtb = variants.length > 0 && variants.every(function (v) {
+      return String(v.operator || '').toUpperCase() === 'CTB';
+    });
+    if (stField) {
+      if (allCtb) stField.classList.add('is-hidden');
+      else stField.classList.remove('is-hidden');
+    }
+  }
+
   function fillVariants(rows) {
     variants = rows || [];
     select.innerHTML = '';
@@ -5111,6 +5533,7 @@ function openBusAddModal() {
       select.innerHTML = '<option value="">找不到此路線</option>';
       select.disabled = true;
       submitBtn.disabled = true;
+      syncServiceTypeVisibility();
       return;
     }
     variants.forEach(function (v, i) {
@@ -5118,20 +5541,27 @@ function openBusAddModal() {
       const boundLabel = bound === 'I' ? '回程 I' : '去程 O';
       const dest = v.dest_tc || '—';
       const st = v.service_type || '1';
+      const op = String(v.operator || 'KMB').toUpperCase() === 'CTB' ? '城巴' : '九巴';
       const opt = document.createElement('option');
       opt.value = String(i);
-      opt.textContent = '往' + dest + '（' + boundLabel + ' · 服務 ' + st + '）';
+      if (String(v.operator || '').toUpperCase() === 'CTB') {
+        opt.textContent = '往' + dest + '（' + op + ' · ' + boundLabel + '）';
+      } else {
+        opt.textContent = '往' + dest + '（' + op + ' · ' + boundLabel + ' · 服務 ' + st + '）';
+      }
       select.appendChild(opt);
     });
     select.disabled = false;
     submitBtn.disabled = false;
     select.selectedIndex = 0;
     stInput.value = String(variants[0].service_type || '1');
+    syncServiceTypeVisibility();
   }
 
   select.addEventListener('change', function () {
     const v = variants[Number(select.value)];
     if (v) stInput.value = String(v.service_type || '1');
+    syncServiceTypeVisibility();
   });
 
   async function doLookup() {
@@ -5144,14 +5574,16 @@ function openBusAddModal() {
     lookupBtn.disabled = true;
     setStatus('查詢中…');
     try {
-      const rows = await lookupKmbRouteVariants(route);
+      const pref = (opPref && opPref.value) || 'auto';
+      const rows = await lookupRouteVariants(route, pref);
       if (!rows.length) {
         fillVariants([]);
-        setStatus('找不到「' + route + '」——請確認是九巴／龍運路線', 'is-error');
+        setStatus('找不到「' + route + '」——請確認是九巴／龍運／城巴路線', 'is-error');
         return;
       }
       fillVariants(rows);
-      setStatus('找到 ' + rows.length + ' 個方向／服務組合', 'is-ok');
+      const opHint = String(rows[0].operator || '').toUpperCase() === 'CTB' ? '城巴' : '九巴／龍運';
+      setStatus('找到 ' + rows.length + ' 個方向（' + opHint + '）', 'is-ok');
     } catch (err) {
       fillVariants([]);
       setStatus('查詢失敗，請稍後再試', 'is-error');
@@ -5186,30 +5618,35 @@ function openBusAddModal() {
       setStatus('請選擇方向', 'is-error');
       return;
     }
+    const operator = String(v.operator || 'KMB').toUpperCase() === 'CTB' ? 'CTB' : 'KMB';
     const apiDir = String(v.bound || '').toUpperCase() === 'I' ? 'I' : 'O';
     let serviceType = Number(stInput.value);
     if (!Number.isFinite(serviceType) || serviceType < 1) serviceType = Number(v.service_type) || 1;
+    if (operator === 'CTB') serviceType = 1;
     const destTc = String(v.dest_tc || '').trim();
     const direction = destTc ? ('往' + destTc) : (apiDir === 'I' ? '回程（Inbound）' : '去程（Outbound）');
     const entry = normalizeBusEntry({
       id: uid('bus'),
       route: route,
+      operator: operator,
       direction: direction,
       apiDir: apiDir,
       serviceType: serviceType,
       destKeywords: destKeywordsFromDest(destTc),
       stopName: '',
       stopId: '',
-      kmbStopId: ''
+      kmbStopId: '',
+      ctbStopId: ''
     });
     if (!Array.isArray(state.busStops)) state.busStops = cloneSeedBus();
-    // Avoid exact duplicate route+dir+service
+    // Avoid exact duplicate operator+route+dir+service
     const dup = state.busStops.some(function (b) {
-      return String(b.route || '').toUpperCase() === route &&
+      return resolveBusOperator(b) === operator &&
+        String(b.route || '').toUpperCase() === route &&
         resolveBusApiDir(b) === apiDir &&
         String(b.serviceType || 1) === String(serviceType);
     });
-    if (dup && !confirm('已有相同路線／方向／服務，仍要再加一張卡？')) return;
+    if (dup && !confirm('已有相同營辦商／路線／方向，仍要再加一張卡？')) return;
 
     submitBtn.disabled = true;
     setStatus('新增中，正在找最近站…');
@@ -5250,14 +5687,17 @@ function renderBus() {
   list.innerHTML = renderList.map(b => {
     const summary = busSummaryLine(b);
     const meta = busCardMetaLine(b);
-    const kid = resolveKmbStopId(b);
-    const cached = kid ? busEtaByStop[kid] : null;
+    const etaKey = busEtaCacheKey(b);
+    const cached = etaKey ? busEtaByStop[etaKey] : null;
     const eta = formatBusEtaHtml(b, cached || null);
+    const badge = busOperatorBadgeHtml(b);
     return (
       '<div class="bus-card" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '" draggable="true">' +
         '<div class="bus-row">' +
           '<div class="bus-card-main">' +
-            '<div class="bus-summary" title="' + escapeHtml(summary) + '">' + escapeHtml(summary) + '</div>' +
+            '<div class="bus-summary-row">' + badge +
+              '<div class="bus-summary" title="' + escapeHtml(summary) + '">' + escapeHtml(summary) + '</div>' +
+            '</div>' +
             (meta ? '<div class="bus-card-meta">' + escapeHtml(meta) + '</div>' : '') +
           '</div>' +
           '<div class="bus-eta' + (eta.cls ? ' ' + eta.cls : '') + '">' + eta.html + '</div>' +
@@ -5384,8 +5824,10 @@ async function openBusRouteSheet(busId) {
   if (!bus) return;
   const route = String(bus.route || '').trim().toUpperCase();
   const watchedDir = resolveBusApiDir(bus);
+  const operator = resolveBusOperator(bus);
+  const opLabel = operator === 'CTB' ? '城巴' : '九巴';
   openModal(
-    '<h3>' + escapeHtml(route || '巴士') + ' 沿線</h3>' +
+    '<h3>' + escapeHtml(route || '巴士') + ' 沿線 <span class="bus-op-badge ' + (operator === 'CTB' ? 'is-ctb' : 'is-kmb') + '">' + opLabel + '</span></h3>' +
     '<p class="bus-route-hint bus-route-loading" id="busRouteHint">載入沿線站點與到站時間…</p>' +
     '<div id="busRouteBody"><div class="bus-route-loading">請稍候</div></div>' +
     '<div class="modal-actions">' +
@@ -5396,37 +5838,86 @@ async function openBusRouteSheet(busId) {
   if (closeBtn) closeBtn.onclick = closeModal;
 
   try {
-    const stopsMap = await loadKmbStopsCache(false);
     const dirs = watchedDir === 'I' ? ['I', 'O'] : ['O', 'I'];
     const dirData = {};
-    let serviceType = bus.serviceType || 1;
-    for (let i = 0; i < dirs.length; i++) {
-      const d = dirs[i];
-      try {
-        const probed = await fetchRouteStopsWithProbe(route, d, d === watchedDir ? bus.serviceType : undefined);
-        dirData[d] = probed;
-        if (d === watchedDir && probed.serviceType) serviceType = probed.serviceType;
-      } catch (e) {
-        dirData[d] = { serviceType: 1, stops: [] };
-      }
-    }
+    let stopsMap = {};
     let etaRows = [];
-    try {
-      etaRows = await fetchKmbRouteEta(route, serviceType);
-    } catch (e1) {
-      if (serviceType !== 1) {
-        try { etaRows = await fetchKmbRouteEta(route, 1); } catch (e2) { etaRows = []; }
+    let nearbyId = '';
+
+    if (operator === 'CTB') {
+      for (let i = 0; i < dirs.length; i++) {
+        const d = dirs[i];
+        try {
+          const stops = await fetchCtbRouteStops(route, d);
+          dirData[d] = { serviceType: 1, stops: stops || [] };
+        } catch (e) {
+          dirData[d] = { serviceType: 1, stops: [] };
+        }
       }
+      const allStopIds = [];
+      dirs.forEach(function (d) {
+        ((dirData[d] && dirData[d].stops) || []).forEach(function (rs) {
+          if (rs.stop) allStopIds.push(rs.stop);
+        });
+      });
+      await ensureCtbStopsMap(allStopIds);
+      stopsMap = ctbStopsById;
+      nearbyId = resolveCtbStopId(bus);
+      // Citybus has no route-eta bulk API — fetch per-stop ETA (concurrency limited)
+      const uniqueStops = [];
+      const seenStop = {};
+      allStopIds.forEach(function (id) {
+        if (!id || seenStop[id]) return;
+        seenStop[id] = true;
+        uniqueStops.push(id);
+      });
+      const hintEl = document.getElementById('busRouteHint');
+      if (hintEl) {
+        hintEl.className = 'bus-route-hint bus-route-loading';
+        hintEl.textContent = '載入城巴各站到站（約 ' + uniqueStops.length + ' 站）…';
+      }
+      const batches = await mapPool(uniqueStops, 6, async function (sid) {
+        try {
+          return await fetchCtbStopRouteEta(sid, route);
+        } catch (e) {
+          return [];
+        }
+      });
+      etaRows = [];
+      (batches || []).forEach(function (rows) {
+        (rows || []).forEach(function (row) { etaRows.push(row); });
+      });
+    } else {
+      stopsMap = await loadKmbStopsCache(false);
+      let serviceType = bus.serviceType || 1;
+      for (let i = 0; i < dirs.length; i++) {
+        const d = dirs[i];
+        try {
+          const probed = await fetchRouteStopsWithProbe(route, d, d === watchedDir ? bus.serviceType : undefined);
+          dirData[d] = probed;
+          if (d === watchedDir && probed.serviceType) serviceType = probed.serviceType;
+        } catch (e) {
+          dirData[d] = { serviceType: 1, stops: [] };
+        }
+      }
+      try {
+        etaRows = await fetchKmbRouteEta(route, serviceType);
+      } catch (e1) {
+        if (serviceType !== 1) {
+          try { etaRows = await fetchKmbRouteEta(route, 1); } catch (e2) { etaRows = []; }
+        }
+      }
+      nearbyId = resolveKmbStopId(bus);
     }
+
     const etaMap = groupRouteEtaByDirSeq(etaRows);
-    const nearbyId = resolveKmbStopId(bus);
     const hint = document.getElementById('busRouteHint');
     if (hint) {
       const destSample = (etaRows.find(function (r) { return r && r.dest_tc; }) || {}).dest_tc;
       hint.className = 'bus-route-hint';
-      hint.textContent = destSample
-        ? ('官方路線到站 · 高亮為你附近的站' + (bus.stopName ? '（' + bus.stopName + '）' : ''))
-        : '官方路線到站 · 高亮為你附近的站';
+      hint.textContent = (operator === 'CTB' ? '城巴官方到站' : '九巴官方路線到站') +
+        ' · 高亮為你附近的站' + (bus.stopName ? '（' + bus.stopName + '）' : '') +
+        (destSample ? '' : '');
     }
     const body = document.getElementById('busRouteBody');
     if (!body) return;
@@ -5582,7 +6073,7 @@ function tickHeaderClock() {
   const dateEl = document.getElementById('hdrDate');
   const clockEl = document.getElementById('hdrClock');
   if (dateEl) dateEl.textContent = formatHkDate(p);
-  if (clockEl) clockEl.textContent = p.hh + ':' + p.mm + ':' + p.ss;
+  if (clockEl) clockEl.textContent = p.hh + ':' + p.mm;
   const key = p.y + '-' + p.m + '-' + p.d;
   if (key !== _lastLunarKey) {
     _lastLunarKey = key;
