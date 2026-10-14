@@ -1844,7 +1844,7 @@
         <div class="header-widgets" id="headerInfoStrip" aria-live="polite">
           <div class="glass-card hdr-glass" title="香港時間／農曆">
             <div class="hdr-datetime">
-              <div class="hdr-clock font-display" id="hdrClock">--:--:--</div>
+              <div class="hdr-clock font-display" id="hdrClock">--:--</div>
               <div class="hdr-date" id="hdrDate">—</div>
             </div>
             <div class="hdr-lunar-block" id="hdrLunarBlock">
@@ -6073,7 +6073,7 @@ function tickHeaderClock() {
   const dateEl = document.getElementById('hdrDate');
   const clockEl = document.getElementById('hdrClock');
   if (dateEl) dateEl.textContent = formatHkDate(p);
-  if (clockEl) clockEl.textContent = p.hh + ':' + p.mm + ':' + p.ss;
+  if (clockEl) clockEl.textContent = p.hh + ':' + p.mm;
   const key = p.y + '-' + p.m + '-' + p.d;
   if (key !== _lastLunarKey) {
     _lastLunarKey = key;
