@@ -1,6 +1,12 @@
 {
   "updatedAt": 1791993523615,
   "schemaVersion": 8,
+  "share": {
+    "enabled": false,
+    "salt": "",
+    "passwordHash": "",
+    "updatedAt": 0
+  },
   "theme": "sunny-beach",
   "todoTab": "open",
   "eventsFilter": "today",
