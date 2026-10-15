@@ -2430,116 +2430,6 @@
       color: var(--muted, #64748b);
     }
     .bus-route-error { color: #b45309; }
-    .bus-tt-head {
-      margin: 0 0 4px;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text-strong, #1e293b);
-      line-height: 1.35;
-    }
-    .bus-tt-span {
-      margin: 0 0 8px;
-      font-size: 12px;
-      font-weight: 650;
-      color: var(--text, #334155);
-    }
-    .bus-tt-live {
-      margin: 0 0 8px;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--accent-badge-text, #1D4ED8);
-      line-height: 1.4;
-    }
-    .bus-tt-tabs {
-      display: flex;
-      gap: 6px;
-      margin: 0 0 8px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    .bus-tt-tab {
-      flex: 0 0 auto;
-      border: 1px solid var(--border-soft, rgba(15, 23, 42, 0.12));
-      background: transparent;
-      color: var(--text, #1e293b);
-      border-radius: 999px;
-      padding: 5px 10px;
-      font: inherit;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .bus-tt-tab.is-active {
-      background: var(--accent-primary, #3B82F6);
-      color: #fff;
-      border-color: transparent;
-    }
-    .bus-tt-daylabel {
-      margin: 0 0 6px;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-strong, #1e293b);
-    }
-    .bus-tt-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-      margin-bottom: 8px;
-    }
-    .bus-tt-table th,
-    .bus-tt-table td {
-      text-align: left;
-      padding: 7px 8px;
-      border-bottom: 1px solid var(--border-soft, rgba(15, 23, 42, 0.08));
-      color: var(--text-strong, #1e293b);
-    }
-    .bus-tt-table th {
-      font-size: 11px;
-      color: var(--muted, #64748b);
-      font-weight: 700;
-    }
-    .bus-tt-table td:last-child,
-    .bus-tt-table th:last-child { text-align: right; white-space: nowrap; }
-    .bus-tt-table tr.is-now td {
-      background: var(--accent-light, #E8F4FC);
-      font-weight: 700;
-    }
-    .bus-tt-subhead {
-      margin: 8px 0 6px;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-strong, #1e293b);
-    }
-    .bus-tt-times {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .bus-tt-time {
-      min-width: 3.4rem;
-      text-align: center;
-      padding: 4px 6px;
-      border-radius: 8px;
-      background: var(--row-bg, #F5FBFE);
-      border: 1px solid var(--border-soft, rgba(15, 23, 42, 0.08));
-      font-size: 12px;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      color: var(--text-strong, #1e293b);
-    }
-    .bus-tt-note {
-      margin: 8px 0 0;
-      font-size: 11px;
-      line-height: 1.45;
-      color: var(--muted, #64748b);
-    }
-    .bus-tt-section-label {
-      margin: 14px 0 6px;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-strong, #1e293b);
-    }
-
     /* Modal — industrial panel */
     .modal-backdrop {
       position: fixed;
@@ -3003,7 +2893,7 @@
             </div>
           </div>
 
-          <div class="glass-card hdr-glass hdr-bus" id="hdrBusChip" title="E36A 由昇薈開往元朗 · 點擊睇全日時間表" role="button" tabindex="0" aria-label="睇 E36A 往元朗全日時間表">
+          <div class="glass-card hdr-glass hdr-bus" id="hdrBusChip" title="E36A 由昇薈開往元朗 · 點擊睇沿線站" role="button" tabindex="0" aria-label="睇 E36A 往元朗沿線站">
             <div class="hdr-bus-body">
               <div class="hdr-bus-top">
                 <span class="hdr-bus-route">E36A → 元朗</span>
@@ -7682,7 +7572,7 @@ function renderBus() {
     const eta = formatBusEtaHtml(b, cached || null);
     const badge = busOperatorBadgeHtml(b);
     return (
-      '<div class="bus-card ' + busCardDirectionClass(b) + '" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇 ' + escapeHtml(b.route || '') + ' 時間表" draggable="' + (VIEW_ONLY ? 'false' : 'true') + '">' +
+      '<div class="bus-card ' + busCardDirectionClass(b) + '" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '" draggable="' + (VIEW_ONLY ? 'false' : 'true') + '">' +
         '<div class="bus-row">' +
           '<div class="bus-card-main">' +
             '<div class="bus-summary-row">' + badge +
@@ -7691,7 +7581,7 @@ function renderBus() {
             (meta ? '<div class="bus-card-meta">' + escapeHtml(meta) + '</div>' : '') +
           '</div>' +
           '<div class="bus-eta' + (eta.cls ? ' ' + eta.cls : '') + '">' + eta.html + '</div>' +
-          '<div class="bus-card-affordance" aria-hidden="true"><span>時間表</span><span class="chev">›</span></div>' +
+          '<div class="bus-card-affordance" aria-hidden="true"><span>睇沿線</span><span class="chev">›</span></div>' +
           '<button type="button" class="bus-del" data-bus-del="' + escapeHtml(b.id) + '" aria-label="刪除路線" title="刪除">🗑</button>' +
         '</div>' +
       '</div>'
@@ -7728,346 +7618,6 @@ function renderBus() {
   });
 
   bindBusEtaControls();
-}
-
-/* KMB/LWB published timetable (the same feed as the KMB route-search 時間表 tab).
-   data.etabus.gov.hk only has the next few live ETAs, not the day's departures.
-   BoundText1 = outbound (O), BoundText2 = inbound (I). A hyphenated BoundText is a
-   headway window; a comma list is exact departure times. */
-const KMB_SCHEDULE_ENDPOINT = 'https://search.kmb.hk/KMBWebSite/Function/FunctionRequest.ashx';
-const KMB_SCHED_DAY_ORDER = ['D', 'MF', 'W', 'MS', 'S', 'H', 'X'];
-const KMB_SCHED_DAY_SHORT = {
-  D: '每天', MF: '平日', W: '平日', MS: '週一至六', S: '週六', H: '假日', X: '特別'
-};
-const KMB_SCHED_DAY_LONG = {
-  D: '每天', MF: '星期一至五', W: '星期一至五', MS: '星期一至六',
-  S: '星期六', H: '星期日及公眾假期', X: '特別'
-};
-const kmbScheduleMem = {};
-
-function kmbScheduleServiceKey(serviceType) {
-  const raw = String(serviceType == null || serviceType === '' ? '1' : serviceType).trim();
-  const n = raw.replace(/^0+/, '') || '1';
-  return { plain: n, padded: n.padStart(2, '0') };
-}
-
-async function fetchKmbPublishedSchedule(route, serviceType) {
-  const r = String(route || '').trim().toUpperCase();
-  if (!r) throw new Error('no route');
-  const now = Date.now();
-  let packed = kmbScheduleMem[r];
-  if (!packed || !packed.at || (now - packed.at) >= 6 * 60 * 60 * 1000 || !packed.data) {
-    const url = KMB_SCHEDULE_ENDPOINT + '?action=getschedule&route=' + encodeURIComponent(r) + '&bound=1';
-    const res = await fetch(url, { cache: 'default' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const json = await res.json();
-    if (!json || json.result === false || !json.data || typeof json.data !== 'object') {
-      throw new Error('empty schedule');
-    }
-    packed = { at: now, data: json.data };
-    kmbScheduleMem[r] = packed;
-  }
-  const data = packed.data;
-  const keys = Object.keys(data).filter(function (k) {
-    return Array.isArray(data[k]) && data[k].length;
-  });
-  if (!keys.length) throw new Error('empty schedule');
-  const want = kmbScheduleServiceKey(serviceType);
-  const key = keys.find(function (k) {
-    const trimmed = String(k).trim();
-    return trimmed === want.padded || trimmed.replace(/^0+/, '') === want.plain;
-  }) || keys[0];
-  return data[key];
-}
-
-function kmbScheduleBoundNo(bus, rows) {
-  const api = resolveBusApiDir(bus);
-  if (api === 'I') return '2';
-  if (api === 'O') return '1';
-  const dir = String((bus && bus.direction) || '');
-  const row = (rows && rows[0]) || {};
-  const dest = String(row.Destination_Chi || '').replace(/[()（].*$/, '');
-  const orig = String(row.Origin_Chi || '').replace(/[()（].*$/, '');
-  const destKey = dest.slice(0, 2);
-  const origKey = orig.slice(0, 2);
-  if (destKey && dir.indexOf(destKey) !== -1) return '1';
-  if (origKey && dir.indexOf(origKey) !== -1) return '2';
-  return '1';
-}
-
-function kmbScheduleDirectionLabel(rows, boundNo) {
-  const row = (rows && rows[0]) || {};
-  const orig = String(row.Origin_Chi || '').trim();
-  const dest = String(row.Destination_Chi || '').trim();
-  if (String(boundNo) === '2') return { from: dest, to: orig };
-  return { from: orig, to: dest };
-}
-
-function parseKmbScheduleByDay(rows, boundNo) {
-  const textKey = 'BoundText' + boundNo;
-  const freqKey = 'BoundTime' + boundNo;
-  const byDay = {};
-  (rows || []).forEach(function (row) {
-    const day = String(row.DayType || '').trim();
-    const text = String(row[textKey] || '').trim();
-    const freq = String(row[freqKey] || '').trim();
-    if (!day || !text) return;
-    if (!byDay[day]) byDay[day] = { exact: [], bands: [] };
-    if (text.indexOf('-') === -1) {
-      text.split(/[,，]/).forEach(function (part) {
-        const t = part.trim();
-        if (t) byDay[day].exact.push(t);
-      });
-      return;
-    }
-    if (!freq) return;
-    const bits = text.split('-');
-    const from = String(bits[0] || '').trim();
-    const to = String(bits.slice(1).join('-') || '').trim();
-    if (!from) return;
-    byDay[day].bands.push({ from: from, to: to, freq: freq });
-  });
-  Object.keys(byDay).forEach(function (day) {
-    byDay[day].exact.sort(function (a, b) {
-      return (minutesFromHHMM(a) || 0) - (minutesFromHHMM(b) || 0);
-    });
-  });
-  return byDay;
-}
-
-function orderedScheduleDays(byDay) {
-  const days = KMB_SCHED_DAY_ORDER.filter(function (d) { return byDay[d]; });
-  Object.keys(byDay).forEach(function (d) {
-    if (days.indexOf(d) === -1) days.push(d);
-  });
-  return days;
-}
-
-function hkSchedulePreferredDay(available) {
-  const wd = hkNowParts().weekday;
-  const prefer = wd === 0 ? ['H', 'D', 'MF', 'W'] : wd === 6 ? ['S', 'MS', 'D', 'MF'] : ['MF', 'W', 'MS', 'D'];
-  for (let i = 0; i < prefer.length; i++) {
-    if (available.indexOf(prefer[i]) !== -1) return prefer[i];
-  }
-  return available[0] || 'MF';
-}
-
-function minutesFromHHMM(s) {
-  const m = String(s || '').trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return null;
-  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-}
-
-function hhmmFromMinutes(mins) {
-  const h = Math.floor(mins / 60) % 24;
-  const m = mins % 60;
-  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
-}
-
-function formatFreqLabel(freq) {
-  const f = String(freq || '').trim();
-  if (!f) return '';
-  if (f.indexOf('-') !== -1) return '約每 ' + f.replace('-', '–') + ' 分鐘';
-  return '每 ' + f + ' 分鐘';
-}
-
-function expandFixedHeadway(bands) {
-  const times = [];
-  const seen = {};
-  (bands || []).forEach(function (band) {
-    const every = String(band.freq || '').trim();
-    if (!/^\d+$/.test(every)) return;
-    const step = parseInt(every, 10);
-    if (!step || step > 180) return;
-    const start = minutesFromHHMM(band.from);
-    const end = minutesFromHHMM(band.to);
-    if (start == null || end == null || end < start) return;
-    for (let t = start; t <= end; t += step) {
-      const label = hhmmFromMinutes(t);
-      if (seen[label]) continue;
-      seen[label] = true;
-      times.push(label);
-    }
-  });
-  times.sort(function (a, b) {
-    return (minutesFromHHMM(a) || 0) - (minutesFromHHMM(b) || 0);
-  });
-  return times;
-}
-
-function scheduleSpanLabel(slot) {
-  const mins = [];
-  (slot.exact || []).forEach(function (t) {
-    const n = minutesFromHHMM(t);
-    if (n != null) mins.push(n);
-  });
-  (slot.bands || []).forEach(function (b) {
-    const a = minutesFromHHMM(b.from);
-    const z = minutesFromHHMM(b.to);
-    if (a != null) mins.push(a);
-    if (z != null) mins.push(z);
-  });
-  if (!mins.length) return '';
-  mins.sort(function (a, b) { return a - b; });
-  return '首班 ' + hhmmFromMinutes(mins[0]) + ' · 尾班 ' + hhmmFromMinutes(mins[mins.length - 1]);
-}
-
-function currentBandIndex(bands) {
-  const now = hkNowParts();
-  const mins = parseInt(now.hh, 10) * 60 + parseInt(now.mm, 10);
-  if (!Number.isFinite(mins)) return -1;
-  let edge = -1;
-  for (let i = 0; i < bands.length; i++) {
-    const from = minutesFromHHMM(bands[i].from);
-    const to = minutesFromHHMM(bands[i].to || bands[i].from);
-    if (from == null || to == null) continue;
-    if (mins >= from && mins < to) return i;
-    if (mins === to) edge = i;
-  }
-  return edge;
-}
-
-function scheduleLiveLine(bus) {
-  const stop = String((bus && bus.stopName) || '').trim();
-  const route = String((bus && bus.route) || '').trim().toUpperCase();
-  const dir = resolveBusApiDir(bus);
-  if (route === 'E36A' && dir === 'I' && (!stop || stop === '昇薈')) {
-    const view = headerBusNextView();
-    const quiet = view.text === '沒有班次' || view.text === '尾班已過' || view.text === '未能更新';
-    return '昇薈下一班：' + view.text + (quiet ? '。下面係呢個方向全日時間表。' : '');
-  }
-  if (!stop) return '';
-  const key = busEtaCacheKey(bus);
-  const payload = key ? busEtaByStop[key] : null;
-  if (!payload) return stop + '：到站時間更新中';
-  if (payload.error) return stop + '：暫時未能更新到站';
-  const matched = filterStopEtaRows(payload.rows, bus);
-  if (!matched.length) return stop + '：沒有班次。下面係呢個方向全日時間表。';
-  const labels = matched.map(function (row) { return formatEtaMinutes(row.eta); }).filter(Boolean);
-  return stop + ' 即將到站：' + labels.join(' · ');
-}
-
-function scheduleDayBodyHtml(byDay, day, isToday) {
-  const slot = byDay[day] || { exact: [], bands: [] };
-  const expanded = expandFixedHeadway(slot.bands);
-  const clocks = slot.exact.length ? slot.exact.slice() : expanded;
-  const longName = KMB_SCHED_DAY_LONG[day] || day;
-  const hasHolidayTab = !!(byDay.H || byDay.D);
-  let html = '<p class="bus-tt-daylabel">' + escapeHtml(longName);
-  if (hasHolidayTab && day !== 'H' && day !== 'D') html += ' · 公眾假期除外';
-  html += '</p>';
-  const span = scheduleSpanLabel(slot);
-  if (span) html += '<p class="bus-tt-span">' + escapeHtml(span) + '</p>';
-  if (clocks.length) {
-    html += '<p class="bus-tt-subhead">' + (slot.exact.length ? '開出時間' : '固定班距可推算的開出時間') + '</p>';
-    html += '<div class="bus-tt-times">' + clocks.map(function (t) {
-      return '<span class="bus-tt-time">' + escapeHtml(t) + '</span>';
-    }).join('') + '</div>';
-  }
-  if (slot.bands.length) {
-    const nowIdx = isToday ? currentBandIndex(slot.bands) : -1;
-    html += '<p class="bus-tt-subhead">官方班距</p>';
-    html += '<table class="bus-tt-table"><thead><tr><th>時間</th><th>班次</th></tr></thead><tbody>';
-    slot.bands.forEach(function (b, i) {
-      const range = b.from + (b.to ? ' – ' + b.to : '');
-      html += '<tr' + (i === nowIdx ? ' class="is-now"' : '') + '><td>' + escapeHtml(range) + '</td><td>' + escapeHtml(formatFreqLabel(b.freq)) + '</td></tr>';
-    });
-    html += '</tbody></table>';
-  }
-  if (!clocks.length && !slot.bands.length) {
-    html += '<div class="bus-route-empty">這日沒有班次資料</div>';
-  }
-  return html;
-}
-
-function paintScheduleDay(container) {
-  const stateTt = container._tt;
-  if (!stateTt) return;
-  const day = stateTt.active;
-  container.querySelectorAll('[data-tt-day]').forEach(function (btn) {
-    const on = btn.getAttribute('data-tt-day') === day;
-    btn.classList.toggle('is-active', on);
-    btn.setAttribute('aria-selected', on ? 'true' : 'false');
-  });
-  const body = container.querySelector('.bus-tt-body');
-  if (!body) return;
-  const today = hkSchedulePreferredDay(stateTt.days);
-  body.innerHTML = scheduleDayBodyHtml(stateTt.byDay, day, day === today);
-}
-
-function mountKmbSchedule(container, bus, rows) {
-  const boundNo = kmbScheduleBoundNo(bus, rows);
-  const byDay = parseKmbScheduleByDay(rows, boundNo);
-  const days = orderedScheduleDays(byDay);
-  if (!days.length) {
-    container.innerHTML = '<p class="bus-tt-note">這條路線暫時沒有時間表。</p>';
-    return;
-  }
-  const dir = kmbScheduleDirectionLabel(rows, boundNo);
-  const active = hkSchedulePreferredDay(days);
-  container._tt = { byDay: byDay, days: days, active: active };
-  const tabs = days.map(function (d) {
-    const label = KMB_SCHED_DAY_SHORT[d] || KMB_SCHED_DAY_LONG[d] || d;
-    return '<button type="button" class="bus-tt-tab" role="tab" data-tt-day="' + escapeHtml(d) + '">' + escapeHtml(label) + '</button>';
-  }).join('');
-  const live = scheduleLiveLine(bus);
-  const heading = (dir.from && dir.to) ? (dir.from + ' → ' + dir.to) : (bus.direction || '');
-  container.innerHTML =
-    '<div class="bus-tt">' +
-      (heading ? '<div class="bus-tt-head">' + escapeHtml(heading) + '</div>' : '') +
-      (live ? '<p class="bus-tt-live">' + escapeHtml(live) + '</p>' : '') +
-      '<div class="bus-tt-tabs" role="tablist">' + tabs + '</div>' +
-      '<div class="bus-tt-body"></div>' +
-      '<p class="bus-tt-note">來源：九巴／龍運路線搜尋時間表。有固定班距先列出推算開出時間；「約每 12–15 分鐘」這類時段以班距為準。夜間沒有班次時，時間表仍然可以打開。</p>' +
-    '</div>';
-  if (!container._ttBound) {
-    container._ttBound = true;
-    container.addEventListener('click', function (e) {
-      const btn = e.target.closest('[data-tt-day]');
-      if (!btn || !container.contains(btn)) return;
-      if (!container._tt) return;
-      container._tt.active = btn.getAttribute('data-tt-day');
-      paintScheduleDay(container);
-    });
-  }
-  paintScheduleDay(container);
-}
-
-function fillBusScheduleSlot(bus) {
-  const slot = document.getElementById('busScheduleSlot');
-  if (!slot) return;
-  const operator = resolveBusOperator(bus);
-  if (operator !== 'KMB') {
-    slot.innerHTML = '<p class="bus-tt-note">城巴未有公開全日開出時間表，下面係各站即將到站。</p>';
-    return;
-  }
-  const route = String(bus.route || '').trim().toUpperCase();
-  fetchKmbPublishedSchedule(route, bus.serviceType).then(function (rows) {
-    const still = document.getElementById('busScheduleSlot');
-    if (!still) return;
-    mountKmbSchedule(still, bus, rows);
-  }).catch(function () {
-    const still = document.getElementById('busScheduleSlot');
-    if (!still) return;
-    still.innerHTML = '<div class="bus-route-error">暫時取唔到全日時間表，請稍後再試。</div>';
-  });
-}
-
-async function openBusTimetable(bus) {
-  bus = normalizeBusEntry(bus);
-  const route = String(bus.route || '').trim().toUpperCase();
-  const operator = resolveBusOperator(bus);
-  const opLabel = operator === 'CTB' ? '城巴' : '九巴';
-  openModal(
-    '<h3>' + escapeHtml(route || '巴士') + ' 全日時間表 <span class="bus-op-badge ' + (operator === 'CTB' ? 'is-ctb' : 'is-kmb') + '">' + opLabel + '</span></h3>' +
-    '<div id="busScheduleSlot"><p class="bus-route-hint bus-route-loading">載入時間表…</p></div>' +
-    '<div class="modal-actions">' +
-      '<button type="button" class="btn btn-ghost" id="busTtClose">關閉</button>' +
-    '</div>'
-  );
-  const closeBtn = document.getElementById('busTtClose');
-  if (closeBtn) closeBtn.onclick = closeModal;
-  fillBusScheduleSlot(bus);
 }
 
 async function fetchKmbRouteEta(route, serviceType) {
@@ -8150,17 +7700,20 @@ function renderRouteStopRowsHtml(stops, etaMap, apiDir, nearbyKmbId, stopsMap) {
   }).join('');
 }
 
-async function openBusRouteSheet(busId) {
-  const bus = (state.busStops || []).map(normalizeBusEntry).find(function (b) { return b.id === busId; });
+async function openBusRouteSheet(busOrId) {
+  let bus = null;
+  if (busOrId && typeof busOrId === 'object') {
+    bus = normalizeBusEntry(busOrId);
+  } else {
+    bus = (state.busStops || []).map(normalizeBusEntry).find(function (b) { return b.id === busOrId; });
+  }
   if (!bus) return;
   const route = String(bus.route || '').trim().toUpperCase();
   const watchedDir = resolveBusApiDir(bus);
   const operator = resolveBusOperator(bus);
   const opLabel = operator === 'CTB' ? '城巴' : '九巴';
   openModal(
-    '<h3>' + escapeHtml(route || '巴士') + ' 時間表 <span class="bus-op-badge ' + (operator === 'CTB' ? 'is-ctb' : 'is-kmb') + '">' + opLabel + '</span></h3>' +
-    '<div id="busScheduleSlot"><p class="bus-route-hint bus-route-loading">載入全日時間表…</p></div>' +
-    '<p class="bus-tt-section-label">沿線即將到站</p>' +
+    '<h3>' + escapeHtml(route || '巴士') + ' 沿線 <span class="bus-op-badge ' + (operator === 'CTB' ? 'is-ctb' : 'is-kmb') + '">' + opLabel + '</span></h3>' +
     '<p class="bus-route-hint bus-route-loading" id="busRouteHint">載入沿線站點與到站時間…</p>' +
     '<div id="busRouteBody"><div class="bus-route-loading">請稍候</div></div>' +
     '<div class="modal-actions">' +
@@ -8169,7 +7722,6 @@ async function openBusRouteSheet(busId) {
   );
   const closeBtn = document.getElementById('busRouteClose');
   if (closeBtn) closeBtn.onclick = closeModal;
-  fillBusScheduleSlot(bus);
 
   try {
     const dirs = watchedDir === 'I' ? ['I', 'O'] : ['O', 'I'];
@@ -8588,7 +8140,7 @@ function renderHeaderBusEta() {
   if (!el) return;
   const view = headerBusNextView();
   el.textContent = view.text;
-  if (chip) chip.title = view.title + ' · 點擊睇全日時間表';
+  if (chip) chip.title = view.title + ' · 點擊睇沿線站';
 }
 
 let headerBusEtaTimer = null;
@@ -8644,7 +8196,7 @@ function startHeaderBusEta() {
     });
     const chip = document.getElementById('hdrBusChip');
     if (chip) {
-      const openTt = function () { openBusTimetable(headerBusE36aYl()); };
+      const openTt = function () { openBusRouteSheet(headerBusE36aYl()); };
       chip.addEventListener('click', openTt);
       chip.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') {
