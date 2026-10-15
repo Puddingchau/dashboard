@@ -2,5 +2,6 @@
   "shareEnabled": false,
   "shareSalt": "",
   "sharePasswordHash": "",
+  "shareExpiresAt": 0,
   "updatedAt": 0
 }
