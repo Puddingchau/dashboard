@@ -1247,6 +1247,33 @@
       color: var(--accent-badge-text, var(--accent-primary));
       box-shadow: 0 2px 8px var(--card-shadow);
     }
+    .events-kind-tabs {
+      margin-bottom: 8px;
+    }
+    .events-kind-tabs .subtab {
+      font-size: 13px;
+      min-height: 36px;
+    }
+    .event-kind-picker { margin-bottom: 0; }
+    .event-item.kind-personal { box-shadow: inset 3px 0 0 #2dd4bf; }
+    .event-item.kind-school { box-shadow: inset 3px 0 0 #f59e0b; }
+    .sync-actions {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      padding: 0 8px;
+    }
+    .sync-actions .gcal-hint,
+    #gdriveSyncStatus {
+      flex: 1 0 100%;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
     #eventsFilterTabs {
       flex-wrap: nowrap;
       overflow-x: auto;
@@ -2055,8 +2082,19 @@
       border-radius: 999px;
     }
     .cal-dot.event { background: #f59e0b; }
+    .cal-dot.personal { background: #2dd4bf; }
     .cal-dot.todo { background: #38bdf8; }
     .cal-dot.holiday { background: #fb7185; }
+    .cal-legend {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 6px;
+      margin: 8px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .cal-legend .cal-dot { display: inline-block; }
     /* Public holiday: soft wine — distinct from sun red text, today amber ring, selected accent */
     .cal-day.holiday:not(.other-month) {
       background: rgba(136, 19, 55, 0.42);
@@ -2112,6 +2150,10 @@
     .cal-tag.event {
       background: #422006;
       color: #fbbf24;
+    }
+    .cal-tag.personal {
+      background: #042f2e;
+      color: #5eead4;
     }
     .cal-tag.todo {
       background: #1e3a4f;
@@ -2336,10 +2378,11 @@
 
     <div class="view-only-banner" id="viewOnlyBanner" role="status">只睇模式 · 改動唔會儲存</div>
 
-    <div class="sync-actions" style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px;margin-bottom:4px;padding:0 8px">
-      <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google Drive</button>
+    <div class="sync-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google</button>
       <button type="button" class="btn btn-ghost btn-sm" id="gdriveSyncNowBtn" hidden>立即同步</button>
-      <span id="gdriveSyncStatus" style="font-size:12px;color:var(--muted);align-self:center">未連接</span>
+      <p class="gcal-hint" id="gcalHint">請用 freddychow82@gmail.com 授權 Calendar。個人活動會雙向同步到 primary 日曆；學校活動唔會推去 Google Calendar。</p>
+      <span id="gdriveSyncStatus">未連接</span>
     </div>
 
     <div class="feature-stack" id="featureStack">
@@ -2370,17 +2413,21 @@
       </div>
     </section>
 
-    <!-- 2. 學校活動 -->
+    <!-- 2. 活動（個人／學校） -->
     <section class="feature-block accent-pink" id="events" data-section="events">
       <div class="block-header" id="hdr-events">
         <span class="block-title-wrap">
-          <span class="block-label">學校活動</span>
+          <span class="block-label">活動</span>
           <span class="block-summary" id="summary-events"><strong class="summary-num">0</strong></span>
         </span>
       </div>
       <div class="block-body" id="body-events">
         <div class="block-body-inner">
       <div class="card glass-card">
+        <div class="subtabs events-kind-tabs" role="tablist" id="eventsKindTabs" aria-label="活動類型">
+          <button type="button" class="subtab" data-events-kind="personal" aria-selected="false">個人活動</button>
+          <button type="button" class="subtab active" data-events-kind="school" aria-selected="true">學校活動</button>
+        </div>
         <div class="section-toolbar">
           <div class="subtabs events-view-tabs" role="tablist" id="eventsFilterTabs" aria-label="活動篩選">
             <button type="button" class="subtab active" data-events-filter="today">今天</button>
@@ -2427,6 +2474,7 @@
           <div class="cal-weekday sat">六</div>
         </div>
         <div class="cal-grid" id="calGrid" role="grid" aria-label="月曆"></div>
+        <p class="cal-legend" aria-hidden="true"><span class="cal-dot event"></span> 學校 <span class="cal-dot personal"></span> 個人</p>
         <div class="cal-day-panel" id="calDayPanel" hidden>
           <p class="cal-day-panel-title" id="calDayPanelTitle"></p>
           <div class="cal-day-items" id="calDayItems"></div>
@@ -2669,10 +2717,14 @@ const TCS_DATA = {
 };
 
 const STORAGE_KEY = 'dash-hub-v1';
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10; // 10: events.kind personal|school + gcalEventId
 const GDRIVE_SYNC_FILENAME = '布丁仔-sync.json';
 const GDRIVE_OAUTH_CLIENT_ID = '508206831418-cmm0ra1v21lajj6ned33l33d8ohdtll8.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+const GOOGLE_OAUTH_SCOPES = GDRIVE_SCOPE + ' ' + GCAL_SCOPE;
+const GCAL_ACCOUNT_EMAIL = 'freddychow82@gmail.com';
+const GCAL_CALENDAR_ID = 'primary';
 const GDRIVE_FILE_ID_KEY = 'dash-hub-gdrive-file-id';
 const TCS_SEARCH = 'https://tcs.edb.gov.hk/tcs/portal/publiccalendar/searchPublicCal/load.htm?pdType=0&leveltype=3&homePageSelection=2&fromMenu=Y';
 
@@ -2726,6 +2778,7 @@ const SEED_SHORTCUTS = [
 
 /** Seeded 學校活動 — shipped in HTML so GitHub Pages users get them (localStorage is per-browser).
  *  Stable ids: merge on load without duplicating; user edits kept if same id present.
+ *  Every e_seed_* (including e_seed_eco_cabinet_*) is kind "school".
  */
 const SEED_EVENTS = [
   {
@@ -3246,6 +3299,90 @@ const SEED_EVENTS = [
     date: '2026-09-11',
     time: '',
     work: '代號峯（周恒峯，表第11行）；總計 8 節。已核實：11/12 上／下為 3A。其餘日期（11/9、18/9、12/3、28/5、11/6、18/6）班次見紙本全日編配表（OCR 未完全確認）。來源：星期五沒有課外活動課(全日)上課安排 2026-2027。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20261022',
+    title: '生態閣保養',
+    date: '2026-10-22',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸過濾器；更換底材。備註：24/10 家長教師會周年會員大會暨分級家長會。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20261119',
+    title: '生態閣保養',
+    date: '2026-11-19',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20261203',
+    title: '生態閣保養',
+    date: '2026-12-03',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；供應糧食；清洗魚缸過濾器；更換底材。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270107',
+    title: '生態閣保養',
+    date: '2027-01-07',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270128',
+    title: '生態閣保養',
+    date: '2027-01-28',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；供應糧食；清洗魚缸過濾器；更換底材。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270304',
+    title: '生態閣保養',
+    date: '2027-03-04',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270401',
+    title: '生態閣保養',
+    date: '2027-04-01',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；供應糧食；清洗魚缸過濾器；更換底材。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270506',
+    title: '生態閣保養',
+    date: '2027-05-06',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270603',
+    title: '生態閣保養',
+    date: '2027-06-03',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食；清洗魚缸過濾器；更換底材。備註：30/6 畢業典禮。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270628',
+    title: '生態閣保養',
+    date: '2027-06-28',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。備註：3/7 P.1–5 家長日。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270808',
+    title: '生態閣保養',
+    date: '2027-08-08',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；供應糧食；清洗魚缸過濾器；更換底材。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270902',
+    title: '生態閣保養',
+    date: '2027-09-02',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
   }
 ];
 
@@ -3318,6 +3455,22 @@ function formatEventStatus(dateStr) {
   return formatDays(daysDiff(d));
 }
 
+/** e_seed_* without an explicit kind are school. Other events without kind are personal. */
+function eventKindOf(e) {
+  if (!e) return 'personal';
+  if (e.kind === 'personal' || e.kind === 'school') return e.kind;
+  if (String(e.id || '').indexOf('e_seed_') === 0) return 'school';
+  return 'personal';
+}
+
+function normalizeEventsKind(raw) {
+  return raw === 'personal' ? 'personal' : 'school';
+}
+
+function eventsKindLabel(kind) {
+  return normalizeEventsKind(kind) === 'personal' ? '個人活動' : '學校活動';
+}
+
 function normalizeEvent(e) {
   const title = String((e && e.title) || '');
   let date = '';
@@ -3339,10 +3492,32 @@ function normalizeEvent(e) {
     const m = time.match(/^(\d{1,2}):(\d{2})/);
     if (m) time = pad2(+m[1]) + ':' + pad2(+m[2]);
   }
-  const out = { id: (e && e.id) || uid('e'), title, date, time, work };
+  const id = (e && e.id) || uid('e');
+  const kind = eventKindOf(Object.assign({}, e || {}, { id: id }));
+  const out = { id: id, title: title, date: date, time: time, work: work, kind: kind };
   if (e && e.updatedAt != null) out.updatedAt = e.updatedAt;
   if (e && e.createdAt != null) out.createdAt = e.createdAt;
+  if (kind === 'personal' && e && e.gcalEventId) {
+    const gid = String(e.gcalEventId).trim();
+    if (gid) out.gcalEventId = gid;
+  }
+  if (kind === 'personal' && e && e.gcalUpdated != null && e.gcalUpdated !== '') {
+    const gms = Number(e.gcalUpdated);
+    if (gms) out.gcalUpdated = gms;
+  }
   return out;
+}
+
+/** Drive / export shape: always include kind and gcalEventId. School never carries a calendar id. */
+function eventForExport(e) {
+  const n = normalizeEvent(e);
+  if (n.kind !== 'personal') {
+    n.gcalEventId = '';
+    delete n.gcalUpdated;
+  } else if (!n.gcalEventId) {
+    n.gcalEventId = '';
+  }
+  return n;
 }
 
 const EVENTS_FILTERS = ['today', 'tomorrow', 'dayAfter', 'week', 'month'];
@@ -3405,17 +3580,18 @@ function eventInFilter(ev, filter) {
 
 function countEventsToday() {
   const today = todayLocal();
-  return (state.events || []).filter(ev => eventOnDate(ev, today)).length;
+  const kind = normalizeEventsKind(state.eventsKind);
+  return (state.events || []).filter(ev => eventKindOf(ev) === kind && eventOnDate(ev, today)).length;
 }
 
 function eventsFilterHintText() {
   const win = getEventsFilterRange(state.eventsFilter);
-  return '顯示' + win.label + '的活動';
+  return '顯示' + win.label + '的' + eventsKindLabel(state.eventsKind);
 }
 
 function eventsFilterEmptyText() {
   const win = getEventsFilterRange(state.eventsFilter);
-  return win.label + '暫無活動';
+  return win.label + '暫無' + eventsKindLabel(state.eventsKind);
 }
 
 function ensureDefaultCategories(cats) {
@@ -3654,9 +3830,10 @@ function normEventTitle(t) {
   return String(t || '').trim().replace(/\s+/g, ' ');
 }
 
-/** Same school activity: title + date; time soft-matches if either empty. */
+/** Same activity: kind + title + date; time soft-matches if either empty. */
 function eventsSameTitleDate(a, b) {
   if (!a || !b) return false;
+  if (eventKindOf(a) !== eventKindOf(b)) return false;
   if (normEventTitle(a.title) !== normEventTitle(b.title)) return false;
   if (String(a.date || '') !== String(b.date || '')) return false;
   const ta = String(a.time || '');
@@ -3696,10 +3873,12 @@ function dedupeEventsByTitleDate(events) {
       // Keep richer work if winner somehow empty and loser has work
       if (!String(ev.work || '').trim() && curWork) ev = Object.assign({}, ev, { work: cur.work });
       if (!String(ev.time || '') && cur.time) ev = Object.assign({}, ev, { time: cur.time });
+      if (!ev.gcalEventId && cur.gcalEventId) ev = Object.assign({}, ev, { gcalEventId: cur.gcalEventId, gcalUpdated: cur.gcalUpdated });
       kept[idx] = ev;
     } else {
       if (!curWork && evWork) kept[idx] = Object.assign({}, cur, { work: ev.work });
       if (!String(cur.time || '') && ev.time) kept[idx] = Object.assign({}, kept[idx], { time: ev.time });
+      if (!kept[idx].gcalEventId && ev.gcalEventId) kept[idx] = Object.assign({}, kept[idx], { gcalEventId: ev.gcalEventId, gcalUpdated: ev.gcalUpdated });
     }
   });
   return kept;
@@ -3739,6 +3918,7 @@ function normalizeState(data) {
     todos: [],
     events: SEED_EVENTS.map(e => normalizeEvent({ ...e })),
     eventsFilter: 'today',
+    eventsKind: 'school',
     busStops: cloneSeedBus(),
     expandedSection: null,
     trainingExpanded: false,
@@ -3857,6 +4037,7 @@ function normalizeState(data) {
   } else {
     base.eventsFilter = 'today';
   }
+  base.eventsKind = normalizeEventsKind(data.eventsKind);
   base.busStops = migrateBusStops(data.busStops);
   const exp = data.expandedSection;
   base.expandedSection = (exp === null || exp === undefined || exp === '')
@@ -3917,13 +4098,14 @@ function buildExportPayload() {
     updatedAt: Date.now(),
     schemaVersion: SCHEMA_VERSION,
     todos: Array.isArray(state.todos) ? state.todos : [],
-    events: Array.isArray(state.events) ? state.events : [],
+    events: (Array.isArray(state.events) ? state.events : []).map(eventForExport),
     shortcuts: Array.isArray(state.shortcuts) ? state.shortcuts : [],
     categories: Array.isArray(state.categories) ? state.categories : [],
     busStops: Array.isArray(state.busStops) ? state.busStops : [],
     theme: state.theme || 'sunny-beach',
     todoTab: normalizeTodoTab(typeof todoTab !== 'undefined' ? todoTab : state.todoTab),
     eventsFilter: state.eventsFilter || 'today',
+    eventsKind: normalizeEventsKind(state.eventsKind),
     syncUpdatedAt: state.syncUpdatedAt || 0,
     share: normalizeShare(state.share)
   };
@@ -3939,7 +4121,8 @@ function mergeSyncPayload(remote, opts) {
   return applyRemoteSyncPayload(remote, opts || { applyExtras: false });
 }
 
-function saveState() {
+function saveState(opts) {
+  opts = opts || {};
   if (!VIEW_ONLY) {
     try {
       const payload = {
@@ -3949,6 +4132,7 @@ function saveState() {
         todos: state.todos,
         events: state.events,
         eventsFilter: state.eventsFilter || 'today',
+        eventsKind: normalizeEventsKind(state.eventsKind),
         busStops: state.busStops,
         trainingExpanded: !!state.trainingExpanded,
         busExpanded: !!state.busExpanded,
@@ -3969,8 +4153,8 @@ function saveState() {
   try {
     if (document.getElementById('calGrid')) renderCalendar();
   } catch (e) {}
-  if (!VIEW_ONLY) {
-    try { scheduleGdriveAutoPush(); } catch (e) {}
+  if (!VIEW_ONLY && opts.scheduleSync !== false) {
+    try { scheduleCloudSync(); } catch (e) {}
   }
 }
 
@@ -4738,8 +4922,15 @@ function renderTodos() {
 function syncEventsFilterUI() {
   const f = normalizeEventsFilter(state.eventsFilter);
   state.eventsFilter = f;
+  const k = normalizeEventsKind(state.eventsKind);
+  state.eventsKind = k;
   document.querySelectorAll('#eventsFilterTabs .subtab').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-events-filter') === f);
+  });
+  document.querySelectorAll('#eventsKindTabs .subtab').forEach(btn => {
+    const on = btn.getAttribute('data-events-kind') === k;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   const hint = document.getElementById('eventsViewHint');
   if (hint) hint.textContent = eventsFilterHintText();
@@ -4754,11 +4945,72 @@ document.querySelectorAll('#eventsFilterTabs .subtab').forEach(btn => {
   });
 });
 
+document.querySelectorAll('#eventsKindTabs .subtab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.eventsKind = normalizeEventsKind(btn.getAttribute('data-events-kind'));
+    saveState();
+    syncEventsFilterUI();
+    renderEvents();
+    updateBlockSummaries();
+  });
+});
+
+function eventKindPickerHtml(selected) {
+  const kind = selected === 'school' ? 'school' : 'personal';
+  const hint = kind === 'personal'
+    ? '個人活動會同步到 Google Calendar（' + GCAL_ACCOUNT_EMAIL + '）。'
+    : '學校活動只留喺本機同 Drive，唔會推去 Google Calendar。';
+  return (
+    '<div><label class="field-label">類型</label>' +
+    '<div class="subtabs event-kind-picker" id="eventKindPicker" role="radiogroup" aria-label="活動類型">' +
+      '<button type="button" class="subtab' + (kind === 'personal' ? ' active' : '') + '" data-kind="personal">個人</button>' +
+      '<button type="button" class="subtab' + (kind === 'school' ? ' active' : '') + '" data-kind="school">學校</button>' +
+    '</div>' +
+    '<input type="hidden" name="kind" id="eventKindInput" value="' + kind + '" />' +
+    '<p class="meta" id="eventKindHint" style="margin:6px 0 0">' + hint + '</p></div>'
+  );
+}
+
+function bindEventKindPicker() {
+  const picker = document.getElementById('eventKindPicker');
+  const input = document.getElementById('eventKindInput');
+  const hint = document.getElementById('eventKindHint');
+  if (!picker || !input) return;
+  picker.querySelectorAll('[data-kind]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const k = btn.getAttribute('data-kind') === 'school' ? 'school' : 'personal';
+      input.value = k;
+      picker.querySelectorAll('[data-kind]').forEach(function (b) {
+        b.classList.toggle('active', b === btn);
+      });
+      if (hint) {
+        hint.textContent = k === 'personal'
+          ? '個人活動會同步到 Google Calendar（' + GCAL_ACCOUNT_EMAIL + '）。'
+          : '學校活動只留喺本機同 Drive，唔會推去 Google Calendar。';
+      }
+    });
+  });
+}
+
+function readEventKind(fd) {
+  return String(fd.get('kind') || '') === 'school' ? 'school' : 'personal';
+}
+
+function removeEventById(id) {
+  const ev = (state.events || []).find(function (x) { return x.id === id; });
+  if (ev && ev.gcalEventId && eventKindOf(ev) === 'personal') queueGcalDelete(ev.gcalEventId);
+  state.events = (state.events || []).filter(function (x) { return x.id !== id; });
+  saveState();
+  renderEvents();
+  updateBlockSummaries();
+}
+
 function openEventAddModal() {
   if (VIEW_ONLY) return;
   openModal(
-    '<h3>新增學校活動</h3>' +
+    '<h3>新增活動</h3>' +
     '<form class="form-stack" id="eventAddForm">' +
+      eventKindPickerHtml('personal') +
       '<div><label class="field-label">名稱</label>' +
         '<input type="text" name="title" required maxlength="200" placeholder="活動名稱…" autocomplete="off" /></div>' +
       '<div class="form-row">' +
@@ -4775,6 +5027,7 @@ function openEventAddModal() {
       '</div>' +
     '</form>'
   );
+  bindEventKindPicker();
   document.getElementById('eventAddCancel').onclick = closeModal;
   document.getElementById('eventAddForm').onsubmit = (e) => {
     e.preventDefault();
@@ -4783,10 +5036,15 @@ function openEventAddModal() {
     const date = String(fd.get('date') || '');
     const time = String(fd.get('time') || '');
     const work = String(fd.get('work') || '').trim();
+    const kind = readEventKind(fd);
     if (!title || !date) return;
-    state.events.push(normalizeEvent({ id: uid('e'), title, date, time, work }));
+    const now = Date.now();
+    state.events.push(normalizeEvent({ id: uid('e'), title: title, date: date, time: time, work: work, kind: kind, updatedAt: now, createdAt: now }));
+    if (kind === 'personal') state.eventsKind = 'personal';
+    else state.eventsKind = 'school';
     saveState();
     closeModal();
+    syncEventsFilterUI();
     renderEvents();
     updateBlockSummaries();
   };
@@ -4798,9 +5056,11 @@ function openEventEditModal(editId) {
   if (VIEW_ONLY) return;
   const ev = state.events.find(x => x.id === editId);
   if (!ev) return;
+  const kind = eventKindOf(ev);
   openModal(
     '<h3>編輯活動</h3>' +
     '<form class="form-stack" id="evEditForm">' +
+      eventKindPickerHtml(kind) +
       '<div><label class="field-label">活動名稱</label>' +
         '<input type="text" name="title" required maxlength="200" value="' + escapeHtml(ev.title) + '" /></div>' +
       '<div class="form-row">' +
@@ -4818,13 +5078,15 @@ function openEventEditModal(editId) {
       '</div>' +
     '</form>'
   );
+  bindEventKindPicker();
   document.getElementById('evCancel').onclick = closeModal;
   document.getElementById('evDelete').onclick = () => {
-    if (!confirm('確定刪除此活動？')) return;
-    state.events = state.events.filter(x => x.id !== editId);
-    saveState();
+    const msg = eventKindOf(ev) === 'personal'
+      ? '確定刪除此活動？會一併從 Google Calendar 移除。'
+      : '確定刪除此活動？';
+    if (!confirm(msg)) return;
     closeModal();
-    renderEvents();
+    removeEventById(editId);
   };
   document.getElementById('evEditForm').onsubmit = (e) => {
     e.preventDefault();
@@ -4833,11 +5095,30 @@ function openEventEditModal(editId) {
     const date = String(fd.get('date') || '');
     const time = String(fd.get('time') || '');
     const work = String(fd.get('work') || '').trim();
+    const nextKind = readEventKind(fd);
     if (!title || !date) return;
     const idx = state.events.findIndex(x => x.id === editId);
-    if (idx >= 0) state.events[idx] = normalizeEvent({ id: editId, title, date, time, work });
+    if (idx >= 0) {
+      const prev = state.events[idx];
+      const changed = prev.title !== title || prev.date !== date || (prev.time || '') !== (time || '') || (prev.work || '') !== work || eventKindOf(prev) !== nextKind;
+      if (prev.gcalEventId && nextKind !== 'personal') queueGcalDelete(prev.gcalEventId);
+      state.events[idx] = normalizeEvent({
+        id: editId,
+        title: title,
+        date: date,
+        time: time,
+        work: work,
+        kind: nextKind,
+        updatedAt: changed ? Date.now() : prev.updatedAt,
+        createdAt: prev.createdAt,
+        gcalEventId: nextKind === 'personal' ? prev.gcalEventId : '',
+        gcalUpdated: nextKind === 'personal' ? prev.gcalUpdated : ''
+      });
+      state.eventsKind = nextKind;
+    }
     saveState();
     closeModal();
+    syncEventsFilterUI();
     renderEvents();
   };
 }
@@ -4870,14 +5151,15 @@ function renderEvents() {
   let dirty = false;
   state.events = state.events.map(ev => {
     const n = normalizeEvent(ev);
-    if (ev.from != null || ev.to != null || ev.date !== n.date || ev.time !== n.time || (ev.work || '') !== n.work) dirty = true;
+    if (ev.from != null || ev.to != null || ev.kind !== n.kind || ev.date !== n.date || ev.time !== n.time || (ev.work || '') !== n.work || (ev.gcalEventId || '') !== (n.gcalEventId || '')) dirty = true;
     return n;
   });
   if (dirty) saveState();
 
   const filter = normalizeEventsFilter(state.eventsFilter);
+  const kind = normalizeEventsKind(state.eventsKind);
   const visible = sortEventsNearestFirst(
-    state.events.filter(ev => eventInFilter(ev, filter))
+    state.events.filter(ev => eventKindOf(ev) === kind && eventInFilter(ev, filter))
   );
 
   if (!visible.length) {
@@ -4889,7 +5171,7 @@ function renderEvents() {
       ? '<div class="event-work">' + escapeHtml(ev.work) + '</div>'
       : '';
     return (
-      '<div class="event-item" data-id="' + escapeHtml(ev.id) + '">' +
+      '<div class="event-item kind-' + (eventKindOf(ev) === 'personal' ? 'personal' : 'school') + '" data-id="' + escapeHtml(ev.id) + '">' +
         '<div class="todo-body">' +
           '<div class="todo-title">' + escapeHtml(ev.title) + '</div>' +
           '<div class="meta">' +
@@ -4918,9 +5200,12 @@ function renderEvents() {
       delBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (VIEW_ONLY) return;
-        state.events = state.events.filter(x => x.id !== id);
-        saveState();
-        renderEvents();
+        const target = state.events.find(x => x.id === id);
+        const msg = target && eventKindOf(target) === 'personal'
+          ? '確定刪除此活動？會一併從 Google Calendar 移除。'
+          : '確定刪除此活動？';
+        if (!confirm(msg)) return;
+        removeEventById(id);
       });
     }
     const body = row.querySelector('.todo-body');
@@ -5084,7 +5369,10 @@ function renderCalendar() {
     const ymd = toYMD(cell.date);
     const dow = cell.date.getDay();
     const marks = marksForYMD(ymd);
-    const hasE = marks.events.length > 0;
+    const schoolEvents = marks.events.filter(function (e) { return eventKindOf(e) === 'school'; });
+    const personalEvents = marks.events.filter(function (e) { return eventKindOf(e) === 'personal'; });
+    const hasSchool = schoolEvents.length > 0;
+    const hasPersonal = personalEvents.length > 0;
     const hasT = marks.todos.length > 0;
     const hasH = marks.holidays.length > 0;
     const cls = [
@@ -5098,7 +5386,8 @@ function renderCalendar() {
     ].filter(Boolean).join(' ');
     let dots = '';
     if (hasH) dots += '<span class="cal-dot holiday" title="公眾假期"></span>';
-    if (hasE) dots += '<span class="cal-dot event" title="活動"></span>';
+    if (hasSchool) dots += '<span class="cal-dot event" title="學校活動"></span>';
+    if (hasPersonal) dots += '<span class="cal-dot personal" title="個人活動"></span>';
     if (hasT) dots += '<span class="cal-dot todo" title="To-Do"></span>';
     // Grid cells: day number + indicator dots only (titles live in calDayPanel after tap)
     return (
@@ -5146,10 +5435,14 @@ function renderCalDayPanel() {
       '</div>'
     );
   });
-  marks.events.forEach(function (e) {
+  marks.events.slice().sort(function (a, b) {
+    if (eventKindOf(a) === eventKindOf(b)) return String(a.time || '').localeCompare(String(b.time || ''));
+    return eventKindOf(a) === 'personal' ? -1 : 1;
+  }).forEach(function (e) {
+    const personal = eventKindOf(e) === 'personal';
     rows.push(
       '<div class="cal-day-item">' +
-        '<span class="cal-tag event">活動</span>' +
+        '<span class="cal-tag ' + (personal ? 'personal' : 'event') + '">' + (personal ? '個人' : '學校') + '</span>' +
         '<div class="cal-item-text">' + escapeHtml(e.title || '（無標題）') +
           (e.time ? '<span class="cal-item-meta">' + escapeHtml(e.time) + '</span>' : '') +
         '</div>' +
@@ -7151,6 +7444,13 @@ function applyRemoteSyncPayload(remote, opts) {
       state.eventsFilter = normalizeEventsFilter(remote.eventsFilter);
       changed = true;
     }
+    if (remote.eventsKind != null) {
+      const nextKind = normalizeEventsKind(remote.eventsKind);
+      if (nextKind !== state.eventsKind) {
+        state.eventsKind = nextKind;
+        changed = true;
+      }
+    }
     if (remote.share && typeof remote.share === 'object') {
       const next = normalizeShare(remote.share);
       const localTs = Number(state.share && state.share.updatedAt) || 0;
@@ -7221,6 +7521,8 @@ let gdriveTokenClient = null;
 let gdriveFileId = null;
 let gdriveAutoPushTimer = null;
 let gdriveSyncInFlight = false;
+let gcalAccessState = 'unknown'; // unknown | ok | no-scope | api-off | error
+let gcalVisSyncAt = 0;
 
 function gdriveHasClientId() {
   return !!(GDRIVE_OAUTH_CLIENT_ID && String(GDRIVE_OAUTH_CLIENT_ID).trim());
@@ -7239,7 +7541,10 @@ function updateGdriveUiConnected(connected) {
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   const connectBtn = document.getElementById('gdriveConnectBtn');
   if (syncBtn) syncBtn.hidden = !connected;
-  if (connectBtn) connectBtn.textContent = connected ? '已連接 Drive' : '連接 Google Drive';
+  if (!connectBtn) return;
+  if (!connected) connectBtn.textContent = '連接 Google';
+  else if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') connectBtn.textContent = '重新授權 Calendar';
+  else connectBtn.textContent = '已連接';
 }
 
 function formatGdriveSyncTime(ts) {
@@ -7323,7 +7628,7 @@ async function gdriveCreateSyncFile() {
   const payload = buildSyncPayload();
   // Sync covers todos + events + busStops + shortcuts (+ categories/theme in payload)
   if (!Array.isArray(payload.todos)) payload.todos = state.todos || [];
-  if (!Array.isArray(payload.events)) payload.events = state.events || [];
+  payload.events = (state.events || []).map(eventForExport);
   if (!Array.isArray(payload.busStops)) payload.busStops = state.busStops || [];
   if (!Array.isArray(payload.shortcuts)) payload.shortcuts = state.shortcuts || [];
   if (!Array.isArray(payload.categories)) payload.categories = state.categories || [];
@@ -7360,7 +7665,7 @@ async function gdrivePull() {
   // Merge todos+events+bus+shortcuts+categories+theme (applyExtras)
   const changed = mergeSyncPayload(remote, { applyExtras: true });
   if (changed) {
-    saveState();
+    saveState({ scheduleSync: false });
     reRenderAfterSync(true);
   }
   return changed;
@@ -7372,7 +7677,7 @@ async function gdrivePush() {
   const payload = buildSyncPayload();
   // Sync covers todos + events + busStops + shortcuts (+ categories/theme)
   if (!Array.isArray(payload.todos)) payload.todos = state.todos || [];
-  if (!Array.isArray(payload.events)) payload.events = state.events || [];
+  payload.events = (state.events || []).map(eventForExport);
   if (!Array.isArray(payload.busStops)) payload.busStops = state.busStops || [];
   if (!Array.isArray(payload.shortcuts)) payload.shortcuts = state.shortcuts || [];
   if (!Array.isArray(payload.categories)) payload.categories = state.categories || [];
@@ -7388,24 +7693,556 @@ async function gdrivePush() {
 }
 
 function scheduleGdriveAutoPush() {
+  scheduleCloudSync();
+}
+
+function scheduleCloudSync() {
   if (VIEW_ONLY) return;
-  if (!gdriveIsConnected()) return;
+  if (!gdriveAccessToken) return;
   if (gdriveAutoPushTimer) clearTimeout(gdriveAutoPushTimer);
   gdriveAutoPushTimer = setTimeout(function () {
     gdriveAutoPushTimer = null;
-    if (!gdriveIsConnected() || gdriveSyncInFlight) return;
-    gdriveSyncInFlight = true;
-    gdrivePush()
-      .then(function () {
-        setGdriveStatus('已同步 ' + formatGdriveSyncTime());
-      })
-      .catch(function (e) {
-        console.warn('GDrive auto-push failed', e);
-      })
-      .finally(function () {
-        gdriveSyncInFlight = false;
-      });
+    if (gdriveSyncInFlight) {
+      scheduleCloudSync();
+      return;
+    }
+    runCloudSync({ pull: false });
   }, 2500);
+}
+
+function cloudStatusText(driveOk, gcalResult) {
+  const time = formatGdriveSyncTime();
+  const reason = (gcalResult && gcalResult.reason) || '';
+  if (!driveOk) return gdriveAccessToken ? '已連接（同步失敗）' : '同步失敗';
+  if (gcalResult && gcalResult.ok) return '已同步 ' + time + ' · Calendar 已連';
+  if (reason === 'no-scope' || gcalAccessState === 'no-scope') {
+    return 'Drive 已同步 ' + time + ' · Calendar 未授權。請用 ' + GCAL_ACCOUNT_EMAIL + ' 按「重新授權 Calendar」';
+  }
+  if (reason === 'api-off' || gcalAccessState === 'api-off') {
+    return 'Drive 已同步 ' + time + ' · Calendar API 未啟用。個人活動仍留喺本機同 Drive';
+  }
+  if (reason === 'skip') return '已同步 ' + time;
+  return 'Drive 已同步 ' + time + ' · Calendar 暫未能同步（個人活動仍留本機同 Drive）';
+}
+
+async function runCloudSync(opts) {
+  opts = opts || {};
+  if (VIEW_ONLY) return;
+  if (!gdriveAccessToken) {
+    setGdriveStatus('請先連接');
+    return;
+  }
+  if (gdriveSyncInFlight) return;
+  gdriveSyncInFlight = true;
+  setGdriveStatus('同步中…');
+  let driveOk = false;
+  let gcalResult = { ok: false, reason: '' };
+  try {
+    if (opts.pull !== false) {
+      try { await gdrivePull(); } catch (e) { console.warn('GDrive pull failed', e); }
+    }
+    try {
+      gcalResult = await gcalSync();
+    } catch (e) {
+      console.warn('GCal sync failed', e);
+      const reason = (e && e.gcalReason) || 'error';
+      if (reason === 'api-off' || reason === 'no-scope') gcalAccessState = reason;
+      else if (gcalAccessState === 'ok') gcalAccessState = 'error';
+      gcalResult = { ok: false, reason: reason };
+    }
+    await gdrivePush();
+    driveOk = true;
+  } catch (e) {
+    console.warn('cloud sync failed', e);
+    driveOk = false;
+  } finally {
+    gdriveSyncInFlight = false;
+    setGdriveStatus(cloudStatusText(driveOk, gcalResult));
+    updateGdriveUiConnected(!!gdriveAccessToken);
+  }
+}
+
+/* ===== Google Calendar (personal events only, primary of GCAL_ACCOUNT_EMAIL) ===== */
+const GCAL_PENDING_KEY = 'dash-hub-gcal-pending-deletes';
+const GCAL_LIST_FIELDS = 'items(id,status,summary,description,start,updated,eventType,recurringEventId,extendedProperties),nextPageToken';
+
+function loadGcalPendingDeletes() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(GCAL_PENDING_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter(function (x) { return x && x.id; }) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveGcalPendingDeletes(list) {
+  try { localStorage.setItem(GCAL_PENDING_KEY, JSON.stringify(list || [])); } catch (e) {}
+}
+
+function queueGcalDelete(gcalEventId) {
+  const id = String(gcalEventId || '').trim();
+  if (!id || VIEW_ONLY) return;
+  const list = loadGcalPendingDeletes();
+  if (!list.some(function (x) { return x.id === id; })) list.push({ id: id, at: Date.now() });
+  saveGcalPendingDeletes(list);
+}
+
+function parseGcalReason(body, status) {
+  const text = String(body || '');
+  try {
+    const j = JSON.parse(text);
+    const err = j && j.error ? j.error : {};
+    const reason = err.errors && err.errors[0] && err.errors[0].reason;
+    const msg = String(err.message || '');
+    if (reason === 'accessNotConfigured' || /has not been used|is disabled|accessNotConfigured/i.test(msg)) return 'api-off';
+    if (reason === 'insufficientPermissions' || reason === 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' || /insufficient/i.test(msg)) return 'no-scope';
+    if (status === 403 && /PERMISSION_DENIED|forbidden/i.test(String(err.status || '') + msg)) {
+      if (/not been used|disabled|Calendar API/i.test(msg)) return 'api-off';
+      return 'no-scope';
+    }
+  } catch (e) {}
+  if (status === 403 && /not been used|disabled|accessNotConfigured/i.test(text)) return 'api-off';
+  if (status === 403) return 'no-scope';
+  return '';
+}
+
+async function gcalApi(url, opts) {
+  opts = opts || {};
+  if (VIEW_ONLY) {
+    const err = new Error('view-only');
+    err.status = 0;
+    throw err;
+  }
+  const headers = Object.assign({ Authorization: 'Bearer ' + gdriveAccessToken }, opts.headers || {});
+  const res = await fetch(url, Object.assign({}, opts, { headers: headers }));
+  if (res.status === 404 || res.status === 410) {
+    const err = new Error('gcal ' + res.status);
+    err.status = res.status;
+    throw err;
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(function () { return ''; });
+    const err = new Error('Calendar API ' + res.status);
+    err.status = res.status;
+    err.body = body;
+    err.gcalReason = parseGcalReason(body, res.status);
+    throw err;
+  }
+  return res;
+}
+
+function gcalCollectionUrl() {
+  return 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(GCAL_CALENDAR_ID) + '/events';
+}
+
+function gcalEventUrl(eventId) {
+  return gcalCollectionUrl() + '/' + encodeURIComponent(eventId) + '?sendUpdates=none';
+}
+
+async function probeGcalAccess() {
+  if (gcalAccessState === 'ok') return { ok: true };
+  try {
+    const res = await gcalApi('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(GCAL_CALENDAR_ID) + '?fields=id');
+    await res.json();
+    gcalAccessState = 'ok';
+    return { ok: true };
+  } catch (e) {
+    const reason = (e && e.gcalReason) || (e && e.status === 403 ? 'no-scope' : 'error');
+    gcalAccessState = reason === 'api-off' || reason === 'no-scope' ? reason : 'error';
+    return { ok: false, reason: gcalAccessState };
+  }
+}
+
+async function gcalListAll(params) {
+  const items = [];
+  let pageToken = '';
+  for (let page = 0; page < 8; page++) {
+    const u = new URL(gcalCollectionUrl());
+    Object.keys(params || {}).forEach(function (k) {
+      if (params[k] != null && params[k] !== '') u.searchParams.set(k, String(params[k]));
+    });
+    u.searchParams.set('fields', GCAL_LIST_FIELDS);
+    if (pageToken) u.searchParams.set('pageToken', pageToken);
+    const res = await gcalApi(u.toString());
+    const data = await res.json();
+    if (Array.isArray(data.items)) items.push.apply(items, data.items);
+    pageToken = data.nextPageToken || '';
+    if (!pageToken) break;
+  }
+  return items;
+}
+
+function gcalDashId(g) {
+  const priv = g && g.extendedProperties && g.extendedProperties.private;
+  return priv && priv.dashId ? String(priv.dashId) : '';
+}
+
+function hkWallFromDate(d) {
+  if (!d || !Number.isFinite(d.getTime())) return null;
+  try {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Hong_Kong',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    });
+    const parts = {};
+    fmt.formatToParts(d).forEach(function (p) { parts[p.type] = p.value; });
+    let hour = parts.hour || '00';
+    if (hour === '24') hour = '00';
+    return { date: parts.year + '-' + parts.month + '-' + parts.day, time: hour + ':' + parts.minute };
+  } catch (e) {
+    return null;
+  }
+}
+
+function gcalToPatch(g) {
+  const start = (g && g.start) || {};
+  let date = '';
+  let time = '';
+  if (start.date) date = String(start.date);
+  else if (start.dateTime) {
+    const wall = hkWallFromDate(new Date(start.dateTime));
+    if (wall) { date = wall.date; time = wall.time; }
+  }
+  let title = String((g && g.summary) || '').trim();
+  if (title.length > 200) title = title.slice(0, 200);
+  let work = String((g && g.description) || '').trim();
+  if (work.length > 500) work = work.slice(0, 500);
+  return { title: title, date: date, time: time, work: work };
+}
+
+function eventContentKey(ev) {
+  return [String(ev.title || '').trim(), String(ev.date || ''), String(ev.time || ''), String(ev.work || '').trim()].join('\u0001');
+}
+
+function gcalContentKey(g) {
+  return eventContentKey(gcalToPatch(g));
+}
+
+function shiftClock(dateStr, timeStr, addHours) {
+  const m = /^(\d{2}):(\d{2})$/.exec(timeStr || '');
+  const d = parseDateOnly(dateStr);
+  if (!m || !d) return { date: dateStr, time: timeStr || '00:00' };
+  let hh = Number(m[1]) + addHours;
+  const carry = Math.floor(hh / 24);
+  hh = ((hh % 24) + 24) % 24;
+  const endD = new Date(d.getFullYear(), d.getMonth(), d.getDate() + carry);
+  return { date: toYMD(endD), time: pad2(hh) + ':' + pad2(Number(m[2])) };
+}
+
+function eventToGcalBody(ev) {
+  const tz = 'Asia/Hong_Kong';
+  const date = ev.date;
+  const time = ev.time || '';
+  let start;
+  let end;
+  if (/^\d{2}:\d{2}$/.test(time)) {
+    const endP = shiftClock(date, time, 1);
+    start = { dateTime: date + 'T' + time + ':00', timeZone: tz };
+    end = { dateTime: endP.date + 'T' + endP.time + ':00', timeZone: tz };
+  } else {
+    const d = parseDateOnly(date);
+    const next = d ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1) : null;
+    start = { date: date };
+    end = { date: next ? toYMD(next) : date };
+  }
+  return {
+    summary: ev.title || '（無標題）',
+    description: ev.work || '',
+    start: start,
+    end: end,
+    extendedProperties: {
+      private: {
+        dashHub: '1',
+        dashId: String(ev.id),
+        dashUpdatedAt: String(ev.updatedAt || Date.now())
+      }
+    }
+  };
+}
+
+function gcalEventImportable(g) {
+  if (!g || g.status === 'cancelled') return false;
+  if ((g.eventType || 'default') !== 'default') return false;
+  if (g.recurringEventId) return false;
+  const start = g.start || {};
+  if (!start.date && !start.dateTime) return false;
+  return true;
+}
+
+function matchesSchoolEvent(patch) {
+  return (state.events || []).some(function (e) {
+    return eventKindOf(e) === 'school' && e.date === patch.date && normEventTitle(e.title) === normEventTitle(patch.title);
+  });
+}
+
+async function gcalInsert(ev) {
+  const res = await gcalApi(gcalCollectionUrl() + '?sendUpdates=none', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(eventToGcalBody(ev))
+  });
+  return res.json();
+}
+
+async function gcalPatch(eventId, ev) {
+  const res = await gcalApi(gcalEventUrl(eventId), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(eventToGcalBody(ev))
+  });
+  return res.json();
+}
+
+async function gcalStamp(eventId, dashId, updatedAt) {
+  const res = await gcalApi(gcalEventUrl(eventId), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      extendedProperties: {
+        private: {
+          dashHub: '1',
+          dashId: String(dashId),
+          dashUpdatedAt: String(updatedAt || Date.now())
+        }
+      }
+    })
+  });
+  return res.json();
+}
+
+async function flushGcalDeletes() {
+  const list = loadGcalPendingDeletes();
+  const keep = [];
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i];
+    try {
+      await gcalApi(gcalEventUrl(item.id), { method: 'DELETE' });
+    } catch (e) {
+      if (e && (e.status === 404 || e.status === 410)) continue;
+      keep.push(item);
+      if (e && (e.status === 403 || e.status === 401 || e.gcalReason === 'no-scope' || e.gcalReason === 'api-off')) {
+        saveGcalPendingDeletes(keep.concat(list.slice(i + 1)));
+        throw e;
+      }
+    }
+  }
+  saveGcalPendingDeletes(keep);
+}
+
+function localIndexForGcal(g) {
+  const dashId = gcalDashId(g);
+  if (dashId) {
+    const byDash = state.events.findIndex(function (e) { return e.id === dashId; });
+    if (byDash >= 0) return byDash;
+  }
+  if (g && g.id) {
+    const byGid = state.events.findIndex(function (e) { return e.gcalEventId && e.gcalEventId === g.id; });
+    if (byGid >= 0) return byGid;
+  }
+  if (g && g.status !== 'cancelled' && !dashId) {
+    const key = gcalContentKey(g);
+    return state.events.findIndex(function (e) {
+      return eventKindOf(e) === 'personal' && !e.gcalEventId && eventContentKey(e) === key;
+    });
+  }
+  return -1;
+}
+
+async function gcalSync() {
+  if (VIEW_ONLY || !gdriveAccessToken) return { ok: false, reason: 'skip' };
+  if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') {
+    return { ok: false, reason: gcalAccessState };
+  }
+  const probe = gcalAccessState === 'ok' ? { ok: true } : await probeGcalAccess();
+  if (!probe.ok) return probe;
+
+  let changed = false;
+  (state.events || []).forEach(function (ev) {
+    if (eventKindOf(ev) !== 'personal' && ev.gcalEventId) {
+      queueGcalDelete(ev.gcalEventId);
+      delete ev.gcalEventId;
+      delete ev.gcalUpdated;
+      changed = true;
+    }
+  });
+  await flushGcalDeletes();
+
+  const tagged = await gcalListAll({
+    privateExtendedProperty: 'dashHub=1',
+    showDeleted: 'true',
+    singleEvents: 'true',
+    maxResults: '250'
+  });
+  const now = Date.now();
+  let windowItems = [];
+  try {
+    windowItems = await gcalListAll({
+      timeMin: new Date(now - 90 * 86400000).toISOString(),
+      timeMax: new Date(now + 540 * 86400000).toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: '250',
+      showDeleted: 'false'
+    });
+  } catch (e) {
+    console.warn('GCal window list failed', e);
+    windowItems = [];
+  }
+
+  const pending = {};
+  loadGcalPendingDeletes().forEach(function (x) { pending[x.id] = true; });
+  const byGcalId = new Map();
+  tagged.forEach(function (g) { if (g && g.id) byGcalId.set(g.id, g); });
+  windowItems.forEach(function (g) {
+    if (!g || !g.id || byGcalId.has(g.id) || gcalDashId(g)) return;
+    byGcalId.set(g.id, g);
+  });
+
+  const remoteList = Array.from(byGcalId.values());
+  for (let i = 0; i < remoteList.length; i++) {
+    const g = remoteList[i];
+    if (pending[g.id]) continue;
+    const gMs = Date.parse(g.updated) || 0;
+    let idx = localIndexForGcal(g);
+    if (g.status === 'cancelled') {
+      if (idx >= 0 && eventKindOf(state.events[idx]) === 'personal') {
+        const localMs = Number(state.events[idx].updatedAt) || 0;
+        if (gMs >= localMs) {
+          state.events.splice(idx, 1);
+          changed = true;
+        } else if (state.events[idx].gcalEventId) {
+          state.events[idx].gcalEventId = '';
+          changed = true;
+        }
+      }
+      continue;
+    }
+    if (idx < 0 && !gcalEventImportable(g)) continue;
+    if (idx < 0) {
+      const patch = gcalToPatch(g);
+      if (!patch.date || matchesSchoolEvent(patch)) continue;
+      const id = gcalDashId(g) || uid('e');
+      if (state.events.some(function (e) { return e.id === id; })) continue;
+      const imported = normalizeEvent({
+        id: id,
+        title: patch.title,
+        date: patch.date,
+        time: patch.time,
+        work: patch.work,
+        kind: 'personal',
+        gcalEventId: g.id,
+        gcalUpdated: gMs,
+        updatedAt: gMs || Date.now(),
+        createdAt: gMs || Date.now()
+      });
+      state.events.push(imported);
+      changed = true;
+      if (!gcalDashId(g)) {
+        try { await gcalStamp(g.id, imported.id, imported.updatedAt); } catch (e) { console.warn('GCal stamp failed', e); }
+      }
+      continue;
+    }
+    const local = state.events[idx];
+    if (eventKindOf(local) !== 'personal') continue;
+    const localMs = Number(local.updatedAt) || 0;
+    if (eventContentKey(local) === gcalContentKey(g)) {
+      if (local.gcalEventId !== g.id || Number(local.gcalUpdated) !== gMs) {
+        local.gcalEventId = g.id;
+        local.gcalUpdated = gMs;
+        changed = true;
+      }
+      if (!gcalDashId(g)) {
+        try { await gcalStamp(g.id, local.id, local.updatedAt || gMs); } catch (e) { console.warn('GCal stamp failed', e); }
+      }
+      continue;
+    }
+    if (gMs > localMs) {
+      const patch = gcalToPatch(g);
+      state.events[idx] = normalizeEvent(Object.assign({}, local, patch, {
+        kind: 'personal',
+        gcalEventId: g.id,
+        gcalUpdated: gMs,
+        updatedAt: gMs || Date.now()
+      }));
+      changed = true;
+    }
+  }
+
+  const personalIds = state.events.filter(function (e) { return eventKindOf(e) === 'personal'; }).map(function (e) { return e.id; });
+  for (let p = 0; p < personalIds.length; p++) {
+    const ev = state.events.find(function (e) { return e.id === personalIds[p]; });
+    if (!ev || !ev.date || !String(ev.title || '').trim()) continue;
+    if (!ev.updatedAt) {
+      ev.updatedAt = Date.now();
+      changed = true;
+    }
+    let g = ev.gcalEventId ? byGcalId.get(ev.gcalEventId) : null;
+    if (g && g.status === 'cancelled') g = null;
+    if (!g) {
+      g = remoteList.find(function (item) {
+        return item.status !== 'cancelled' && gcalDashId(item) === ev.id;
+      }) || null;
+    }
+    const localMs = Number(ev.updatedAt) || 0;
+    if (!g) {
+      try {
+        const created = await gcalInsert(ev);
+        ev.gcalEventId = created.id;
+        ev.gcalUpdated = Date.parse(created.updated) || Date.now();
+        changed = true;
+      } catch (e) {
+        if (e && (e.gcalReason === 'no-scope' || e.gcalReason === 'api-off' || e.status === 401)) throw e;
+        console.warn('GCal insert failed', e);
+      }
+      continue;
+    }
+    const gMs = Date.parse(g.updated) || 0;
+    if (eventContentKey(ev) === gcalContentKey(g)) {
+      if (ev.gcalEventId !== g.id) {
+        ev.gcalEventId = g.id;
+        ev.gcalUpdated = gMs;
+        changed = true;
+      }
+      continue;
+    }
+    if (localMs >= gMs) {
+      try {
+        const updated = await gcalPatch(g.id, ev);
+        ev.gcalEventId = updated.id || g.id;
+        ev.gcalUpdated = Date.parse(updated.updated) || Date.now();
+        changed = true;
+      } catch (e) {
+        if (e && (e.status === 404 || e.status === 410)) {
+          try {
+            const created = await gcalInsert(ev);
+            ev.gcalEventId = created.id;
+            ev.gcalUpdated = Date.parse(created.updated) || Date.now();
+            changed = true;
+          } catch (e2) {
+            console.warn('GCal recreate failed', e2);
+          }
+        } else if (e && (e.gcalReason === 'no-scope' || e.gcalReason === 'api-off' || e.status === 401)) {
+          throw e;
+        } else {
+          console.warn('GCal patch failed', e);
+        }
+      }
+    }
+  }
+
+  if (changed) {
+    state.events = dedupeEventsByTitleDate((state.events || []).map(normalizeEvent));
+    saveState({ scheduleSync: false });
+    try { renderEvents(); } catch (e) {}
+    try { updateBlockSummaries(); } catch (e) {}
+  }
+  gcalAccessState = 'ok';
+  return { ok: true, changed: changed };
 }
 
 function ensureGdriveTokenClient() {
@@ -7414,32 +8251,28 @@ function ensureGdriveTokenClient() {
   if (!window.google || !google.accounts || !google.accounts.oauth2) return null;
   gdriveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GDRIVE_OAUTH_CLIENT_ID,
-    scope: GDRIVE_SCOPE,
+    scope: GOOGLE_OAUTH_SCOPES,
+    include_granted_scopes: true,
+    enable_granular_consent: true,
+    login_hint: GCAL_ACCOUNT_EMAIL,
     callback: function (resp) {
       if (resp && resp.access_token) {
         storeGdriveToken(resp.access_token);
+        if (resp.scope && resp.scope.indexOf('calendar') === -1) gcalAccessState = 'no-scope';
+        else gcalAccessState = 'unknown';
         updateGdriveUiConnected(true);
         setGdriveStatus('同步中…');
-        gdriveSyncInFlight = true;
-        gdrivePull()
-          .then(function () {
-            // After pull, push so phone/local data uploads to Drive
-            return gdrivePush();
-          })
-          .then(function () {
-            setGdriveStatus('已同步 ' + formatGdriveSyncTime());
-          })
-          .catch(function (e) {
-            console.warn('GDrive pull/push after connect failed', e);
-            setGdriveStatus('已連接（同步失敗）');
-          })
-          .finally(function () {
-            gdriveSyncInFlight = false;
-          });
+        runCloudSync({ pull: true });
       } else if (resp && resp.error) {
         setGdriveStatus('授權失敗');
-        console.warn('GDrive auth error', resp);
+        console.warn('Google auth error', resp);
       }
+    },
+    error_callback: function (err) {
+      const t = (err && (err.type || err.message)) || '';
+      if (String(t).indexOf('popup_closed') !== -1) setGdriveStatus('已取消授權');
+      else setGdriveStatus('請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
+      console.warn('Google auth error', err);
     }
   });
   return gdriveTokenClient;
@@ -7450,30 +8283,14 @@ function requestGdriveToken(opts) {
   opts = opts || {};
   const client = ensureGdriveTokenClient();
   if (!client) return false;
-  const req = {};
+  const req = { login_hint: GCAL_ACCOUNT_EMAIL };
   if (opts.prompt !== undefined) req.prompt = opts.prompt;
   client.requestAccessToken(req);
   return true;
 }
 
 async function gdriveSyncNow() {
-  if (VIEW_ONLY) return;
-  if (!gdriveAccessToken) {
-    setGdriveStatus('請先連接');
-    return;
-  }
-  setGdriveStatus('同步中…');
-  gdriveSyncInFlight = true;
-  try {
-    await gdrivePull();
-    await gdrivePush();
-    setGdriveStatus('已同步 ' + formatGdriveSyncTime());
-  } catch (e) {
-    console.warn('GDrive sync now failed', e);
-    setGdriveStatus('同步失敗');
-  } finally {
-    gdriveSyncInFlight = false;
-  }
+  return runCloudSync({ pull: true });
 }
 
 function bindGdriveUi() {
@@ -7491,6 +8308,8 @@ function bindGdriveUi() {
         alert('Google 登入元件尚未載入，請稍後再試。');
         return;
       }
+      gcalAccessState = 'unknown';
+      gdriveTokenClient = null;
       requestGdriveToken({ prompt: 'consent' });
     });
   }
@@ -7503,6 +8322,14 @@ function bindGdriveUi() {
   if (!gdriveHasClientId()) {
     setGdriveStatus('待設定 OAuth Client ID');
   }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible' || VIEW_ONLY || !gdriveAccessToken) return;
+    if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') return;
+    const now = Date.now();
+    if (now - gcalVisSyncAt < 60000) return;
+    gcalVisSyncAt = now;
+    runCloudSync({ pull: true });
+  });
 }
 
 function tryGdriveSilentRestore() {
@@ -7518,7 +8345,6 @@ function tryGdriveSilentRestore() {
       return;
     }
     ensureGdriveTokenClient();
-    // Silent token refresh if GIS available; ignore failures
     try {
       const client = gdriveTokenClient;
       if (!client) return;
@@ -7527,28 +8353,22 @@ function tryGdriveSilentRestore() {
         client.callback = prevCb;
         if (resp && resp.access_token) {
           storeGdriveToken(resp.access_token);
+          if (resp.scope && resp.scope.indexOf('calendar') === -1) gcalAccessState = 'no-scope';
+          else gcalAccessState = 'unknown';
           updateGdriveUiConnected(true);
-          gdrivePull()
-            .then(function () {
-              setGdriveStatus('已同步 ' + formatGdriveSyncTime());
-            })
-            .catch(function () {
-              /* ignore silent pull failures */
-              if (gdriveAccessToken) {
-                updateGdriveUiConnected(true);
-                setGdriveStatus('已連接');
-              }
-            });
+          runCloudSync({ pull: true });
+        } else if (gdriveAccessToken) {
+          updateGdriveUiConnected(true);
+          setGdriveStatus('已連接 · 請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
         }
       };
-      client.requestAccessToken({ prompt: '' });
+      client.requestAccessToken({ prompt: '', login_hint: GCAL_ACCOUNT_EMAIL });
     } catch (e) {
       /* ignore */
     }
   }
   attempt();
 }
-
 
 function bindSyncUi() {
   /* Export/import buttons removed; Drive sync uses buildExportPayload / applyRemoteSyncPayload. */
