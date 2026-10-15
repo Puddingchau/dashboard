@@ -551,33 +551,53 @@
       border-bottom: 1px solid var(--card-border, #334155);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
     }
+    .page-header > .sync-actions {
+      margin: 0 0 8px;
+      padding: 0;
+      justify-content: center;
+    }
     .page-header-inner {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "brand corner"
+        "widgets widgets";
+      align-items: start;
       justify-content: space-between;
-      gap: 12px;
+      gap: 8px 10px;
       max-width: 100%;
     }
-    @media (min-width: 768px) {
+    @media (min-width: 900px) {
       .page-header-inner {
-        flex-direction: row;
-        flex-wrap: wrap;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "brand widgets corner";
         align-items: center;
+        column-gap: 16px;
       }
     }
     .header-brand {
+      grid-area: brand;
       display: flex;
       align-items: center;
       gap: 10px;
-      width: 100%;
-      justify-content: space-between;
+      width: auto;
+      min-width: 0;
+      justify-content: flex-start;
       flex-shrink: 0;
     }
-    @media (min-width: 768px) {
-      .header-brand {
-        width: auto;
-        justify-content: flex-start;
+    .header-corner {
+      grid-area: corner;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      min-width: 0;
+      max-width: min(62vw, 280px);
+    }
+    @media (min-width: 900px) {
+      .header-corner {
+        align-self: start;
+        max-width: none;
       }
     }
     .header-brand-main {
@@ -627,16 +647,22 @@
       white-space: nowrap;
     }
     .header-widgets {
+      grid-area: widgets;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       width: 100%;
+      min-width: 0;
       flex-shrink: 0;
     }
-    @media (min-width: 768px) {
-      .header-widgets { width: auto; }
+    @media (min-width: 900px) {
+      .header-widgets {
+        width: auto;
+        justify-self: center;
+        gap: 10px;
+      }
     }
     .hdr-glass {
       display: flex;
@@ -726,6 +752,73 @@
       font-weight: 500;
       white-space: nowrap;
       margin-top: 1px;
+    }
+    .hdr-bus {
+      gap: 0;
+      padding: 6px 12px;
+    }
+    .hdr-bus-body { text-align: left; min-width: 0; }
+    .hdr-bus-top {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .hdr-bus-route {
+      font-weight: 700;
+      color: var(--text-strong, #f8fafc);
+      font-size: 0.75rem;
+      letter-spacing: 0.01em;
+    }
+    .hdr-bus-eta {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent-badge-text, var(--accent-primary));
+      font-size: 0.75rem;
+    }
+    .hdr-bus-sub {
+      font-size: 0.5625rem;
+      color: #94a3b8;
+      font-weight: 500;
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+    .header-cat-chips {
+      margin: 0;
+      justify-content: flex-end;
+      gap: 6px;
+      max-width: 100%;
+    }
+    .header-cat-chips .chip {
+      min-height: 32px;
+      padding: 4px 11px;
+      font-size: 12.5px;
+    }
+    .header-corner .theme-chips {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 100%;
+    }
+    @media (max-width: 420px) {
+      .header-cat-chips .chip {
+        min-height: 30px;
+        padding: 3px 8px;
+        font-size: 12px;
+      }
+      .header-corner .theme-chip {
+        width: 18px;
+        height: 18px;
+      }
+      .header-corner .theme-chips { gap: 4px; }
+      .hdr-bus { padding: 5px 10px; }
+      .hdr-bus-route, .hdr-bus-eta { font-size: 0.6875rem; }
+    }
+    @media (min-width: 900px) {
+      .header-cat-chips .chip {
+        min-height: 34px;
+        padding: 6px 14px;
+        font-size: 13px;
+      }
     }
     .theme-chips {
       display: none;
@@ -1064,6 +1157,9 @@
       flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 14px;
+    }
+    .header-corner .header-cat-chips {
+      margin: 0;
     }
     .chip {
       min-height: 40px;
@@ -1483,6 +1579,21 @@
       word-break: break-word;
     }
     .todo-item.done .todo-title { text-decoration: line-through; color: var(--muted); }
+    .event-item.done { opacity: 0.65; }
+    .event-item.done .todo-title { text-decoration: line-through; color: var(--muted); }
+    button.todo-title.event-title-toggle {
+      appearance: none;
+      -webkit-appearance: none;
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
     .meta {
       font-size: 11px;
       color: var(--muted);
@@ -2320,6 +2431,12 @@
   </div>
   <div class="app">
     <header class="page-header">
+      <div class="sync-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="gdriveSyncNowBtn" hidden>立即同步</button>
+        <p class="gcal-hint" id="gcalHint">請用 freddychow82@gmail.com 授權 Calendar。個人活動會雙向同步到 primary 日曆；學校活動唔會推去 Google Calendar。</p>
+        <span id="gdriveSyncStatus">未連接</span>
+      </div>
       <div class="page-header-inner">
         <div class="header-brand">
           <div class="header-brand-main">
@@ -2329,26 +2446,13 @@
               <p class="header-subtitle">個人工作台</p>
             </div>
           </div>
-          <div class="theme-chips theme-chips-mobile" id="themeChipsMobile" role="group" aria-label="主題">
-            <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
-            <button type="button" class="theme-chip active" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
-            <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
-            <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
-            <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
-            <button type="button" class="theme-chip" data-theme="dusk" title="暮藍" aria-label="暮藍主題"></button>
-            <button type="button" class="theme-chip" data-theme="toy" title="玩具" aria-label="Toy Story 主題"></button>
-          </div>
         </div>
 
         <div class="header-widgets" id="headerInfoStrip" aria-live="polite">
-          <div class="glass-card hdr-glass" title="香港時間／農曆">
+          <div class="glass-card hdr-glass" title="香港時間">
             <div class="hdr-datetime">
               <div class="hdr-clock font-display" id="hdrClock">--:--</div>
               <div class="hdr-date" id="hdrDate">—</div>
-            </div>
-            <div class="hdr-lunar-block" id="hdrLunarBlock">
-              <span id="hdrLunar">—</span><br>
-              <span class="hdr-jieqi" id="hdrJieqi">—</span>
             </div>
           </div>
 
@@ -2362,28 +2466,43 @@
               <div class="hdr-weather-sub">即時氣象 • 濕度 <span id="hdrWeatherHum">—</span></div>
             </div>
           </div>
+
+          <div class="glass-card hdr-glass hdr-bus" id="hdrBusChip" title="E36A 由昇薈開往元朗">
+            <div class="hdr-bus-body">
+              <div class="hdr-bus-top">
+                <span class="hdr-bus-route">E36A → 元朗</span>
+                <span class="hdr-bus-eta" id="hdrBusEta">…</span>
+              </div>
+              <div class="hdr-bus-sub">昇薈</div>
+            </div>
+          </div>
         </div>
 
-        <div class="theme-chips theme-chips-desktop" id="themeChips" role="group" aria-label="主題">
-          <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
-          <button type="button" class="theme-chip active" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
-          <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
-          <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
-          <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
-          <button type="button" class="theme-chip" data-theme="dusk" title="暮藍" aria-label="暮藍主題"></button>
-          <button type="button" class="theme-chip" data-theme="toy" title="玩具" aria-label="Toy Story 主題"></button>
+        <div class="header-corner">
+          <div class="chips header-cat-chips" id="catChips" role="tablist" aria-label="捷徑分類"></div>
+          <div class="theme-chips theme-chips-mobile" id="themeChipsMobile" role="group" aria-label="主題">
+            <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+            <button type="button" class="theme-chip active" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
+            <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
+            <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
+            <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
+            <button type="button" class="theme-chip" data-theme="dusk" title="暮藍" aria-label="暮藍主題"></button>
+            <button type="button" class="theme-chip" data-theme="toy" title="玩具" aria-label="Toy Story 主題"></button>
+          </div>
+          <div class="theme-chips theme-chips-desktop" id="themeChips" role="group" aria-label="主題">
+            <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+            <button type="button" class="theme-chip active" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
+            <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
+            <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
+            <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
+            <button type="button" class="theme-chip" data-theme="dusk" title="暮藍" aria-label="暮藍主題"></button>
+            <button type="button" class="theme-chip" data-theme="toy" title="玩具" aria-label="Toy Story 主題"></button>
+          </div>
         </div>
       </div>
     </header>
 
     <div class="view-only-banner" id="viewOnlyBanner" role="status">只睇模式 · 改動唔會儲存</div>
-
-    <div class="sync-actions">
-      <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="gdriveSyncNowBtn" hidden>立即同步</button>
-      <p class="gcal-hint" id="gcalHint">請用 freddychow82@gmail.com 授權 Calendar。個人活動會雙向同步到 primary 日曆；學校活動唔會推去 Google Calendar。</p>
-      <span id="gdriveSyncStatus">未連接</span>
-    </div>
 
     <div class="feature-stack" id="featureStack">
 
@@ -2548,7 +2667,6 @@
       <div class="block-body" id="body-shortcuts">
         <div class="block-body-inner">
       <div class="card glass-card">
-        <div class="chips" id="catChips"></div>
         <div class="shortcut-grid" id="shortcutGrid"></div>
         <div class="sc-actions">
           <button type="button" class="btn btn-primary btn-sm" id="btnAddShortcut">＋ 新增捷徑</button>
@@ -2581,7 +2699,6 @@
     <div class="modal" id="modalPanel"></div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.7.3/lunar.js"></script>
 <script>
 /* ===== Embedded TCS course data ===== */
 const TCS_DATA = {
@@ -3502,9 +3619,10 @@ function normalizeEvent(e) {
   }
   const id = (e && e.id) || uid('e');
   const kind = eventKindOf(Object.assign({}, e || {}, { id: id }));
-  const out = { id: id, title: title, date: date, time: time, work: work, kind: kind };
+  const out = { id: id, title: title, date: date, time: time, work: work, kind: kind, done: !!(e && e.done) };
   if (e && e.updatedAt != null) out.updatedAt = e.updatedAt;
   if (e && e.createdAt != null) out.createdAt = e.createdAt;
+  if (e && Number(e.contentUpdatedAt)) out.contentUpdatedAt = Number(e.contentUpdatedAt);
   if (kind === 'personal' && e && e.gcalEventId) {
     const gid = String(e.gcalEventId).trim();
     if (gid) out.gcalEventId = gid;
@@ -3894,6 +4012,16 @@ function dedupeEventsByTitleDate(events) {
       if (!String(cur.time || '') && ev.time) kept[idx] = Object.assign({}, kept[idx], { time: ev.time });
       if (!kept[idx].gcalEventId && ev.gcalEventId) kept[idx] = Object.assign({}, kept[idx], { gcalEventId: ev.gcalEventId, gcalUpdated: ev.gcalUpdated });
     }
+    const winner = kept[idx];
+    const other = preferEv ? cur : ev;
+    const wTs = Number(winner.updatedAt) || Number(winner.createdAt) || 0;
+    const oTs = Number(other.updatedAt) || Number(other.createdAt) || 0;
+    const done = oTs > wTs ? !!other.done : (wTs > oTs ? !!winner.done : !!(winner.done || other.done));
+    const contentUpdatedAt = Math.max(Number(winner.contentUpdatedAt) || 0, Number(other.contentUpdatedAt) || 0);
+    const donePatch = {};
+    if (!!winner.done !== done) donePatch.done = done;
+    if (contentUpdatedAt && Number(winner.contentUpdatedAt) !== contentUpdatedAt) donePatch.contentUpdatedAt = contentUpdatedAt;
+    if (Object.keys(donePatch).length) kept[idx] = Object.assign({}, winner, donePatch);
   });
   return kept;
 }
@@ -4346,8 +4474,9 @@ document.addEventListener('keydown', (e) => {
 /* ===== Shortcuts ===== */
 function renderCatChips() {
   const el = document.getElementById('catChips');
+  if (!el) return;
   el.innerHTML = allCategories().map(c =>
-    '<button type="button" class="chip' + (activeCat === c.id ? ' active' : '') + '" data-cat="' + escapeHtml(c.id) + '">' +
+    '<button type="button" class="chip' + (activeCat === c.id ? ' active' : '') + '" role="tab" aria-selected="' + (activeCat === c.id ? 'true' : 'false') + '" data-cat="' + escapeHtml(c.id) + '">' +
     escapeHtml(c.name) + '</button>'
   ).join('');
   el.querySelectorAll('.chip').forEach(btn => {
@@ -5063,7 +5192,7 @@ function openEventAddModal() {
     const kind = readEventKind(fd);
     if (!title || !date) return;
     const now = Date.now();
-    state.events.push(normalizeEvent({ id: uid('e'), title: title, date: date, time: time, work: work, kind: kind, updatedAt: now, createdAt: now }));
+    state.events.push(normalizeEvent({ id: uid('e'), title: title, date: date, time: time, work: work, kind: kind, done: false, updatedAt: now, contentUpdatedAt: now, createdAt: now }));
     if (kind === 'personal') state.eventsKind = 'personal';
     else state.eventsKind = 'school';
     saveState();
@@ -5126,6 +5255,7 @@ function openEventEditModal(editId) {
       const prev = state.events[idx];
       const changed = prev.title !== title || prev.date !== date || (prev.time || '') !== (time || '') || (prev.work || '') !== work || eventKindOf(prev) !== nextKind;
       if (prev.gcalEventId && nextKind !== 'personal') queueGcalDelete(prev.gcalEventId);
+      const nowTs = Date.now();
       state.events[idx] = normalizeEvent({
         id: editId,
         title: title,
@@ -5133,7 +5263,9 @@ function openEventEditModal(editId) {
         time: time,
         work: work,
         kind: nextKind,
-        updatedAt: changed ? Date.now() : prev.updatedAt,
+        done: !!prev.done,
+        updatedAt: changed ? nowTs : prev.updatedAt,
+        contentUpdatedAt: changed ? nowTs : (Number(prev.contentUpdatedAt) || Number(prev.updatedAt) || Number(prev.createdAt) || 0),
         createdAt: prev.createdAt,
         gcalEventId: nextKind === 'personal' ? prev.gcalEventId : '',
         gcalUpdated: nextKind === 'personal' ? prev.gcalUpdated : ''
@@ -5147,6 +5279,21 @@ function openEventEditModal(editId) {
   };
 }
 
+function toggleEventDone(id) {
+  if (VIEW_ONLY) return;
+  const ev = (state.events || []).find(function (x) { return x.id === id; });
+  if (!ev) return;
+  // Freeze the calendar/content clock so a done toggle does not push or win a GCal edit.
+  if (!Number(ev.contentUpdatedAt)) {
+    ev.contentUpdatedAt = Number(ev.updatedAt) || Number(ev.createdAt) || Date.now();
+  }
+  ev.done = !ev.done;
+  ev.updatedAt = Date.now();
+  saveState();
+  renderEvents();
+  updateBlockSummaries();
+}
+
 function sortEventsNearestFirst(list) {
   const today = todayLocal();
   return list.slice().sort((a, b) => {
@@ -5157,6 +5304,10 @@ function sortEventsNearestFirst(list) {
     if (aPast !== bPast) return aPast ? 1 : -1; // upcoming first, past at end
     const cmpDate = String(a.date || '').localeCompare(String(b.date || ''));
     if (cmpDate) return aPast ? -cmpDate : cmpDate; // upcoming asc; past desc-ish via date
+    // Same day: incomplete stay in time order; completed sink to the bottom of that day
+    const aDone = a.done ? 1 : 0;
+    const bDone = b.done ? 1 : 0;
+    if (aDone !== bDone) return aDone - bDone;
     const ta = a.time || '99:99';
     const tb = b.time || '99:99';
     return ta.localeCompare(tb);
@@ -5194,10 +5345,13 @@ function renderEvents() {
     const workSnippet = ev.work
       ? '<div class="event-work">' + escapeHtml(ev.work) + '</div>'
       : '';
+    const titleHtml = VIEW_ONLY
+      ? '<div class="todo-title">' + escapeHtml(ev.title) + '</div>'
+      : '<button type="button" class="todo-title event-title-toggle" aria-pressed="' + (ev.done ? 'true' : 'false') + '" aria-label="' + escapeHtml(ev.done ? '標為未完成' : '標為完成') + '">' + escapeHtml(ev.title) + '</button>';
     return (
-      '<div class="event-item kind-' + (eventKindOf(ev) === 'personal' ? 'personal' : 'school') + '" data-id="' + escapeHtml(ev.id) + '">' +
+      '<div class="event-item kind-' + (eventKindOf(ev) === 'personal' ? 'personal' : 'school') + (ev.done ? ' done' : '') + '" data-id="' + escapeHtml(ev.id) + '">' +
         '<div class="todo-body">' +
-          '<div class="todo-title">' + escapeHtml(ev.title) + '</div>' +
+          titleHtml +
           '<div class="meta">' +
             '<span>' + formatEventDateTime(ev.date, ev.time) + '</span>' +
             formatEventStatus(ev.date) +
@@ -5211,6 +5365,17 @@ function renderEvents() {
   }).join('');
   list.querySelectorAll('.event-item').forEach(row => {
     const id = row.getAttribute('data-id');
+    const titleBtn = row.querySelector('.event-title-toggle');
+    if (titleBtn && !VIEW_ONLY) {
+      titleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleEventDone(id);
+      });
+      titleBtn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
+      });
+    }
     const editBtn = row.querySelector('[data-edit]');
     if (editBtn) {
       editBtn.addEventListener('click', (e) => {
@@ -6345,6 +6510,7 @@ async function refreshAllBusEtas(opts) {
         note.textContent = '暫時無法連接到站 API（九巴／城巴），請稍後再試「更新到站」。';
       }
     }
+    try { renderHeaderBusEta(); } catch (e) {}
   })();
 
   busEtaInFlight = run;
@@ -7105,7 +7271,7 @@ async function openBusRouteSheet(busId) {
   }
 }
 
-/* ===== Header: date / clock / lunar / jieqi / weather ===== */
+/* ===== Header: date / clock / weather ===== */
 const HK_TZ = 'Asia/Hong_Kong';
 const WEEKDAYS_HK = ['日', '一', '二', '三', '四', '五', '六'];
 const WMO_WEATHER_ZH = {
@@ -7186,55 +7352,12 @@ function formatHkDate(p) {
   return p.y + '年' + p.m + '月' + p.d + '日 (' + WEEKDAYS_HK[p.weekday] + ')';
 }
 
-function updateLunarJieqi(p) {
-  const lunarEl = document.getElementById('hdrLunar');
-  const jieqiEl = document.getElementById('hdrJieqi');
-  if (typeof Solar === 'undefined') {
-    if (lunarEl) lunarEl.textContent = '—';
-    if (jieqiEl) jieqiEl.textContent = '—';
-    return;
-  }
-  try {
-    const lunar = Solar.fromYmd(p.y, p.m, p.d).getLunar();
-    const monthStr = lunar.getMonthInChinese();
-    const dayStr = lunar.getDayInChinese();
-    if (lunarEl) lunarEl.textContent = '農曆' + monthStr + '月' + dayStr;
-
-    let jieqiName = '';
-    const cur = lunar.getCurrentJieQi && lunar.getCurrentJieQi();
-    if (cur && cur.getName) {
-      jieqiName = cur.getName();
-    } else if (lunar.getJieQi && lunar.getJieQi()) {
-      jieqiName = lunar.getJieQi();
-    } else if (lunar.getPrevJieQi) {
-      const prev = lunar.getPrevJieQi(true);
-      if (prev && prev.getName) jieqiName = prev.getName();
-    }
-    if (jieqiEl) {
-      if (jieqiName) {
-        jieqiEl.textContent = /節氣$/.test(jieqiName) ? jieqiName : (jieqiName + '節氣');
-      } else {
-        jieqiEl.textContent = '—';
-      }
-    }
-  } catch (err) {
-    if (lunarEl) lunarEl.textContent = '—';
-    if (jieqiEl) jieqiEl.textContent = '—';
-  }
-}
-
-let _lastLunarKey = '';
 function tickHeaderClock() {
   const p = hkNowParts();
   const dateEl = document.getElementById('hdrDate');
   const clockEl = document.getElementById('hdrClock');
   if (dateEl) dateEl.textContent = formatHkDate(p);
   if (clockEl) clockEl.textContent = p.hh + ':' + p.mm;
-  const key = p.y + '-' + p.m + '-' + p.d;
-  if (key !== _lastLunarKey) {
-    _lastLunarKey = key;
-    updateLunarJieqi(p);
-  }
 }
 
 function setWeatherUI(temp, cond, humidity, failed, icon) {
@@ -7368,10 +7491,131 @@ async function refreshWeather() {
 
 function startHeaderInfo() {
   tickHeaderClock();
-  updateLunarJieqi(hkNowParts());
   setInterval(tickHeaderClock, 1000);
   refreshWeather();
   setInterval(refreshWeather, 45 * 60 * 1000);
+  try { startHeaderBusEta(); } catch (e) {}
+}
+
+/** E36A 昇薈 → 元朗. Fixed seed stop, not the GPS-nearest card. */
+function headerBusE36aYl() {
+  const seed = (typeof SEED_BUS !== 'undefined' ? SEED_BUS : []).find(function (b) { return b && b.id === 'bus_e36a_yl'; });
+  return normalizeBusEntry(seed || {
+    id: 'hdr_bus_e36a_yl',
+    route: 'E36A',
+    operator: 'KMB',
+    direction: '往元朗(德業街)',
+    stopName: '昇薈',
+    stopId: 'TC155',
+    kmbStopId: 'CC57C2DF592993CB',
+    destKeywords: ['元朗'],
+    apiDir: 'I'
+  });
+}
+
+function formatHeaderEtaCountdown(etaIso) {
+  if (!etaIso) return null;
+  const t = new Date(etaIso).getTime();
+  if (!Number.isFinite(t)) return null;
+  const diffMs = t - Date.now();
+  const mins = Math.round(diffMs / 60000);
+  if (diffMs <= 45000 || mins <= 0) return '即將';
+  return mins + ' 分';
+}
+
+function headerBusNextView() {
+  const bus = headerBusE36aYl();
+  const key = busEtaCacheKey(bus);
+  const payload = key ? busEtaByStop[key] : null;
+  if (!payload) return { text: '…', title: 'E36A 由昇薈開往元朗' };
+  if (payload.error) return { text: '未能更新', title: '暫時無法取得 E36A 到站時間' };
+  const matched = filterStopEtaRows(payload.rows, bus);
+  if (matched.length) {
+    const label = formatHeaderEtaCountdown(matched[0].eta);
+    const rmk = String(matched[0].rmk_tc || '').trim();
+    return {
+      text: label || '沒有班次',
+      title: 'E36A 昇薈 → 元朗' + (rmk ? '（' + rmk + '）' : '')
+    };
+  }
+  const route = String(bus.route || '').trim().toUpperCase();
+  const keywords = resolveBusDestKeywords(bus);
+  const apiDir = resolveBusApiDir(bus);
+  const related = (payload.rows || []).filter(function (row) {
+    if (!row || String(row.route || '').toUpperCase() !== route) return false;
+    const dest = String(row.dest_tc || '');
+    const destOk = keywords.length > 0 && keywords.some(function (k) { return dest.indexOf(k) !== -1; });
+    const dirOk = apiDir && String(row.dir || '').toUpperCase() === apiDir;
+    return destOk || dirOk;
+  });
+  const rmk = related.map(function (row) { return String(row.rmk_tc || '').trim(); }).find(Boolean) || '';
+  let text = '沒有班次';
+  if (rmk.indexOf('最後班次已過') !== -1) text = '尾班已過';
+  else if (rmk && rmk.length <= 6) text = rmk;
+  return { text: text, title: 'E36A 昇薈 → 元朗' + (rmk ? '（' + rmk + '）' : '暫無班次') };
+}
+
+function renderHeaderBusEta() {
+  const el = document.getElementById('hdrBusEta');
+  const chip = document.getElementById('hdrBusChip');
+  if (!el) return;
+  const view = headerBusNextView();
+  el.textContent = view.text;
+  if (chip) chip.title = view.title;
+}
+
+let headerBusEtaTimer = null;
+let headerBusTickTimer = null;
+let headerBusEtaBound = false;
+
+async function refreshHeaderBusEta() {
+  const bus = headerBusE36aYl();
+  const key = busEtaCacheKey(bus);
+  if (!key) {
+    renderHeaderBusEta();
+    return;
+  }
+  const cached = busEtaByStop[key];
+  if (cached && !cached.error && Date.now() - (Number(cached.at) || 0) < 20000) {
+    renderHeaderBusEta();
+    return;
+  }
+  try {
+    let rows = [];
+    if (resolveBusOperator(bus) === 'CTB') {
+      rows = await fetchCtbStopRouteEta(resolveStopApiId(bus), bus.route);
+    } else {
+      rows = await fetchKmbStopEta(resolveStopApiId(bus));
+    }
+    busEtaByStop[key] = { rows: rows, at: Date.now() };
+  } catch (err) {
+    busEtaByStop[key] = { rows: [], error: String(err && err.message || err), at: Date.now() };
+  }
+  renderHeaderBusEta();
+  try {
+    document.querySelectorAll('.bus-card').forEach(function (card) {
+      const id = card.getAttribute('data-id');
+      const b = (state.busStops || []).find(function (x) { return x.id === id; });
+      if (!b || busEtaCacheKey(b) !== key) return;
+      const etaEl = card.querySelector('.bus-eta');
+      if (etaEl) setBusEtaEl(etaEl, b, busEtaByStop[key]);
+    });
+  } catch (e) {}
+}
+
+function startHeaderBusEta() {
+  renderHeaderBusEta();
+  refreshHeaderBusEta();
+  if (headerBusEtaTimer) clearInterval(headerBusEtaTimer);
+  if (headerBusTickTimer) clearInterval(headerBusTickTimer);
+  headerBusEtaTimer = setInterval(function () { refreshHeaderBusEta(); }, 60000);
+  headerBusTickTimer = setInterval(function () { renderHeaderBusEta(); }, 30000);
+  if (!headerBusEtaBound) {
+    headerBusEtaBound = true;
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') refreshHeaderBusEta();
+    });
+  }
 }
 
 
@@ -8174,6 +8418,13 @@ function gcalToPatch(g) {
   return { title: title, date: date, time: time, work: work };
 }
 
+/** Timestamp of title/date/time/work changes. Done toggles bump updatedAt only. */
+function eventContentMs(ev) {
+  const c = Number(ev && ev.contentUpdatedAt);
+  if (c) return c;
+  return Number(ev && ev.updatedAt) || 0;
+}
+
 function eventContentKey(ev) {
   return [String(ev.title || '').trim(), String(ev.date || ''), String(ev.time || ''), String(ev.work || '').trim()].join('\u0001');
 }
@@ -8378,7 +8629,7 @@ async function gcalSync() {
     if (g.status !== 'cancelled' && idx < 0 && gcalReimportBlocked(g)) continue;
     if (g.status === 'cancelled') {
       if (idx >= 0 && eventKindOf(state.events[idx]) === 'personal') {
-        const localMs = Number(state.events[idx].updatedAt) || 0;
+        const localMs = eventContentMs(state.events[idx]);
         if (gMs >= localMs) {
           state.events.splice(idx, 1);
           changed = true;
@@ -8405,6 +8656,7 @@ async function gcalSync() {
         gcalEventId: g.id,
         gcalUpdated: gMs,
         updatedAt: gMs || Date.now(),
+        contentUpdatedAt: gMs || Date.now(),
         createdAt: gMs || Date.now()
       });
       state.events.push(imported);
@@ -8416,7 +8668,7 @@ async function gcalSync() {
     }
     const local = state.events[idx];
     if (eventKindOf(local) !== 'personal') continue;
-    const localMs = Number(local.updatedAt) || 0;
+    const localMs = eventContentMs(local);
     if (eventContentKey(local) === gcalContentKey(g)) {
       if (local.gcalEventId !== g.id || Number(local.gcalUpdated) !== gMs) {
         local.gcalEventId = g.id;
@@ -8434,7 +8686,8 @@ async function gcalSync() {
         kind: 'personal',
         gcalEventId: g.id,
         gcalUpdated: gMs,
-        updatedAt: gMs || Date.now()
+        updatedAt: Math.max(gMs || Date.now(), Number(local.updatedAt) || 0),
+        contentUpdatedAt: gMs || Date.now()
       }));
       changed = true;
     }
@@ -8446,6 +8699,7 @@ async function gcalSync() {
     if (!ev || !ev.date || !String(ev.title || '').trim()) continue;
     if (!ev.updatedAt) {
       ev.updatedAt = Date.now();
+      if (!Number(ev.contentUpdatedAt)) ev.contentUpdatedAt = ev.updatedAt;
       changed = true;
     }
     let g = ev.gcalEventId ? byGcalId.get(ev.gcalEventId) : null;
@@ -8455,7 +8709,7 @@ async function gcalSync() {
         return item.status !== 'cancelled' && gcalDashId(item) === ev.id;
       }) || null;
     }
-    const localMs = Number(ev.updatedAt) || 0;
+    const localMs = eventContentMs(ev);
     if (!g) {
       try {
         const created = await gcalInsert(ev);
