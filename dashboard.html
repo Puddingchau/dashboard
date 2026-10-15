@@ -1041,6 +1041,7 @@
       .hdr-clock {
         font-size: 0.95rem;
         letter-spacing: 0.02em;
+        line-height: 1.05;
       }
       .hdr-date {
         display: none;
@@ -1048,44 +1049,62 @@
       .hdr-date-short {
         display: block;
         font-size: 0.62rem;
-        line-height: 1.15;
+        line-height: 1.25;
       }
       .hdr-weather-icon {
         font-size: 1.05rem;
       }
-      .hdr-weather-body,
+      .hdr-weather-body {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: baseline;
+        column-gap: 4px;
+        row-gap: 0;
+        min-width: 0;
+        flex: 1;
+        width: 100%;
+      }
       .hdr-bus-body {
         min-width: 0;
         flex: 1;
         overflow: hidden;
       }
-      .hdr-weather-top,
+      .hdr-weather-top {
+        display: contents;
+      }
       .hdr-bus-top {
         min-width: 0;
         gap: 3px;
         overflow: hidden;
       }
       .hdr-weather-temp {
+        grid-column: 1;
+        grid-row: 1;
         font-size: 0.75rem;
-        flex-shrink: 0;
+        line-height: 1.2;
+      }
+      .hdr-weather-sub {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: start;
+        margin-top: 0;
+        font-size: 0.62rem;
+        line-height: 1.2;
+        white-space: nowrap;
       }
       .hdr-weather-cond {
+        grid-column: 1 / -1;
+        grid-row: 2;
         font-size: 0.62rem;
+        line-height: 1.25;
         min-width: 0;
-        flex: 1 1 auto;
         max-width: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .hdr-weather-live {
         display: none;
-      }
-      .hdr-weather-sub {
-        margin-top: 0;
-        font-size: 0.6rem;
-        line-height: 1.15;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
       .hdr-bus-top {
         flex-direction: column;
