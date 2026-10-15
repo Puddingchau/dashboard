@@ -7,7 +7,7 @@
     (function () {
       try {
         if (new URLSearchParams(location.search).get('view') === '1') {
-          document.documentElement.classList.add('view-only');
+          document.documentElement.classList.add('view-only', 'theme-rain-window');
         }
       } catch (e) {}
     })();
@@ -552,7 +552,7 @@
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
     }
     .page-header > .sync-actions {
-      margin: 0 0 8px;
+      margin: 0 0 6px;
       padding: 0;
       justify-content: center;
     }
@@ -783,16 +783,92 @@
       white-space: nowrap;
       margin-top: 1px;
     }
-    .header-cat-chips {
-      margin: 0;
+    .hdr-cat-jump {
+      display: flex;
       justify-content: flex-end;
-      gap: 6px;
-      max-width: 100%;
+      align-items: center;
+      gap: 4px;
     }
-    .header-cat-chips .chip {
-      min-height: 32px;
-      padding: 4px 11px;
-      font-size: 12.5px;
+    .hdr-cat-btn {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      min-height: 28px;
+      padding: 0;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--text-strong, #1e293b);
+      font-family: inherit;
+    }
+    .hdr-cat-btn[aria-expanded="true"] {
+      box-shadow: 0 0 0 2px var(--accent-primary);
+    }
+    .hdr-cat-pop {
+      position: fixed;
+      z-index: 80;
+      width: min(280px, calc(100vw - 16px));
+    }
+    .hdr-cat-pop[hidden] { display: none !important; }
+    .hdr-cat-pop-card {
+      border-radius: 16px;
+      padding: 8px 8px 6px;
+      max-height: min(58vh, 340px);
+      overflow: auto;
+    }
+    .hdr-cat-pop-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 2px 4px 6px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .hdr-cat-pop-close {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .hdr-cat-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: inherit;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .hdr-cat-link:hover,
+    .hdr-cat-link:focus-visible {
+      background: rgba(255, 255, 255, 0.38);
+    }
+    .hdr-cat-mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.45);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .hdr-cat-empty {
+      margin: 4px 6px 8px;
+      font-size: 12px;
+      color: var(--muted);
     }
     .header-corner .theme-chips {
       flex-wrap: wrap;
@@ -800,11 +876,6 @@
       max-width: 100%;
     }
     @media (max-width: 420px) {
-      .header-cat-chips .chip {
-        min-height: 30px;
-        padding: 3px 8px;
-        font-size: 12px;
-      }
       .header-corner .theme-chip {
         width: 18px;
         height: 18px;
@@ -812,13 +883,6 @@
       .header-corner .theme-chips { gap: 4px; }
       .hdr-bus { padding: 5px 10px; }
       .hdr-bus-route, .hdr-bus-eta { font-size: 0.6875rem; }
-    }
-    @media (min-width: 900px) {
-      .header-cat-chips .chip {
-        min-height: 34px;
-        padding: 6px 14px;
-        font-size: 13px;
-      }
     }
     .theme-chips {
       display: none;
@@ -1158,9 +1222,6 @@
       gap: 8px;
       margin-bottom: 14px;
     }
-    .header-corner .header-cat-chips {
-      margin: 0;
-    }
     .chip {
       min-height: 40px;
       padding: 8px 14px;
@@ -1355,20 +1416,37 @@
     .event-item.kind-school { box-shadow: inset 3px 0 0 #f59e0b; }
     .sync-actions {
       display: flex;
-      justify-content: center;
-      gap: 8px;
       flex-wrap: wrap;
-      margin-top: 12px;
-      margin-bottom: 4px;
-      padding: 0 8px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin: 0 0 6px;
+      padding: 0;
+      min-width: 0;
+    }
+    .sync-actions .sync-pill {
+      min-height: 26px;
+      min-width: 0;
+      height: auto;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 650;
+      line-height: 1.2;
+      gap: 0;
+      white-space: nowrap;
     }
     .sync-actions .gcal-hint,
-    #gdriveSyncStatus {
-      flex: 1 0 100%;
+    .sync-actions #gdriveSyncStatus {
+      flex: 0 1 auto;
+      margin: 0;
       text-align: center;
-      font-size: 12px;
+      font-size: 11px;
+      line-height: 1.2;
       color: var(--muted);
-      line-height: 1.45;
+    }
+    .sync-actions .sync-pill[hidden] {
+      display: none !important;
     }
     #eventsFilterTabs {
       flex-wrap: nowrap;
@@ -2349,7 +2427,24 @@
       align-items: center;
       justify-content: center;
       padding: 24px 16px;
-      background: #e7f3fb;
+      background-color: #1E2C3A;
+      background-image: url('rain-cafe-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    html.view-only.theme-rain-window .share-lock-card {
+      background: rgba(255, 252, 248, 0.48);
+      backdrop-filter: blur(26px) saturate(1.35);
+      -webkit-backdrop-filter: blur(26px) saturate(1.35);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow:
+        0 24px 48px -12px rgba(10, 20, 35, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+      color: #1E262E;
+    }
+    html.view-only.theme-rain-window .share-lock-msg {
+      color: #7A5420;
     }
     .share-lock-card {
       width: min(420px, 100%);
@@ -2377,34 +2472,26 @@
       text-align: left;
     }
     .share-lock-card form[hidden] { display: none !important; }
+    .page-footer {
+      margin-top: 28px;
+      padding: 0 8px calc(12px + env(safe-area-inset-bottom, 0px));
+    }
     .share-owner {
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       gap: 8px;
-      flex-wrap: wrap;
-      margin: 28px 8px 0;
-      padding: 0 8px;
+      margin: 0;
+      padding: 0;
+    }
+    .share-owner .btn {
+      min-width: 7.5rem;
     }
     html:not(.view-only) .footer-note {
       margin-top: 12px;
     }
-    .share-owner-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 700;
-      min-height: 40px;
-    }
-    .share-owner input[type="password"] {
-      width: min(220px, 100%);
-      min-height: 40px;
-      flex: 1 1 160px;
-    }
-    .share-owner-hint,
     #shareOwnerStatus {
-      flex-basis: 100%;
       text-align: center;
       font-size: 12px;
       color: var(--muted);
@@ -2418,6 +2505,14 @@
   </style>
 </head>
 <body id="appBody" class="theme-sunny-beach">
+<script>
+  if (document.documentElement.classList.contains('view-only')) {
+    document.body.classList.remove('theme-sunny-beach');
+    document.body.classList.add('theme-rain-cafe', 'theme-rain-window');
+    var shareMeta = document.querySelector('meta[name="theme-color"]');
+    if (shareMeta) shareMeta.setAttribute('content', '#1E2C3A');
+  }
+</script>
   <div class="share-lock" id="shareLock" role="dialog" aria-modal="true" aria-labelledby="shareLockTitle">
     <div class="share-lock-card">
       <h2 class="font-display" id="shareLockTitle">只睇模式</h2>
@@ -2432,10 +2527,10 @@
   <div class="app">
     <header class="page-header">
       <div class="sync-actions">
-        <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google</button>
-        <button type="button" class="btn btn-ghost btn-sm" id="gdriveSyncNowBtn" hidden>立即同步</button>
-        <p class="gcal-hint" id="gcalHint">請用 freddychow82@gmail.com 授權 Calendar。個人活動會雙向同步到 primary 日曆；學校活動唔會推去 Google Calendar。</p>
-        <span id="gdriveSyncStatus">未連接</span>
+        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveConnectBtn">連接 Google</button>
+        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveSyncNowBtn" hidden>立即同步</button>
+        <span class="glass-card hdr-glass sync-pill sync-status" id="gdriveSyncStatus">未連接</span>
+        <p class="glass-card hdr-glass sync-pill gcal-hint" id="gcalHint" hidden>Calendar 未授權</p>
       </div>
       <div class="page-header-inner">
         <div class="header-brand">
@@ -2479,7 +2574,20 @@
         </div>
 
         <div class="header-corner">
-          <div class="chips header-cat-chips" id="catChips" role="tablist" aria-label="捷徑分類"></div>
+          <div class="hdr-cat-jump" role="group" aria-label="捷徑快速開啟">
+            <button type="button" class="hdr-cat-btn glass-card hdr-glass" data-jump-cat="work" title="工作" aria-label="工作捷徑" aria-expanded="false">工</button>
+            <button type="button" class="hdr-cat-btn glass-card hdr-glass" data-jump-cat="school" title="學校" aria-label="學校捷徑" aria-expanded="false">校</button>
+            <button type="button" class="hdr-cat-btn glass-card hdr-glass" data-jump-cat="life" title="個人" aria-label="個人捷徑" aria-expanded="false">人</button>
+          </div>
+          <div class="hdr-cat-pop" id="hdrCatPop" hidden>
+            <div class="hdr-cat-pop-card glass-card" role="dialog" aria-label="捷徑">
+              <div class="hdr-cat-pop-head">
+                <span id="hdrCatPopTitle">捷徑</span>
+                <button type="button" class="hdr-cat-pop-close" id="hdrCatPopClose" aria-label="關閉">×</button>
+              </div>
+              <div class="hdr-cat-pop-list" id="hdrCatPopList"></div>
+            </div>
+          </div>
           <div class="theme-chips theme-chips-mobile" id="themeChipsMobile" role="group" aria-label="主題">
             <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
             <button type="button" class="theme-chip active" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
@@ -2667,6 +2775,7 @@
       <div class="block-body" id="body-shortcuts">
         <div class="block-body-inner">
       <div class="card glass-card">
+        <div class="chips" id="catChips" role="tablist" aria-label="捷徑分類"></div>
         <div class="shortcut-grid" id="shortcutGrid"></div>
         <div class="sc-actions">
           <button type="button" class="btn btn-primary btn-sm" id="btnAddShortcut">＋ 新增捷徑</button>
@@ -2680,18 +2789,13 @@
 
     </div><!-- /.feature-stack -->
 
-    <div class="share-owner" id="shareOwner">
-      <label class="share-owner-toggle"><input type="checkbox" id="shareEnabledToggle" /> 允許只睇分享</label>
-      <input type="password" id="sharePasswordNew" placeholder="分享密碼（留空＝唔改）" autocomplete="new-password" maxlength="200" />
-      <button type="button" class="btn btn-ghost btn-sm" id="btnSaveShare">儲存分享設定</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="btnCopyViewLink">複製只睇連結</button>
-      <span id="copyViewLinkNote" style="font-size:12px;color:var(--muted);align-self:center" aria-live="polite"></span>
-      <button type="button" class="btn btn-ghost btn-sm" id="btnCopyShareConfig">複製閘門設定</button>
-      <p class="share-owner-hint">朋友用 ?view=1 自己輸入密碼，連結唔會帶密碼。關掉分享或改密碼會令舊密碼失效；朋友頁面讀 share-config.json。</p>
-      <p id="shareOwnerStatus" aria-live="polite"></p>
-    </div>
-
-    <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入 · 布丁仔</p>
+    <footer class="page-footer">
+      <div class="share-owner" id="shareOwner">
+        <button type="button" class="btn btn-primary btn-sm" id="btnShareToggle">分享</button>
+        <p id="shareOwnerStatus" aria-live="polite"></p>
+      </div>
+      <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入 · 布丁仔</p>
+    </footer>
   </div>
 
   <!-- Modal -->
@@ -4089,7 +4193,7 @@ function normalizeState(data) {
     todoTab: 'today',
     theme: 'sunny-beach',
     syncUpdatedAt: 0,
-    share: { enabled: false, salt: '', passwordHash: '', updatedAt: 0 }
+    share: { enabled: false, salt: '', passwordHash: '', updatedAt: 0, expiresAt: 0 }
   };
   if (!data || typeof data !== 'object') return base;
 
@@ -4243,11 +4347,13 @@ function normalizeState(data) {
 
 function normalizeShare(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
+  const expiresAt = s.expiresAt != null ? s.expiresAt : s.shareExpiresAt;
   return {
     enabled: !!s.enabled,
     salt: typeof s.salt === 'string' ? s.salt : '',
     passwordHash: typeof s.passwordHash === 'string' ? s.passwordHash : '',
-    updatedAt: Number(s.updatedAt) || 0
+    updatedAt: Number(s.updatedAt) || 0,
+    expiresAt: Number(expiresAt) || 0
   };
 }
 
@@ -4333,10 +4439,12 @@ const THEME_PRESETS = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dus
 
 function applyTheme(preset, persist) {
   if (VIEW_ONLY && persist !== false) return;
+  if (VIEW_ONLY && !shareViewUnlocked) return;
   const t = THEME_PRESETS.includes(preset) ? preset : 'sunny-beach';
   state.theme = t;
   const body = document.getElementById('appBody') || document.body;
   THEME_PRESETS.forEach(p => body.classList.remove('theme-' + p));
+  body.classList.remove('theme-rain-window');
   body.classList.add('theme-' + t);
   document.querySelectorAll('.theme-chips .theme-chip').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === t);
@@ -4509,8 +4617,112 @@ function renderCatChips() {
   });
 }
 
+const HDR_JUMP_CATS = [
+  { id: 'work', name: '工作', mark: '工' },
+  { id: 'school', name: '學校', mark: '校' },
+  { id: 'life', name: '個人', mark: '人' }
+];
+let hdrCatOpen = null;
+
+function hdrCatName(id, fallback) {
+  const cats = (state && state.categories) || [];
+  const found = cats.find(function (c) { return c && c.id === id; });
+  return (found && found.name) || fallback;
+}
+
+function closeHdrCatPop() {
+  hdrCatOpen = null;
+  const pop = document.getElementById('hdrCatPop');
+  if (pop) pop.hidden = true;
+  document.querySelectorAll('.hdr-cat-btn').forEach(function (btn) {
+    btn.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function placeHdrCatPop(anchor) {
+  const pop = document.getElementById('hdrCatPop');
+  if (!pop || !anchor) return;
+  const r = anchor.getBoundingClientRect();
+  const width = Math.min(280, window.innerWidth - 16);
+  let left = r.right - width;
+  if (left < 8) left = 8;
+  if (left + width > window.innerWidth - 8) left = window.innerWidth - 8 - width;
+  pop.style.width = width + 'px';
+  pop.style.left = Math.round(left) + 'px';
+  pop.style.top = Math.round(r.bottom + 6) + 'px';
+  pop.style.right = 'auto';
+}
+
+function refreshHdrCatPop() {
+  if (!hdrCatOpen) return;
+  const meta = HDR_JUMP_CATS.find(function (c) { return c.id === hdrCatOpen; });
+  const title = document.getElementById('hdrCatPopTitle');
+  const list = document.getElementById('hdrCatPopList');
+  if (!meta || !list) return;
+  if (title) title.textContent = hdrCatName(meta.id, meta.name);
+  const items = (state.shortcuts || []).filter(function (s) { return s && s.category === meta.id && s.url; });
+  if (!items.length) {
+    list.innerHTML = '<p class="hdr-cat-empty">此分類暫無捷徑</p>';
+    return;
+  }
+  list.innerHTML = items.map(function (s) {
+    return '<a class="hdr-cat-link" href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' +
+      '<span class="hdr-cat-mark">' + escapeHtml(letterFallback(s.title)) + '</span>' +
+      '<span>' + escapeHtml(s.title) + '</span></a>';
+  }).join('');
+}
+
+function openHdrCatPop(catId, anchor) {
+  if (hdrCatOpen === catId) {
+    closeHdrCatPop();
+    return;
+  }
+  const meta = HDR_JUMP_CATS.find(function (c) { return c.id === catId; });
+  if (!meta) return;
+  hdrCatOpen = catId;
+  const pop = document.getElementById('hdrCatPop');
+  if (!pop) return;
+  refreshHdrCatPop();
+  document.querySelectorAll('.hdr-cat-btn').forEach(function (btn) {
+    btn.setAttribute('aria-expanded', btn.getAttribute('data-jump-cat') === catId ? 'true' : 'false');
+  });
+  pop.hidden = false;
+  placeHdrCatPop(anchor);
+}
+
+function bindHdrCatJump() {
+  const root = document.querySelector('.hdr-cat-jump');
+  if (!root || root._bound) return;
+  root._bound = true;
+  root.addEventListener('click', function (e) {
+    const btn = e.target.closest('.hdr-cat-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    openHdrCatPop(btn.getAttribute('data-jump-cat'), btn);
+  });
+  const closeBtn = document.getElementById('hdrCatPopClose');
+  if (closeBtn) closeBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    closeHdrCatPop();
+  });
+  document.addEventListener('click', function (e) {
+    if (!hdrCatOpen) return;
+    if (e.target.closest('.hdr-cat-jump') || e.target.closest('#hdrCatPop')) return;
+    closeHdrCatPop();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && hdrCatOpen) closeHdrCatPop();
+  });
+  window.addEventListener('resize', function () {
+    if (!hdrCatOpen) return;
+    const btn = document.querySelector('.hdr-cat-btn[data-jump-cat="' + hdrCatOpen + '"]');
+    if (btn) placeHdrCatPop(btn);
+  });
+}
+
 function renderShortcuts() {
   const grid = document.getElementById('shortcutGrid');
+  refreshHdrCatPop();
   const list = state.shortcuts.filter(s => activeCat === 'all' || s.category === activeCat);
   if (!list.length) {
     grid.innerHTML = '<div class="empty" style="grid-column:1/-1">此分類暫無捷徑</div>';
@@ -8043,9 +8255,38 @@ function gdriveIsConnected() {
   return !!(gdriveAccessToken && (gdriveFileId || localStorage.getItem(GDRIVE_FILE_ID_KEY)));
 }
 
-function setGdriveStatus(text) {
+function setGdriveStatus(text, detail) {
   const el = document.getElementById('gdriveSyncStatus');
-  if (el) el.textContent = text || '';
+  if (!el) return;
+  el.textContent = text || '';
+  const tip = detail || '';
+  if (tip && tip !== text) el.title = tip;
+  else el.removeAttribute('title');
+}
+
+function syncGcalHint() {
+  const hint = document.getElementById('gcalHint');
+  if (!hint) return;
+  const longHint = '請用 ' + GCAL_ACCOUNT_EMAIL + ' 授權 Calendar。個人活動會雙向同步到 primary 日曆；學校活動唔會推去 Google Calendar。';
+  if (!gdriveAccessToken) {
+    hint.hidden = true;
+    return;
+  }
+  if (gcalAccessState === 'no-scope') {
+    hint.hidden = false;
+    hint.textContent = 'Calendar 未授權';
+    hint.title = longHint;
+  } else if (gcalAccessState === 'api-off') {
+    hint.hidden = false;
+    hint.textContent = 'Calendar 未啟用';
+    hint.title = 'Calendar API 未啟用。個人活動仍留喺本機同 Drive。';
+  } else if (gcalAccessState === 'error') {
+    hint.hidden = false;
+    hint.textContent = 'Calendar 未同步';
+    hint.title = 'Calendar 暫未能同步。個人活動仍留喺本機同 Drive。';
+  } else {
+    hint.hidden = true;
+  }
 }
 
 function updateGdriveUiConnected(connected) {
@@ -8054,8 +8295,9 @@ function updateGdriveUiConnected(connected) {
   if (syncBtn) syncBtn.hidden = !connected;
   if (!connectBtn) return;
   if (!connected) connectBtn.textContent = '連接 Google';
-  else if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') connectBtn.textContent = '重新授權 Calendar';
+  else if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') connectBtn.textContent = '授權 Calendar';
   else connectBtn.textContent = '已連接';
+  syncGcalHint();
 }
 
 function formatGdriveSyncTime(ts) {
@@ -8225,12 +8467,17 @@ function scheduleCloudSync() {
 }
 
 function cloudStatusText(driveOk, gcalResult) {
+  if (!driveOk) return '同步失敗';
+  return '已同步 ' + formatGdriveSyncTime();
+}
+
+function cloudStatusDetail(driveOk, gcalResult) {
   const time = formatGdriveSyncTime();
   const reason = (gcalResult && gcalResult.reason) || '';
-  if (!driveOk) return gdriveAccessToken ? '已連接（同步失敗）' : '同步失敗';
+  if (!driveOk) return gdriveAccessToken ? '已連接，同步失敗' : '同步失敗';
   if (gcalResult && gcalResult.ok) return '已同步 ' + time + ' · Calendar 已連';
   if (reason === 'no-scope' || gcalAccessState === 'no-scope') {
-    return 'Drive 已同步 ' + time + ' · Calendar 未授權。請用 ' + GCAL_ACCOUNT_EMAIL + ' 按「重新授權 Calendar」';
+    return 'Drive 已同步 ' + time + ' · Calendar 未授權。請用 ' + GCAL_ACCOUNT_EMAIL + ' 按「授權 Calendar」';
   }
   if (reason === 'api-off' || gcalAccessState === 'api-off') {
     return 'Drive 已同步 ' + time + ' · Calendar API 未啟用。個人活動仍留喺本機同 Drive';
@@ -8271,7 +8518,7 @@ async function runCloudSync(opts) {
     driveOk = false;
   } finally {
     gdriveSyncInFlight = false;
-    setGdriveStatus(cloudStatusText(driveOk, gcalResult));
+    setGdriveStatus(cloudStatusText(driveOk, gcalResult), cloudStatusDetail(driveOk, gcalResult));
     updateGdriveUiConnected(!!gdriveAccessToken);
   }
 }
@@ -8838,7 +9085,7 @@ function ensureGdriveTokenClient() {
     error_callback: function (err) {
       const t = (err && (err.type || err.message)) || '';
       if (String(t).indexOf('popup_closed') !== -1) setGdriveStatus('已取消授權');
-      else setGdriveStatus('請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
+      else setGdriveStatus('請重新授權', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
       console.warn('Google auth error', err);
     }
   });
@@ -8872,7 +9119,7 @@ function bindGdriveUi() {
       if (VIEW_ONLY) return;
       if (!gdriveHasClientId()) {
         alert('尚未設定 Google OAuth Client ID，請稍後再試。');
-        setGdriveStatus('待設定 OAuth Client ID');
+        setGdriveStatus('未設定', '尚未設定 Google OAuth Client ID');
         return;
       }
       if (!window.google || !google.accounts || !google.accounts.oauth2) {
@@ -8895,7 +9142,7 @@ function bindGdriveUi() {
     });
   }
   if (!gdriveHasClientId()) {
-    setGdriveStatus('待設定 OAuth Client ID');
+    setGdriveStatus('未設定', '尚未設定 Google OAuth Client ID');
   }
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible' || VIEW_ONLY || !gdriveAccessToken) return;
@@ -8933,7 +9180,7 @@ function tryGdriveSilentRestore() {
           runCloudSync({ pull: true });
         } else if (gdriveAccessToken) {
           updateGdriveUiConnected(true);
-          setGdriveStatus('已連接 · 請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
+          setGdriveStatus('已連接', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
         }
       };
       client.requestAccessToken({ prompt: '', login_hint: GCAL_ACCOUNT_EMAIL });
@@ -8976,28 +9223,10 @@ function copyPlainTextFallback(text) {
   return ok;
 }
 
-function bindCopyViewLink() {
-  const btn = document.getElementById('btnCopyViewLink');
-  const note = document.getElementById('copyViewLinkNote');
-  if (!btn || btn._copyBound || VIEW_ONLY) return;
-  btn._copyBound = true;
-  btn.addEventListener('click', function () {
-    const url = viewOnlyShareUrl();
-    copyPlainText(url).then(function (ok) {
-      if (!note) return;
-      note.textContent = ok ? '已複製' : url;
-      if (ok) {
-        setTimeout(function () {
-          if (note.textContent === '已複製') note.textContent = '';
-        }, 1600);
-      }
-    });
-  });
-}
-
 function initViewOnlyChrome() {
   if (!VIEW_ONLY) return;
   document.documentElement.classList.add('view-only');
+  applyShareEntryTheme();
   document.querySelectorAll('.theme-chip').forEach(function (btn) {
     btn.disabled = true;
     btn.setAttribute('aria-disabled', 'true');
@@ -9006,19 +9235,38 @@ function initViewOnlyChrome() {
   if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 布丁仔';
 }
 
+/** Gate screen only. Owner theme in state is left alone. */
+function applyShareEntryTheme() {
+  if (!VIEW_ONLY || shareViewUnlocked) return;
+  document.documentElement.classList.add('view-only', 'theme-rain-window');
+  const body = document.getElementById('appBody') || document.body;
+  if (!body) return;
+  body.classList.remove('theme-sunny-beach');
+  body.classList.add('theme-rain-cafe', 'theme-rain-window');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', '#1E2C3A');
+}
+
 /* ===== Share password gate =====
  * Published gate is share-config.json (no todos/events). Hash is SHA-256
- * of salt + "\\n" + password. Plaintext is never stored.
- * Guests re-read the gate on load, on focus, and every few seconds, so a
- * new hash or shareEnabled:false locks old passwords out.
+ * of salt + "\n" + password. Plaintext is never written to the gate or Drive.
+ * shareExpiresAt is epoch ms, 3 hours after 分享. Guests re-read the gate on
+ * load, on focus, and every few seconds, so shareEnabled:false or a passed
+ * expiry makes old links fail. 分享 commits that gate to GitHub Pages when a
+ * repo token is stored locally as dash-hub-pages-token.
  */
 const SHARE_GRANT_KEY = 'dash-hub-share-grant';
+const SHARE_PLAIN_KEY = 'dash-hub-share-plain';
+const SHARE_TTL_MS = 3 * 60 * 60 * 1000;
+const PAGES_GATE_REPO = 'Puddingchau/dashboard';
+const PAGES_GATE_PATH = 'share-config.json';
 let currentShareGate = null;
 let shareWatchTimer = null;
 let shareCheckInFlight = false;
-let shareUiSyncing = false;
 let dashboardBooted = false;
 let dashboardBound = false;
+let shareStopTimer = null;
+let shareActionBusy = false;
 
 function hashesEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || !a || a.length !== b.length) return false;
@@ -9031,6 +9279,13 @@ function randomShareSalt() {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   return Array.from(bytes).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+function randomSharePassword() {
+  const bytes = new Uint8Array(2);
+  crypto.getRandomValues(bytes);
+  const n = ((bytes[0] << 8) | bytes[1]) % 10000;
+  return String(n).padStart(4, '0');
 }
 
 async function sha256Hex(text) {
@@ -9050,6 +9305,7 @@ function shareConfigFromState(share) {
     shareEnabled: !!s.enabled,
     shareSalt: s.salt,
     sharePasswordHash: s.passwordHash,
+    shareExpiresAt: Number(s.expiresAt) || 0,
     updatedAt: s.updatedAt || 0
   };
 }
@@ -9061,16 +9317,39 @@ function normalizeShareConfig(data) {
   const salt = data.shareSalt != null ? data.shareSalt : (nested ? nested.salt : '');
   const hash = data.sharePasswordHash != null ? data.sharePasswordHash : (nested ? nested.passwordHash : '');
   const updatedAt = data.updatedAt != null ? data.updatedAt : (nested ? nested.updatedAt : 0);
+  const expiresAt = data.shareExpiresAt != null
+    ? data.shareExpiresAt
+    : (nested ? (nested.expiresAt != null ? nested.expiresAt : nested.shareExpiresAt) : 0);
   return {
     shareEnabled: !!enabled,
     shareSalt: typeof salt === 'string' ? salt : '',
     sharePasswordHash: typeof hash === 'string' ? hash : '',
+    shareExpiresAt: Number(expiresAt) || 0,
     updatedAt: Number(updatedAt) || 0
   };
 }
 
 function shareGateOpen(gate) {
-  return !!(gate && gate.shareEnabled && gate.shareSalt && gate.sharePasswordHash);
+  if (!gate || !gate.shareEnabled || !gate.shareSalt || !gate.sharePasswordHash) return false;
+  const exp = Number(gate.shareExpiresAt) || 0;
+  if (!exp || Date.now() > exp) return false;
+  return true;
+}
+
+function shareLockModeForGate(gate) {
+  if (!gate) return 'error';
+  if (shareGateOpen(gate)) return 'prompt';
+  const exp = Number(gate.shareExpiresAt) || 0;
+  if (gate.shareEnabled && exp && Date.now() > exp) return 'expired';
+  if (gate.shareEnabled && (!gate.shareSalt || !gate.sharePasswordHash)) return 'noconfig';
+  return 'closed';
+}
+
+function shareSessionActive(share) {
+  const s = normalizeShare(share);
+  if (!s.enabled || !s.salt || !s.passwordHash) return false;
+  const exp = Number(s.expiresAt) || 0;
+  return !!(exp && Date.now() <= exp);
 }
 
 async function fetchShareConfig() {
@@ -9092,6 +9371,10 @@ function clearShareGrant() {
   try { sessionStorage.removeItem(SHARE_GRANT_KEY); } catch (e) {}
 }
 
+function rememberSharePlain(password) {
+  try { sessionStorage.setItem(SHARE_PLAIN_KEY, String(password || '')); } catch (e) {}
+}
+
 function grantMatches(gate) {
   if (!shareGateOpen(gate)) return false;
   try {
@@ -9111,6 +9394,7 @@ function setShareLock(mode) {
   const text = {
     loading: '正在檢查分享…',
     closed: '分享已關閉',
+    expired: '分享已結束',
     prompt: '請輸入分享密碼',
     wrong: '密碼唔正確',
     changed: '分享密碼已更改，請再輸入',
@@ -9137,6 +9421,7 @@ function wipeShareSurface() {
 function lockShareView(mode) {
   clearShareGrant();
   wipeShareSurface();
+  applyShareEntryTheme();
   setShareLock(mode || 'closed');
 }
 
@@ -9168,8 +9453,8 @@ function bootDashboard(opts) {
     bindBusEtaControls();
     bindSyncUi();
     bindGdriveUi();
-    bindCopyViewLink();
     bindShareOwnerUi();
+    bindHdrCatJump();
     startHeaderInfo();
     if (!VIEW_ONLY) tryGdriveSilentRestore();
     scrollToSectionFromHash();
@@ -9188,6 +9473,9 @@ async function unlockShareView() {
     await bootDashboard({ importCloud: true });
   } catch (e) {}
   document.documentElement.classList.add('share-unlocked');
+  document.documentElement.classList.remove('theme-rain-window');
+  const body = document.getElementById('appBody') || document.body;
+  if (body) body.classList.remove('theme-rain-window');
   const pw = document.getElementById('shareLockPassword');
   if (pw) pw.value = '';
 }
@@ -9202,11 +9490,11 @@ async function recheckShareGate() {
     currentShareGate = gate;
     if (!shareViewUnlocked) {
       if (grantMatches(gate)) await unlockShareView();
-      else setShareLock(shareGateOpen(gate) ? 'prompt' : (gate.shareEnabled ? 'noconfig' : 'closed'));
+      else setShareLock(shareLockModeForGate(gate));
       return;
     }
     if (!grantMatches(gate)) {
-      lockShareView(shareGateOpen(gate) ? 'changed' : (gate.shareEnabled ? 'noconfig' : 'closed'));
+      lockShareView(shareGateOpen(gate) ? 'changed' : shareLockModeForGate(gate));
     }
   } finally {
     shareCheckInFlight = false;
@@ -9223,6 +9511,7 @@ function startShareWatch() {
 }
 
 async function bootShareGate() {
+  applyShareEntryTheme();
   initViewOnlyChrome();
   setShareLock('loading');
   const form = document.getElementById('shareLockForm');
@@ -9234,7 +9523,7 @@ async function bootShareGate() {
       const password = input ? input.value : '';
       const gate = currentShareGate;
       if (!shareGateOpen(gate)) {
-        setShareLock('closed');
+        setShareLock(shareLockModeForGate(gate));
         return;
       }
       let ok = false;
@@ -9255,10 +9544,8 @@ async function bootShareGate() {
     await unlockShareView();
   } else if (!gate) {
     setShareLock('error');
-  } else if (!shareGateOpen(gate)) {
-    setShareLock(gate.shareEnabled ? 'noconfig' : 'closed');
   } else {
-    setShareLock('prompt');
+    setShareLock(shareLockModeForGate(gate));
   }
   startShareWatch();
 }
@@ -9269,110 +9556,163 @@ function setShareOwnerStatus(text) {
 }
 
 function syncShareOwnerUI() {
-  const toggle = document.getElementById('shareEnabledToggle');
-  if (!toggle) return;
-  shareUiSyncing = true;
-  toggle.checked = !!normalizeShare(state.share).enabled;
-  shareUiSyncing = false;
+  const btn = document.getElementById('btnShareToggle');
+  if (!btn) return;
+  const active = shareSessionActive(state.share);
+  btn.textContent = active ? '停止分享' : '分享';
+  btn.classList.toggle('btn-primary', !active);
+  btn.classList.toggle('btn-ghost', active);
+  scheduleShareAutoStop();
 }
 
-async function saveShareSettings(opts) {
+function scheduleShareAutoStop() {
+  if (shareStopTimer) {
+    clearTimeout(shareStopTimer);
+    shareStopTimer = null;
+  }
   if (VIEW_ONLY) return;
-  opts = opts || {};
-  const toggle = document.getElementById('shareEnabledToggle');
-  const field = document.getElementById('sharePasswordNew');
+  const s = normalizeShare(state.share);
+  if (!shareSessionActive(s)) return;
+  const delay = Math.max(0, s.expiresAt - Date.now());
+  shareStopTimer = setTimeout(function () {
+    shareStopTimer = null;
+    stopShareSession({ reason: 'expired' });
+  }, delay);
+}
+
+function pagesGateToken() {
+  try {
+    return localStorage.getItem('dash-hub-pages-token') || sessionStorage.getItem('dash-hub-pages-token') || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function utf8ToBase64(text) {
+  return btoa(unescape(encodeURIComponent(String(text || ''))));
+}
+
+/** Commit share-config.json on main so GitHub Pages serves the new gate. */
+async function pushPagesShareGate(config) {
+  const token = pagesGateToken();
+  if (!token) return false;
+  const body = JSON.stringify(config, null, 2) + '\n';
+  const api = 'https://api.github.com/repos/' + PAGES_GATE_REPO + '/contents/' + PAGES_GATE_PATH;
+  const headers = {
+    Authorization: 'Bearer ' + token,
+    Accept: 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  let sha = '';
+  try {
+    const cur = await fetch(api + '?ref=main', { headers: headers, cache: 'no-store' });
+    if (cur.ok) {
+      const meta = await cur.json();
+      sha = meta && meta.sha ? meta.sha : '';
+    }
+  } catch (e) {}
+  const payload = {
+    message: config && config.shareEnabled ? 'Enable read-only share for 3 hours' : 'Stop read-only share',
+    content: utf8ToBase64(body),
+    branch: 'main'
+  };
+  if (sha) payload.sha = sha;
+  try {
+    const res = await fetch(api, { method: 'PUT', headers: headers, body: JSON.stringify(payload) });
+    return !!res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function startShareSession() {
+  if (VIEW_ONLY) return;
+  if (!crypto.subtle || !crypto.getRandomValues) {
+    setShareOwnerStatus('呢個瀏覽器未能開啟分享');
+    return;
+  }
   const prev = normalizeShare(state.share);
-  let enabled = !!(toggle && toggle.checked);
-  const typed = field ? String(field.value || '') : '';
-  if (opts.rotatePassword && !typed && enabled && !prev.passwordHash) {
-    if (toggle) {
-      shareUiSyncing = true;
-      toggle.checked = false;
-      shareUiSyncing = false;
-    }
-    setShareOwnerStatus('請先輸入分享密碼，再按儲存分享設定');
-    return;
-  }
-  if (enabled && !prev.passwordHash && !opts.rotatePassword) {
-    if (toggle) {
-      shareUiSyncing = true;
-      toggle.checked = false;
-      shareUiSyncing = false;
-    }
-    setShareOwnerStatus('請先輸入分享密碼，再按儲存分享設定');
-    return;
-  }
   let salt = prev.salt;
   let passwordHash = prev.passwordHash;
-  if (opts.rotatePassword && typed) {
-    if (!crypto.subtle || !crypto.getRandomValues) {
-      setShareOwnerStatus('呢個瀏覽器未能設定密碼');
-      return;
-    }
+  let createdPlain = '';
+  if (!passwordHash || !salt) {
+    createdPlain = randomSharePassword();
     salt = randomShareSalt();
-    passwordHash = await hashSharePassword(typed, salt);
-    if (field) field.value = '';
+    passwordHash = await hashSharePassword(createdPlain, salt);
+    rememberSharePlain(createdPlain);
   }
-  if (enabled && !passwordHash) {
-    enabled = false;
-    if (toggle) {
-      shareUiSyncing = true;
-      toggle.checked = false;
-      shareUiSyncing = false;
-    }
-    setShareOwnerStatus('請先輸入分享密碼，再按儲存分享設定');
-    return;
-  }
-  if (enabled === prev.enabled && salt === prev.salt && passwordHash === prev.passwordHash) {
-    setShareOwnerStatus(enabled ? '分享設定冇變' : '分享已經關閉');
-    return;
-  }
+  const now = Date.now();
   state.share = {
-    enabled: enabled,
+    enabled: true,
     salt: salt,
     passwordHash: passwordHash,
-    updatedAt: Date.now()
+    updatedAt: now,
+    expiresAt: now + SHARE_TTL_MS
   };
   saveState();
+  const token = pagesGateToken();
+  const pushed = token ? await pushPagesShareGate(shareConfigFromState(state.share)) : false;
   syncShareOwnerUI();
-  if (!enabled && opts.rotatePassword && typed) setShareOwnerStatus('已更新分享密碼，分享仍然關閉。貼上 share-config.json 後舊密碼會失效。');
-  else if (!enabled) setShareOwnerStatus('分享已關閉，舊密碼唔會再入到。請將閘門設定貼上 share-config.json。');
-  else if (opts.rotatePassword && typed) setShareOwnerStatus('已更新分享密碼，舊密碼失效。請將閘門設定貼上 share-config.json。');
-  else setShareOwnerStatus('已允許只睇分享。請將閘門設定貼上 share-config.json，朋友先用到。');
+  const copied = await copyPlainText(viewOnlyShareUrl());
+  let status = copied ? '已複製連結 · 3 小時後自動停止' : viewOnlyShareUrl();
+  if (createdPlain) status += ' · 密碼 ' + createdPlain;
+  if (token && !pushed) status += ' · 閘門未更新';
+  setShareOwnerStatus(status);
+}
+
+async function stopShareSession(opts) {
+  if (VIEW_ONLY) return;
+  opts = opts || {};
+  if (shareStopTimer) {
+    clearTimeout(shareStopTimer);
+    shareStopTimer = null;
+  }
+  const prev = normalizeShare(state.share);
+  state.share = {
+    enabled: false,
+    salt: prev.salt,
+    passwordHash: prev.passwordHash,
+    updatedAt: Date.now(),
+    expiresAt: 0
+  };
+  saveState();
+  const token = pagesGateToken();
+  const pushed = token ? await pushPagesShareGate(shareConfigFromState(state.share)) : false;
+  syncShareOwnerUI();
+  if (opts.reason === 'expired') setShareOwnerStatus('分享已自動停止');
+  else setShareOwnerStatus((!token || pushed) ? '已停止分享' : '已停止分享 · 閘門未更新');
+}
+
+async function expireShareIfNeeded() {
+  const s = normalizeShare(state.share);
+  if (!s.enabled || shareSessionActive(s)) return;
+  await stopShareSession({ reason: 'expired' });
 }
 
 function bindShareOwnerUi() {
   if (VIEW_ONLY) return;
-  const toggle = document.getElementById('shareEnabledToggle');
-  const saveBtn = document.getElementById('btnSaveShare');
-  const copyBtn = document.getElementById('btnCopyShareConfig');
-  if (toggle && !toggle._shareBound) {
-    toggle._shareBound = true;
-    toggle.addEventListener('change', function () {
-      if (shareUiSyncing) return;
-      const field = document.getElementById('sharePasswordNew');
-      const typed = field && String(field.value || '');
-      if (toggle.checked && typed) saveShareSettings({ rotatePassword: true });
-      else saveShareSettings({ rotatePassword: false });
-    });
-  }
-  if (saveBtn && !saveBtn._shareBound) {
-    saveBtn._shareBound = true;
-    saveBtn.addEventListener('click', function () {
-      saveShareSettings({ rotatePassword: true });
-    });
-  }
-  if (copyBtn && !copyBtn._shareBound) {
-    copyBtn._shareBound = true;
-    copyBtn.addEventListener('click', function () {
-      const body = JSON.stringify(shareConfigFromState(state.share), null, 2);
-      copyPlainText(body).then(function (ok) {
-        setShareOwnerStatus(ok ? '已複製閘門設定（貼上做 share-config.json，冇明文密碼）' : '未能複製');
-      });
+  const btn = document.getElementById('btnShareToggle');
+  if (btn && !btn._shareBound) {
+    btn._shareBound = true;
+    btn.addEventListener('click', async function () {
+      if (shareActionBusy) return;
+      shareActionBusy = true;
+      btn.disabled = true;
+      try {
+        if (shareSessionActive(state.share)) await stopShareSession({});
+        else await startShareSession();
+      } finally {
+        shareActionBusy = false;
+        btn.disabled = false;
+        syncShareOwnerUI();
+      }
     });
   }
   syncShareOwnerUI();
+  expireShareIfNeeded();
 }
+
 
 /* ===== Init ===== */
 if (VIEW_ONLY) {
