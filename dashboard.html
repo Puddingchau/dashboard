@@ -7765,6 +7765,10 @@ let gdriveAutoPushTimer = null;
 let gdriveSyncInFlight = false;
 let gcalAccessState = 'unknown'; // unknown | ok | no-scope | api-off | error
 let gcalVisSyncAt = 0;
+// Soft hint only: last token response did not list calendar.events. Not an access verdict.
+let gcalReauthCalendarOnly = false;
+// Fresh token must be probed even if a previous no-scope is still sitting in memory.
+let gcalProbeAfterToken = false;
 
 function gdriveHasClientId() {
   return !!(GDRIVE_OAUTH_CLIENT_ID && String(GDRIVE_OAUTH_CLIENT_ID).trim());
@@ -8099,6 +8103,7 @@ async function probeGcalAccess() {
     const res = await gcalApi(gcalCollectionUrl() + '?maxResults=1');
     await res.json();
     gcalAccessState = 'ok';
+    gcalReauthCalendarOnly = false;
     return { ok: true };
   } catch (e) {
     const reason = (e && e.gcalReason) || (e && e.status === 403 ? 'no-scope' : 'error');
@@ -8309,6 +8314,10 @@ function localIndexForGcal(g) {
 
 async function gcalSync() {
   if (VIEW_ONLY || !gdriveAccessToken) return { ok: false, reason: 'skip' };
+  if (gcalProbeAfterToken) {
+    gcalProbeAfterToken = false;
+    if (gcalAccessState === 'no-scope') gcalAccessState = 'unknown';
+  }
   if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') {
     return { ok: false, reason: gcalAccessState };
   }
@@ -8500,6 +8509,7 @@ async function gcalSync() {
     try { updateBlockSummaries(); } catch (e) {}
   }
   gcalAccessState = 'ok';
+  gcalReauthCalendarOnly = false;
   return { ok: true, changed: changed };
 }
 
@@ -8515,7 +8525,17 @@ function gcalScopeGranted(resp) {
 }
 
 function noteGcalAccessFromToken(resp) {
-  gcalAccessState = gcalScopeGranted(resp) ? 'unknown' : 'no-scope';
+  // hasGrantedAllScopes can be false after Continue even when Calendar is already
+  // granted (resp.scope omits calendar.events). Do not treat that as no-scope.
+  gcalReauthCalendarOnly = !gcalScopeGranted(resp);
+  gcalAccessState = 'unknown';
+  gcalProbeAfterToken = true;
+}
+
+function gcalWantsCalendarOnlyReauth() {
+  if (gcalAccessState === 'ok' || gcalAccessState === 'api-off') return false;
+  if (gcalAccessState === 'no-scope') return true;
+  return gcalReauthCalendarOnly;
 }
 
 function ensureGdriveTokenClient() {
@@ -8584,7 +8604,7 @@ function bindGdriveUi() {
         alert('Google 登入元件尚未載入，請稍後再試。');
         return;
       }
-      const calendarIncremental = gcalAccessState === 'no-scope';
+      const calendarIncremental = gcalWantsCalendarOnlyReauth();
       if (!calendarIncremental) gcalAccessState = 'unknown';
       gdriveTokenClient = null;
       // Drive-only grant: ask for calendar.events only. include_granted_scopes keeps Drive.
