@@ -1,5 +1,5 @@
 {
-  "updatedAt": 1791993523615,
+  "updatedAt": 1792044807928,
   "schemaVersion": 10,
   "share": {
     "enabled": false,
@@ -10,32 +10,7 @@
   "theme": "sunny-beach",
   "todoTab": "open",
   "eventsFilter": "today",
-  "todos": [
-    {
-      "id": "t_seed_p3_math",
-      "title": "修改P3數卷",
-      "due": "",
-      "done": false,
-      "createdAt": 1728900000001,
-      "updatedAt": 1728900000001
-    },
-    {
-      "id": "t_seed_ai_score",
-      "title": "研究AI進度分數",
-      "due": "",
-      "done": false,
-      "createdAt": 1728900000002,
-      "updatedAt": 1728900000002
-    },
-    {
-      "id": "t_seed_dash_tidy",
-      "title": "執整Dashboard",
-      "due": "",
-      "done": false,
-      "createdAt": 1728900000003,
-      "updatedAt": 1728900000003
-    }
-  ],
+  "todos": [],
   "events": [
     {
       "id": "e_seed_monthly_20260924",

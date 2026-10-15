@@ -2717,7 +2717,7 @@ const TCS_DATA = {
 };
 
 const STORAGE_KEY = 'dash-hub-v1';
-const SCHEMA_VERSION = 10; // 10: events.kind personal|school + gcalEventId
+const SCHEMA_VERSION = 11; // 11: drop retired seed todos t_seed_p3_math, t_seed_ai_score, t_seed_dash_tidy
 const GDRIVE_SYNC_FILENAME = '布丁仔-sync.json';
 const GDRIVE_OAUTH_CLIENT_ID = '508206831418-cmm0ra1v21lajj6ned33l33d8ohdtll8.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -3387,12 +3387,20 @@ const SEED_EVENTS = [
 ];
 
 
-/** Seeded todos — phone screenshot; merge by stable id (do not wipe user todos). */
-const SEED_TODOS = [
-  { id: 't_seed_p3_math', title: '修改P3數卷', due: '', done: false, createdAt: 1728900000001 },
-  { id: 't_seed_ai_score', title: '研究AI進度分數', due: '', done: false, createdAt: 1728900000002 },
-  { id: 't_seed_dash_tidy', title: '執整Dashboard', due: '', done: false, createdAt: 1728900000003 }
-];
+/** Retired phone-screenshot todos. Never re-inject after a delete. */
+const RETIRED_SEED_TODO_IDS = new Set([
+  't_seed_p3_math',
+  't_seed_ai_score',
+  't_seed_dash_tidy'
+]);
+
+function withoutRetiredSeedTodos(list) {
+  if (!Array.isArray(list)) return [];
+  return list.filter(t => t && !RETIRED_SEED_TODO_IDS.has(t.id));
+}
+
+/** Seeded todos — merge by stable id. Empty so a delete is not undone on the next load. */
+const SEED_TODOS = [];
 
 function uid(prefix) {
   return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -3974,12 +3982,18 @@ function normalizeState(data) {
       return out;
     });
   }
-  // Ensure seeded todos exist (stable id); do not wipe user todos
+  // Ensure seeded todos exist (stable id); do not wipe user todos.
+  // SEED_TODOS is empty, so this no longer resurrects deleted items.
   {
     const have = new Set(base.todos.map(t => t.id));
     SEED_TODOS.forEach(seed => {
       if (!have.has(seed.id)) base.todos.push({ ...seed });
     });
+  }
+  // One-shot (schema < 11): drop retired seed todos already stored locally
+  // so they are not shown again or pushed back over a cleaned Drive file.
+  if (prevSchema < 11) {
+    base.todos = withoutRetiredSeedTodos(base.todos);
   }
   if (data.syncUpdatedAt != null) base.syncUpdatedAt = data.syncUpdatedAt;
   if (Array.isArray(data.events)) {
@@ -7391,7 +7405,8 @@ function applyRemoteSyncPayload(remote, opts) {
   if (!remote || typeof remote !== 'object') return false;
   let changed = false;
   if (Array.isArray(remote.todos)) {
-    const r = mergeByIdPreferNewer(state.todos, remote.todos.map(t => {
+    // Retired seed ids are dropped on every merge so Pages or Drive cannot put them back.
+    const remoteTodos = withoutRetiredSeedTodos(remote.todos.map(t => {
       const createdAt = t.createdAt || Date.now();
       const out = {
         id: t.id || uid('t'),
@@ -7403,6 +7418,7 @@ function applyRemoteSyncPayload(remote, opts) {
       if (t.updatedAt != null) out.updatedAt = t.updatedAt;
       return out;
     }));
+    const r = mergeByIdPreferNewer(state.todos, remoteTodos);
     if (r.changed) { state.todos = r.arr; changed = true; }
   }
   if (Array.isArray(remote.events) && remote.events.length) {
