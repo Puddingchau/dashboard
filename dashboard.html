@@ -4833,10 +4833,8 @@ function openTodoEditModal(editId) {
   document.getElementById('todoEditCancel').onclick = closeModal;
   document.getElementById('todoEditDelete').onclick = () => {
     if (!confirm('確定刪除此待辦？')) return;
-    state.todos = state.todos.filter(x => x.id !== editId);
-    saveState();
+    removeTodoById(editId);
     closeModal();
-    renderTodos();
   };
   document.getElementById('todoEditForm').onsubmit = (e) => {
     e.preventDefault();
@@ -4923,9 +4921,7 @@ function renderTodos() {
     if (delBtn) {
       delBtn.addEventListener('click', () => {
         if (VIEW_ONLY) return;
-        state.todos = state.todos.filter(x => x.id !== id);
-        saveState();
-        renderTodos();
+        removeTodoById(id);
       });
     }
     if (!VIEW_ONLY && row.classList.contains('todo-draggable')) bindTodoDnD(row, list);
@@ -5010,9 +5006,17 @@ function readEventKind(fd) {
   return String(fd.get('kind') || '') === 'school' ? 'school' : 'personal';
 }
 
+function removeTodoById(id) {
+  const todo = (state.todos || []).find(function (x) { return x.id === id; });
+  if (todo) rememberTodoDeletion(todo);
+  state.todos = (state.todos || []).filter(function (x) { return x.id !== id; });
+  saveState();
+  renderTodos();
+}
+
 function removeEventById(id) {
   const ev = (state.events || []).find(function (x) { return x.id === id; });
-  if (ev && ev.gcalEventId && eventKindOf(ev) === 'personal') queueGcalDelete(ev.gcalEventId);
+  if (ev) rememberEventDeletion(ev);
   state.events = (state.events || []).filter(function (x) { return x.id !== id; });
   saveState();
   renderEvents();
@@ -7374,7 +7378,9 @@ function itemSyncTs(item) {
   return c || 0;
 }
 
-function mergeByIdPreferNewer(localArr, remoteArr) {
+function mergeByIdPreferNewer(localArr, remoteArr, opts) {
+  opts = opts || {};
+  const allowAdds = opts.allowAdds !== false;
   if (!Array.isArray(remoteArr) || !remoteArr.length) return { arr: localArr || [], changed: false };
   const local = Array.isArray(localArr) ? localArr.slice() : [];
   const byId = new Map(local.map(x => [x.id, x]));
@@ -7383,6 +7389,8 @@ function mergeByIdPreferNewer(localArr, remoteArr) {
     if (!remote || !remote.id) return;
     const existing = byId.get(remote.id);
     if (!existing) {
+      // An older snapshot must not recreate an id a newer snapshot already omitted.
+      if (!allowAdds) return;
       local.push(remote);
       byId.set(remote.id, remote);
       changed = true;
@@ -7400,13 +7408,199 @@ function mergeByIdPreferNewer(localArr, remoteArr) {
   return { arr: local, changed };
 }
 
+/**
+ * Ids the user deleted on this browser. A stale Drive/Pages snapshot must not
+ * put them back, and Google Calendar must not re-import those personal events.
+ * Entries expire after DELETED_SYNC_TTL_MS, or sooner when a newer copy of the
+ * same id arrives (the user recreated or edited it after the delete).
+ */
+const DELETED_SYNC_IDS_KEY = 'dash-hub-deleted-sync-ids';
+const DELETED_SYNC_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+const DELETED_SYNC_CAP = 400;
+
+function loadDeletionRecords() {
+  let items = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(DELETED_SYNC_IDS_KEY) || 'null');
+    if (Array.isArray(raw)) items = raw;
+    else if (raw && Array.isArray(raw.items)) items = raw.items;
+  } catch (e) {
+    items = [];
+  }
+  const now = Date.now();
+  const kept = [];
+  items.forEach(function (x) {
+    if (!x || (x.kind !== 'todo' && x.kind !== 'event') || !x.id) return;
+    const at = Number(x.at) || 0;
+    if (!at || now - at > DELETED_SYNC_TTL_MS) return;
+    kept.push(x);
+  });
+  if (kept.length !== items.length) saveDeletionRecords(kept);
+  return kept.length > DELETED_SYNC_CAP ? kept.slice(-DELETED_SYNC_CAP) : kept;
+}
+
+function saveDeletionRecords(items) {
+  try {
+    const list = (items || []).slice(-DELETED_SYNC_CAP);
+    localStorage.setItem(DELETED_SYNC_IDS_KEY, JSON.stringify({ items: list }));
+  } catch (e) {}
+}
+
+function rememberDeletion(entry) {
+  if (VIEW_ONLY || !entry || !entry.id) return;
+  const items = loadDeletionRecords();
+  const id = String(entry.id);
+  const kind = entry.kind === 'todo' ? 'todo' : 'event';
+  const at = Number(entry.at) || Date.now();
+  const blockSync = entry.blockSync !== false;
+  let found = false;
+  items.forEach(function (x) {
+    const same = x.kind === kind && x.id === id;
+    const sameGcal = kind === 'event' && entry.gcalEventId && x.gcalEventId && x.gcalEventId === String(entry.gcalEventId);
+    if (!same && !sameGcal) return;
+    x.kind = kind;
+    x.id = id;
+    x.at = at;
+    x.blockSync = blockSync;
+    if (entry.gcalEventId) x.gcalEventId = String(entry.gcalEventId);
+    if (entry.contentKey) x.contentKey = String(entry.contentKey);
+    found = true;
+  });
+  if (!found) {
+    const row = { kind: kind, id: id, at: at, blockSync: blockSync };
+    if (entry.gcalEventId) row.gcalEventId = String(entry.gcalEventId);
+    if (entry.contentKey) row.contentKey = String(entry.contentKey);
+    items.push(row);
+  }
+  saveDeletionRecords(items);
+}
+
+function deletionRecordMatchesItem(rec, item, kind) {
+  if (!rec || rec.kind !== kind || !item) return false;
+  if (item.id && rec.id === String(item.id)) return true;
+  if (kind === 'event' && item.gcalEventId && rec.gcalEventId && rec.gcalEventId === String(item.gcalEventId)) return true;
+  return false;
+}
+
+function newestDeletionAt(item, kind) {
+  let at = 0;
+  loadDeletionRecords().forEach(function (rec) {
+    // Prune tombstones only stop Calendar re-import. A later snapshot that
+    // still contains the row must be able to merge it back.
+    if (rec.blockSync === false) return;
+    if (deletionRecordMatchesItem(rec, item, kind)) at = Math.max(at, Number(rec.at) || 0);
+  });
+  return at;
+}
+
+/** Drop tombstones for rows this snapshot still contains, so a recreate wins. */
+function clearDeletionRecordsForItems(items, kind) {
+  const incoming = items || [];
+  if (!incoming.length) return;
+  const gcalCancel = [];
+  const next = loadDeletionRecords().filter(function (rec) {
+    const hit = incoming.some(function (item) { return deletionRecordMatchesItem(rec, item, kind); });
+    if (hit && rec.gcalEventId) gcalCancel.push(rec.gcalEventId);
+    return !hit;
+  });
+  saveDeletionRecords(next);
+  gcalCancel.forEach(function (gid) { cancelQueuedGcalDelete(gid); });
+}
+
+/** Drop remote rows the user already deleted here, unless that row is newer than the delete. */
+function filterRemoteItemsByDeletions(remoteArr, kind) {
+  const out = [];
+  (remoteArr || []).forEach(function (item) {
+    if (!item || !item.id) return;
+    const tombAt = newestDeletionAt(item, kind);
+    if (tombAt && itemSyncTs(item) <= tombAt) return;
+    out.push(item);
+  });
+  return out;
+}
+
+function rememberTodoDeletion(todo) {
+  if (!todo || !todo.id) return;
+  rememberDeletion({ kind: 'todo', id: String(todo.id), at: Date.now(), blockSync: true });
+}
+
+function rememberEventDeletion(ev, opts) {
+  if (!ev) return;
+  const id = String(ev.id || '');
+  if (!id) return;
+  opts = opts || {};
+  // blockSync: this device deleted the row, so a stale snapshot must not restore it.
+  // blockSync false: another snapshot omitted the row; block Calendar import only.
+  const blockSync = opts.blockSync !== false;
+  if (blockSync && eventKindOf(ev) === 'personal' && ev.gcalEventId) queueGcalDelete(ev.gcalEventId);
+  // School seeds are put back from SEED_EVENTS on load. Do not tombstone them.
+  if (id.indexOf('e_seed_') === 0) return;
+  rememberDeletion({
+    kind: 'event',
+    id: id,
+    gcalEventId: ev.gcalEventId ? String(ev.gcalEventId).trim() : '',
+    contentKey: eventContentKey(ev),
+    at: Date.now(),
+    blockSync: blockSync
+  });
+}
+
+function gcalReimportBlocked(g) {
+  if (!g) return false;
+  const dashId = gcalDashId(g);
+  const gid = g.id ? String(g.id) : '';
+  const key = gcalContentKey(g);
+  return loadDeletionRecords().some(function (rec) {
+    if (rec.kind !== 'event') return false;
+    if (dashId && rec.id === dashId) return true;
+    if (gid && rec.gcalEventId && rec.gcalEventId === gid) return true;
+    // Untagged calendar copies of a personal event deleted from the dashboard.
+    if (!dashId && key && rec.contentKey && rec.contentKey === key) return true;
+    return false;
+  });
+}
+
+/**
+ * Remote snapshot is the list of ids that still exist.
+ * Drop local rows missing from it only when this snapshot is at least as new
+ * as the last one applied (so a re-sync of a Drive file already pulled by the
+ * old add-only merge still clears leftovers). Never drop e_seed_* here — load
+ * still ensures SEED_EVENTS — and never drop a local-only row whose
+ * updatedAt/createdAt is >= remote.updatedAt (offline add on this device).
+ */
+function pruneAbsentFromAuthoritativeRemote(localArr, remoteArr, remoteUpdatedAt, opts) {
+  opts = opts || {};
+  const local = Array.isArray(localArr) ? localArr : [];
+  const remoteIds = new Set();
+  (remoteArr || []).forEach(function (item) {
+    if (item && item.id) remoteIds.add(item.id);
+  });
+  const cutoff = Number(remoteUpdatedAt) || 0;
+  const dropped = [];
+  const arr = [];
+  local.forEach(function (item) {
+    if (!item || !item.id) { arr.push(item); return; }
+    if (remoteIds.has(item.id)) { arr.push(item); return; }
+    if (opts.preserveSeedEvents && String(item.id).indexOf('e_seed_') === 0) { arr.push(item); return; }
+    if (itemSyncTs(item) >= cutoff) { arr.push(item); return; }
+    dropped.push(item);
+  });
+  return { arr: arr, changed: dropped.length > 0, dropped: dropped };
+}
+
 function applyRemoteSyncPayload(remote, opts) {
   opts = opts || {};
   if (!remote || typeof remote !== 'object') return false;
   let changed = false;
+  const remoteUpdated = Number(remote.updatedAt) || 0;
+  const localSync = Number(state.syncUpdatedAt) || 0;
+  // >= so the same Drive/Pages updatedAt, already stored in syncUpdatedAt by
+  // the old merge, still drops ids that file does not contain. An older file
+  // (updatedAt < syncUpdatedAt) must not delete newer local work.
+  const authoritative = remoteUpdated > 0 && remoteUpdated >= localSync;
   if (Array.isArray(remote.todos)) {
     // Retired seed ids are dropped on every merge so Pages or Drive cannot put them back.
-    const remoteTodos = withoutRetiredSeedTodos(remote.todos.map(t => {
+    const remoteTodos = filterRemoteItemsByDeletions(withoutRetiredSeedTodos(remote.todos.map(t => {
       const createdAt = t.createdAt || Date.now();
       const out = {
         id: t.id || uid('t'),
@@ -7417,19 +7611,45 @@ function applyRemoteSyncPayload(remote, opts) {
       };
       if (t.updatedAt != null) out.updatedAt = t.updatedAt;
       return out;
-    }));
-    const r = mergeByIdPreferNewer(state.todos, remoteTodos);
-    if (r.changed) { state.todos = r.arr; changed = true; }
+    })), 'todo');
+    if (authoritative) clearDeletionRecordsForItems(remoteTodos, 'todo');
+    const r = mergeByIdPreferNewer(state.todos, remoteTodos, { allowAdds: authoritative });
+    let nextTodos = r.arr;
+    let prunedTodos = false;
+    if (authoritative) {
+      const p = pruneAbsentFromAuthoritativeRemote(nextTodos, remoteTodos, remoteUpdated);
+      nextTodos = p.arr;
+      prunedTodos = p.changed;
+    }
+    if (r.changed || prunedTodos) { state.todos = nextTodos; changed = true; }
   }
-  if (Array.isArray(remote.events) && remote.events.length) {
-    const r = mergeByIdPreferNewer(state.events, remote.events.map(normalizeEvent));
-    let next = r.arr;
-    const deduped = dedupeEventsByTitleDate(next);
-    const dedupeChanged = deduped.length !== next.length;
-    if (r.changed || dedupeChanged) { state.events = deduped; changed = true; }
+  if (Array.isArray(remote.events)) {
+    const remoteEvents = filterRemoteItemsByDeletions(remote.events.map(normalizeEvent), 'event');
+    if (authoritative) clearDeletionRecordsForItems(remoteEvents, 'event');
+    let next = Array.isArray(state.events) ? state.events : [];
+    let upsertChanged = false;
+    if (remoteEvents.length) {
+      const r = mergeByIdPreferNewer(next, remoteEvents, { allowAdds: authoritative });
+      next = r.arr;
+      upsertChanged = r.changed;
+    }
+    let prunedEvents = false;
+    if (authoritative) {
+      const p = pruneAbsentFromAuthoritativeRemote(next, remoteEvents, remoteUpdated, { preserveSeedEvents: true });
+      next = p.arr;
+      prunedEvents = p.changed;
+      p.dropped.forEach(function (ev) { rememberEventDeletion(ev, { blockSync: false }); });
+    }
+    if (remoteEvents.length || prunedEvents) {
+      const deduped = dedupeEventsByTitleDate(next);
+      const dedupeChanged = deduped.length !== next.length;
+      if (upsertChanged || prunedEvents || dedupeChanged) {
+        state.events = deduped;
+        changed = true;
+      }
+    }
   }
-  const remoteUpdated = Number(remote.updatedAt) || 0;
-  if (remoteUpdated && remoteUpdated > (Number(state.syncUpdatedAt) || 0)) {
+  if (remoteUpdated && remoteUpdated > localSync) {
     state.syncUpdatedAt = remoteUpdated;
     changed = true;
   }
@@ -7722,7 +7942,10 @@ function scheduleCloudSync() {
       scheduleCloudSync();
       return;
     }
-    runCloudSync({ pull: false });
+    // Pull before push so this device applies a remote delete before writing
+    // its copy back. Local tombstones stop that pull from restoring a row
+    // just deleted here.
+    runCloudSync({ pull: true });
   }, 2500);
 }
 
@@ -7793,6 +8016,14 @@ function loadGcalPendingDeletes() {
 
 function saveGcalPendingDeletes(list) {
   try { localStorage.setItem(GCAL_PENDING_KEY, JSON.stringify(list || [])); } catch (e) {}
+}
+
+function cancelQueuedGcalDelete(gcalEventId) {
+  const id = String(gcalEventId || '').trim();
+  if (!id) return;
+  const list = loadGcalPendingDeletes();
+  const next = list.filter(function (x) { return x.id !== id; });
+  if (next.length !== list.length) saveGcalPendingDeletes(next);
 }
 
 function queueGcalDelete(gcalEventId) {
@@ -8125,6 +8356,10 @@ async function gcalSync() {
     if (pending[g.id]) continue;
     const gMs = Date.parse(g.updated) || 0;
     let idx = localIndexForGcal(g);
+    // User deleted this personal event from the dashboard. Do not import it again
+    // (same dash id, same Calendar id, or an untagged copy of the same content)
+    // until they recreate it or the tombstone expires.
+    if (g.status !== 'cancelled' && idx < 0 && gcalReimportBlocked(g)) continue;
     if (g.status === 'cancelled') {
       if (idx >= 0 && eventKindOf(state.events[idx]) === 'personal') {
         const localMs = Number(state.events[idx].updatedAt) || 0;
