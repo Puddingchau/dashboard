@@ -2,18 +2,46 @@
 <html lang="zh-Hant-HK">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#87CEEB" />
   <script>
-    /* Share view: ?view=1 — class is set before paint so mutation controls never flash. */
+    /* Theme is device-local (dash-hub-v1). Apply it before paint.
+       ?view=1 paints rain-cafe on the lock screen only and does not write localStorage. */
     (function () {
+      var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
+      var COLORS = {
+        'sunny-beach': '#87CEEB',
+        'rain-cafe': '#C5D4E0',
+        sky: '#E8F4FC',
+        cloud: '#F5FAFD',
+        clear: '#D6EBF8',
+        dusk: '#D4E0EF',
+        toy: '#E8F4FC'
+      };
+      var theme = 'sunny-beach';
+      var viewOnly = false;
       try {
-        if (new URLSearchParams(location.search).get('view') === '1') {
-          document.documentElement.classList.add('view-only', 'theme-rain-window');
-        }
+        viewOnly = new URLSearchParams(location.search).get('view') === '1';
       } catch (e) {}
+      if (viewOnly) {
+        document.documentElement.classList.add('view-only', 'theme-rain-window');
+        theme = 'rain-cafe';
+      } else {
+        try {
+          var raw = localStorage.getItem('dash-hub-v1');
+          if (raw) {
+            var data = JSON.parse(raw);
+            if (data && THEMES.indexOf(data.theme) !== -1) theme = data.theme;
+          }
+        } catch (e2) {}
+      }
+      window.__DASH_BOOT_THEME = theme;
+      document.documentElement.setAttribute('data-dash-theme', theme);
+      document.documentElement.classList.add('theme-' + theme);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB'));
     })();
   </script>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#C5D4E0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="description" content="Fred Chau 個人流動儀表板" />
@@ -460,6 +488,14 @@
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: auto;
     }
+    /* Head script sets these before <body> exists so the first paint matches the saved theme. */
+    html.theme-sunny-beach { background: #87CEEB url('sunny-beach-bg.jpg') center / cover no-repeat; }
+    html.theme-rain-cafe { background: #1E2C3A url('rain-cafe-bg.jpg') center / cover no-repeat; }
+    html.theme-sky { background: linear-gradient(165deg, #F5FBFE 0%, #E8F4FC 45%, #B8D9F0 100%); }
+    html.theme-cloud { background: linear-gradient(165deg, #FFFFFF 0%, #F5FAFD 50%, #E8F4FC 100%); }
+    html.theme-clear { background: linear-gradient(165deg, #E8F4FC 0%, #D6EBF8 50%, #A8D0EC 100%); }
+    html.theme-dusk { background: linear-gradient(165deg, #E8EEF6 0%, #D4E0EF 50%, #B8C9DE 100%); }
+    html.theme-toy { background: linear-gradient(165deg, #FFFEFA 0%, #E8F4FC 42%, #A8C8E8 100%); }
     body {
       color-scheme: light;
       margin: 0;
@@ -787,24 +823,47 @@
       display: flex;
       justify-content: flex-end;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
     .hdr-cat-btn {
-      width: 28px;
-      height: 28px;
-      min-width: 28px;
-      min-height: 28px;
-      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 32px;
+      min-height: 32px;
+      padding: 0 10px 0 8px;
+      border: 1px solid rgba(255, 255, 255, 0.42);
       border-radius: 999px;
       font-size: 12px;
       font-weight: 700;
       line-height: 1;
+      letter-spacing: 0.04em;
       cursor: pointer;
-      color: var(--text-strong, #1e293b);
+      color: #fff;
       font-family: inherit;
+      box-shadow:
+        0 8px 16px -8px rgba(15, 23, 42, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.48);
+      transition: transform .15s ease, box-shadow .15s ease;
     }
+    .hdr-cat-btn:hover { transform: translateY(-1px); }
+    .hdr-cat-btn:active { transform: translateY(0); }
+    .hdr-cat-btn--work { background: linear-gradient(145deg, #F6C56B 0%, #E09A2B 46%, #8C5A12 100%); }
+    .hdr-cat-btn--school { background: linear-gradient(145deg, #7DD3FC 0%, #3B82F6 50%, #1D4ED8 100%); }
+    .hdr-cat-btn--life { background: linear-gradient(145deg, #5EEAD4 0%, #14B8A6 50%, #0F766E 100%); }
+    .hdr-cat-icon {
+      width: 14px;
+      height: 14px;
+      display: block;
+      flex-shrink: 0;
+    }
+    .hdr-cat-glyph { text-shadow: 0 1px 1px rgba(15, 23, 42, 0.25); }
     .hdr-cat-btn[aria-expanded="true"] {
-      box-shadow: 0 0 0 2px var(--accent-primary);
+      box-shadow:
+        0 0 0 2px #fff,
+        0 0 0 4px rgba(15, 23, 42, 0.45),
+        0 8px 16px -6px rgba(15, 23, 42, 0.45);
     }
     .hdr-cat-pop {
       position: fixed;
@@ -817,6 +876,33 @@
       padding: 8px 8px 6px;
       max-height: min(58vh, 340px);
       overflow: auto;
+      /* Solid sheet: theme glass must not let the calendar show through. */
+      background: #fffaf3;
+      background-color: #fffaf3;
+      color: #1e293b;
+      opacity: 1;
+      border: 1px solid rgba(30, 41, 59, 0.12);
+      box-shadow:
+        0 18px 42px -14px rgba(15, 23, 42, 0.42),
+        inset 0 1px 0 #fff;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    body.theme-sunny-beach .hdr-cat-pop-card,
+    body.theme-rain-cafe .hdr-cat-pop-card,
+    body.theme-sky .hdr-cat-pop-card,
+    body.theme-cloud .hdr-cat-pop-card,
+    body.theme-clear .hdr-cat-pop-card,
+    body.theme-dusk .hdr-cat-pop-card,
+    body.theme-toy .hdr-cat-pop-card {
+      background: #fffaf3;
+      background-color: #fffaf3;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: 1px solid rgba(30, 41, 59, 0.12);
+      box-shadow:
+        0 18px 42px -14px rgba(15, 23, 42, 0.42),
+        inset 0 1px 0 #fff;
     }
     .hdr-cat-pop-head {
       display: flex;
@@ -826,15 +912,16 @@
       padding: 2px 4px 6px;
       font-size: 13px;
       font-weight: 700;
+      color: #0f172a;
     }
     .hdr-cat-pop-close {
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       border: none;
       border-radius: 999px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 16px;
+      background: #efe6d6;
+      color: #334155;
+      font-size: 18px;
       line-height: 1;
       cursor: pointer;
     }
@@ -845,13 +932,13 @@
       padding: 7px 8px;
       border-radius: 12px;
       text-decoration: none;
-      color: inherit;
+      color: #1e293b;
       font-size: 13px;
       font-weight: 650;
     }
     .hdr-cat-link:hover,
     .hdr-cat-link:focus-visible {
-      background: rgba(255, 255, 255, 0.38);
+      background: #f3ece2;
     }
     .hdr-cat-mark {
       width: 22px;
@@ -861,14 +948,15 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      background: rgba(255, 255, 255, 0.45);
+      background: #efe6d6;
+      color: #7A5420;
       font-size: 11px;
       font-weight: 700;
     }
     .hdr-cat-empty {
       margin: 4px 6px 8px;
       font-size: 12px;
-      color: var(--muted);
+      color: #64748b;
     }
     .header-corner .theme-chips {
       flex-wrap: wrap;
@@ -2504,14 +2592,18 @@
     ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 10px; }
   </style>
 </head>
-<body id="appBody" class="theme-sunny-beach">
+<body id="appBody">
 <script>
-  if (document.documentElement.classList.contains('view-only')) {
-    document.body.classList.remove('theme-sunny-beach');
-    document.body.classList.add('theme-rain-cafe', 'theme-rain-window');
-    var shareMeta = document.querySelector('meta[name="theme-color"]');
-    if (shareMeta) shareMeta.setAttribute('content', '#1E2C3A');
-  }
+  /* Copy the head-script theme onto body before the rest of the page paints. */
+  (function () {
+    var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
+    var viewOnly = document.documentElement.classList.contains('view-only');
+    var theme = viewOnly ? 'rain-cafe' : (window.__DASH_BOOT_THEME || 'sunny-beach');
+    THEMES.forEach(function (p) { document.body.classList.remove('theme-' + p); });
+    document.body.classList.remove('theme-rain-window');
+    document.body.classList.add('theme-' + theme);
+    if (viewOnly) document.body.classList.add('theme-rain-window');
+  })();
 </script>
   <div class="share-lock" id="shareLock" role="dialog" aria-modal="true" aria-labelledby="shareLockTitle">
     <div class="share-lock-card">
@@ -2575,12 +2667,12 @@
 
         <div class="header-corner">
           <div class="hdr-cat-jump" role="group" aria-label="捷徑快速開啟">
-            <button type="button" class="hdr-cat-btn glass-card hdr-glass" data-jump-cat="work" title="工作" aria-label="工作捷徑" aria-expanded="false">工</button>
-            <button type="button" class="hdr-cat-btn glass-card hdr-glass" data-jump-cat="school" title="學校" aria-label="學校捷徑" aria-expanded="false">校</button>
-            <button type="button" class="hdr-cat-btn glass-card hdr-glass" data-jump-cat="life" title="個人" aria-label="個人捷徑" aria-expanded="false">人</button>
+            <button type="button" class="hdr-cat-btn hdr-cat-btn--work" data-jump-cat="work" title="工作" aria-label="工作捷徑" aria-expanded="false"><svg class="hdr-cat-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 7V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1h4a2 2 0 0 1 2 2v2H3V9a2 2 0 0 1 2-2h4zm0 0h6V6h-6v1zM3 13h8v1a1 1 0 0 0 1 1h0a1 1 0 0 0 1-1v-1h8v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6z"/></svg><span class="hdr-cat-glyph">工</span></button>
+            <button type="button" class="hdr-cat-btn hdr-cat-btn--school" data-jump-cat="school" title="學校" aria-label="學校捷徑" aria-expanded="false"><svg class="hdr-cat-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3 2 8.5 12 14l8-4.36V16h2V8.5L12 3zm-6 9.2V16c0 1.4 2.7 2.8 6 2.8s6-1.4 6-2.8v-3.8l-6 3.3-6-3.3z"/></svg><span class="hdr-cat-glyph">校</span></button>
+            <button type="button" class="hdr-cat-btn hdr-cat-btn--life" data-jump-cat="life" title="個人" aria-label="個人捷徑" aria-expanded="false"><svg class="hdr-cat-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12.2a3.6 3.6 0 1 0-3.6-3.6 3.6 3.6 0 0 0 3.6 3.6zm0 1.8c-3.9 0-7 1.9-7 4.3V20h14v-1.7c0-2.4-3.1-4.3-7-4.3z"/></svg><span class="hdr-cat-glyph">人</span></button>
           </div>
           <div class="hdr-cat-pop" id="hdrCatPop" hidden>
-            <div class="hdr-cat-pop-card glass-card" role="dialog" aria-label="捷徑">
+            <div class="hdr-cat-pop-card" role="dialog" aria-label="捷徑">
               <div class="hdr-cat-pop-head">
                 <span id="hdrCatPopTitle">捷徑</span>
                 <button type="button" class="hdr-cat-pop-close" id="hdrCatPopClose" aria-label="關閉">×</button>
@@ -4330,16 +4422,6 @@ function normalizeState(data) {
   };
   const rawTheme = THEME_MIGRATE[data.theme] || data.theme;
   base.theme = THEMES.includes(rawTheme) ? rawTheme : 'sunny-beach';
-  // One-shot (schema < 5): force rain-cafe so users stuck on an old theme see the frost look.
-  // After save, schema is 5 and theme chips work as usual.
-  if (prevSchema < 5) {
-    base.theme = 'rain-cafe';
-  }
-  // One-shot (schema < 6): force sunny-beach so users see the beach photo frost look once.
-  // After save, schema is 6 and theme chips work as usual.
-  if (prevSchema < 6) {
-    base.theme = 'sunny-beach';
-  }
   base.share = normalizeShare(data.share);
   base.schemaVersion = SCHEMA_VERSION;
   return base;
@@ -4443,9 +4525,14 @@ function applyTheme(preset, persist) {
   const t = THEME_PRESETS.includes(preset) ? preset : 'sunny-beach';
   state.theme = t;
   const body = document.getElementById('appBody') || document.body;
-  THEME_PRESETS.forEach(p => body.classList.remove('theme-' + p));
+  THEME_PRESETS.forEach(p => {
+    body.classList.remove('theme-' + p);
+    document.documentElement.classList.remove('theme-' + p);
+  });
   body.classList.remove('theme-rain-window');
+  document.documentElement.classList.remove('theme-rain-window');
   body.classList.add('theme-' + t);
+  document.documentElement.classList.add('theme-' + t);
   document.querySelectorAll('.theme-chips .theme-chip').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === t);
   });
@@ -8153,7 +8240,7 @@ function applyRemoteSyncPayload(remote, opts) {
     } else if (Array.isArray(remote.busStops) && !remote.busStops.length) {
       // empty remote: keep local busStops (do not wipe)
     }
-    if (remote.theme) { state.theme = remote.theme; changed = true; }
+    // Theme is device-local. Drive and Pages sync must not overwrite it.
     if (remote.todoTab != null) {
       state.todoTab = normalizeTodoTab(remote.todoTab);
       todoTab = state.todoTab;
@@ -8208,7 +8295,7 @@ async function autoImportFromCloud() {
     if (!res.ok) return;
     const remote = await res.json();
     if (!remote || remote.updatedAt == null) return;
-    // Pages sync-data.json applies busStops/shortcuts/categories/theme too
+    // Pages sync-data.json applies busStops/shortcuts/categories. Theme stays local.
     const changed = applyRemoteSyncPayload(remote, { applyExtras: true });
     if (changed) {
       saveState();
@@ -8415,7 +8502,7 @@ async function gdrivePull() {
   const res = await gdriveApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media');
   const remote = await res.json();
   if (!remote || typeof remote !== 'object') return false;
-  // Merge todos+events+bus+shortcuts+categories+theme (applyExtras)
+  // Merge todos+events+bus+shortcuts+categories (applyExtras). Theme stays local.
   const changed = mergeSyncPayload(remote, { applyExtras: true });
   if (changed) {
     saveState({ scheduleSync: false });
@@ -9235,13 +9322,18 @@ function initViewOnlyChrome() {
   if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 布丁仔';
 }
 
-/** Gate screen only. Owner theme in state is left alone. */
+/** Lock screen only. Paints rain-cafe and does not write owner localStorage or state.theme. */
 function applyShareEntryTheme() {
   if (!VIEW_ONLY || shareViewUnlocked) return;
   document.documentElement.classList.add('view-only', 'theme-rain-window');
+  THEME_PRESETS.forEach(function (p) {
+    document.documentElement.classList.remove('theme-' + p);
+  });
+  document.documentElement.classList.add('theme-rain-cafe');
   const body = document.getElementById('appBody') || document.body;
   if (!body) return;
-  body.classList.remove('theme-sunny-beach');
+  THEME_PRESETS.forEach(function (p) { body.classList.remove('theme-' + p); });
+  body.classList.remove('theme-rain-window');
   body.classList.add('theme-rain-cafe', 'theme-rain-window');
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', '#1E2C3A');
