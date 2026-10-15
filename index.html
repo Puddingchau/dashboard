@@ -807,10 +807,11 @@
       outline: 2px solid var(--accent-primary, #3B82F6);
       outline-offset: 2px;
     }
-    .hdr-bus-body { text-align: left; min-width: 0; }
+    .hdr-bus-body { text-align: center; min-width: 0; width: 100%; }
     .hdr-bus-top {
       display: flex;
       align-items: baseline;
+      justify-content: center;
       gap: 8px;
       white-space: nowrap;
     }
@@ -1249,6 +1250,7 @@
       .hdr-bus-pair .hdr-bus-top {
         flex-direction: row;
         align-items: baseline;
+        justify-content: center;
         gap: 4px;
         min-width: 0;
       }
@@ -1260,7 +1262,7 @@
         text-overflow: ellipsis;
       }
       .hdr-bus-pair .hdr-bus-route {
-        flex: 1 1 auto;
+        flex: 0 1 auto;
         min-width: 0;
       }
       .hdr-bus-pair .hdr-bus-eta {
@@ -1271,6 +1273,7 @@
         display: block;
         font-size: 0.58rem;
         line-height: 1.2;
+        text-align: center;
       }
       .feature-stack {
         margin-top: 0;
@@ -1280,7 +1283,7 @@
     @media (max-width: 359px) {
       .hdr-bus-pair .hdr-bus-top {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
         gap: 0;
       }
       .hdr-bus-pair .hdr-bus-route,
@@ -4951,10 +4954,29 @@ function scrollToSectionFromHash() {
 window.addEventListener('hashchange', scrollToSectionFromHash);
 
 /* ===== Modal ===== */
+const BUS_ETA_POLL_MS = 30000;
+const BUS_ETA_TICK_MS = 15000;
+let busRouteSheetGen = 0;
+let busRouteSheetTimer = null;
+let busRouteSheetTick = null;
+let busRouteSheetArm = null;
+let busRouteSheetRefreshNow = null;
+
+function stopBusRouteSheetRefresh() {
+  busRouteSheetGen += 1;
+  busRouteSheetArm = null;
+  busRouteSheetRefreshNow = null;
+  if (busRouteSheetTimer) clearInterval(busRouteSheetTimer);
+  if (busRouteSheetTick) clearInterval(busRouteSheetTick);
+  busRouteSheetTimer = null;
+  busRouteSheetTick = null;
+}
+
 const backdrop = document.getElementById('modalBackdrop');
 const modalPanel = document.getElementById('modalPanel');
 
 function openModal(html) {
+  stopBusRouteSheetRefresh();
   modalPanel.innerHTML = html;
   backdrop.classList.add('open');
   backdrop.setAttribute('aria-hidden', 'false');
@@ -4963,6 +4985,7 @@ function openModal(html) {
 }
 
 function closeModal() {
+  stopBusRouteSheetRefresh();
   backdrop.classList.remove('open');
   backdrop.setAttribute('aria-hidden', 'true');
   modalPanel.innerHTML = '';
@@ -4973,6 +4996,22 @@ backdrop.addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && backdrop.classList.contains('open')) closeModal();
+});
+document.addEventListener('visibilitychange', function () {
+  if (!busRouteSheetArm) return;
+  busRouteSheetArm();
+  if (document.visibilityState === 'visible' && busRouteSheetRefreshNow) busRouteSheetRefreshNow();
+});
+window.addEventListener('pagehide', function () {
+  if (busRouteSheetTimer) clearInterval(busRouteSheetTimer);
+  if (busRouteSheetTick) clearInterval(busRouteSheetTick);
+  busRouteSheetTimer = null;
+  busRouteSheetTick = null;
+});
+window.addEventListener('pageshow', function () {
+  if (!busRouteSheetArm || !document.getElementById('busRouteBody')) return;
+  busRouteSheetArm();
+  if (busRouteSheetRefreshNow) busRouteSheetRefreshNow();
 });
 
 /* ===== Shortcuts ===== */
@@ -7721,6 +7760,18 @@ function directionLabelForApiDir(bus, apiDir) {
   return '路線';
 }
 
+function routeStopEtaHtml(etaMap, apiDir, seq) {
+  const key = String(apiDir || '').toUpperCase() + '|' + (Number(seq) || 0);
+  const etaRows = (etaMap && etaMap[key]) || [];
+  const labels = etaRows.slice(0, 2).map(function (r) { return formatEtaMinutes(r.eta); }).filter(Boolean);
+  const rmk = etaRows.map(function (r) { return String(r.rmk_tc || '').trim(); }).find(Boolean);
+  let etaHtml = labels.length ? escapeHtml(labels.join(' · ')) : '—';
+  if (rmk && labels.length) {
+    etaHtml += '<span class="rmk">' + escapeHtml(rmk) + '</span>';
+  }
+  return etaHtml;
+}
+
 function renderRouteStopRowsHtml(stops, etaMap, apiDir, nearbyKmbId, stopsMap) {
   if (!stops || !stops.length) {
     return '<div class="bus-route-empty">此方向暫時沒有站序資料</div>';
@@ -7730,23 +7781,202 @@ function renderRouteStopRowsHtml(stops, etaMap, apiDir, nearbyKmbId, stopsMap) {
     const parsed = parseStopNameTc(info ? info.n : '');
     const name = parsed.name || (info ? info.n : rs.stop);
     const isNear = nearbyKmbId && rs.stop === nearbyKmbId;
-    const etaRows = etaMap[String(apiDir).toUpperCase() + '|' + rs.seq] || [];
-    const labels = etaRows.slice(0, 2).map(function (r) { return formatEtaMinutes(r.eta); }).filter(Boolean);
-    const rmk = etaRows.map(function (r) { return String(r.rmk_tc || '').trim(); }).find(Boolean);
-    let etaHtml = labels.length ? escapeHtml(labels.join(' · ')) : '—';
-    if (rmk && labels.length) {
-      etaHtml += '<span class="rmk">' + escapeHtml(rmk) + '</span>';
-    }
+    const etaHtml = routeStopEtaHtml(etaMap, apiDir, rs.seq);
     return (
       '<div class="bus-route-stop' + (isNear ? ' is-nearby' : '') + '"' + (isNear ? ' id="busNearStopRow"' : '') + '>' +
         '<div class="seq">' + escapeHtml(String(rs.seq || '')) + '</div>' +
         '<div class="name">' + escapeHtml(name || '—') +
           (isNear ? '<span class="near-tag">最近</span>' : '') +
         '</div>' +
-        '<div class="eta-col">' + etaHtml + '</div>' +
+        '<div class="eta-col" data-eta-dir="' + escapeHtml(String(apiDir || '')) + '" data-eta-seq="' + escapeHtml(String(rs.seq || '')) + '">' + etaHtml + '</div>' +
       '</div>'
     );
   }).join('');
+}
+
+function uniqueRouteStopIds(dirs, dirData) {
+  const uniqueStops = [];
+  const seenStop = {};
+  (dirs || []).forEach(function (d) {
+    ((dirData[d] && dirData[d].stops) || []).forEach(function (rs) {
+      const id = rs && rs.stop;
+      if (!id || seenStop[id]) return;
+      seenStop[id] = true;
+      uniqueStops.push(id);
+    });
+  });
+  return uniqueStops;
+}
+
+async function fetchCtbRouteSheetEtas(route, uniqueStops) {
+  const batches = await mapPool(uniqueStops || [], 6, async function (sid) {
+    try {
+      return await fetchCtbStopRouteEta(sid, route);
+    } catch (e) {
+      return [];
+    }
+  });
+  const etaRows = [];
+  (batches || []).forEach(function (rows) {
+    (rows || []).forEach(function (row) { etaRows.push(row); });
+  });
+  return etaRows;
+}
+
+async function loadBusRouteSheetData(bus, onlyDir, isCurrent) {
+  const route = String(bus.route || '').trim().toUpperCase();
+  const watchedDir = resolveBusApiDir(bus);
+  const operator = resolveBusOperator(bus);
+  const dirs = onlyDir
+    ? [watchedDir || 'O']
+    : (watchedDir === 'I' ? ['I', 'O'] : ['O', 'I']);
+  const dirData = {};
+  let stopsMap = {};
+  let etaRows = [];
+  let nearbyId = '';
+  let serviceType = bus.serviceType || 1;
+  const stillOpen = function () { return !isCurrent || isCurrent(); };
+
+  if (operator === 'CTB') {
+    for (let i = 0; i < dirs.length; i++) {
+      if (!stillOpen()) return null;
+      const d = dirs[i];
+      try {
+        const stops = await fetchCtbRouteStops(route, d);
+        dirData[d] = { serviceType: 1, stops: stops || [] };
+      } catch (e) {
+        dirData[d] = { serviceType: 1, stops: [] };
+      }
+    }
+    if (!stillOpen()) return null;
+    const allStopIds = uniqueRouteStopIds(dirs, dirData);
+    await ensureCtbStopsMap(allStopIds);
+    if (!stillOpen()) return null;
+    stopsMap = ctbStopsById;
+    nearbyId = resolveCtbStopId(bus);
+    const hintEl = document.getElementById('busRouteHint');
+    if (hintEl) {
+      hintEl.className = 'bus-route-hint bus-route-loading';
+      hintEl.textContent = '載入城巴各站到站（約 ' + allStopIds.length + ' 站）…';
+    }
+    etaRows = await fetchCtbRouteSheetEtas(route, allStopIds);
+  } else {
+    stopsMap = await loadKmbStopsCache(false);
+    if (!stillOpen()) return null;
+    for (let i = 0; i < dirs.length; i++) {
+      if (!stillOpen()) return null;
+      const d = dirs[i];
+      try {
+        const probed = await fetchRouteStopsWithProbe(route, d, d === watchedDir ? bus.serviceType : undefined);
+        dirData[d] = probed;
+        if (d === watchedDir && probed.serviceType) serviceType = probed.serviceType;
+      } catch (e) {
+        dirData[d] = { serviceType: 1, stops: [] };
+      }
+    }
+    try {
+      etaRows = await fetchKmbRouteEta(route, serviceType);
+    } catch (e1) {
+      if (serviceType !== 1) {
+        try {
+          etaRows = await fetchKmbRouteEta(route, 1);
+          serviceType = 1;
+        } catch (e2) {
+          etaRows = [];
+        }
+      } else {
+        etaRows = [];
+      }
+    }
+    nearbyId = resolveKmbStopId(bus);
+  }
+  if (!stillOpen()) return null;
+
+  return {
+    bus: bus,
+    onlyDir: !!onlyDir,
+    route: route,
+    operator: operator,
+    watchedDir: watchedDir,
+    serviceType: serviceType,
+    dirs: dirs,
+    dirData: dirData,
+    stopsMap: stopsMap,
+    etaRows: etaRows,
+    nearbyId: nearbyId
+  };
+}
+
+async function refetchBusRouteSheetEtas(model) {
+  if (model.operator === 'CTB') {
+    return fetchCtbRouteSheetEtas(model.route, uniqueRouteStopIds(model.dirs, model.dirData));
+  }
+  const serviceType = model.serviceType || 1;
+  try {
+    return await fetchKmbRouteEta(model.route, serviceType);
+  } catch (e1) {
+    if (Number(serviceType) !== 1) return await fetchKmbRouteEta(model.route, 1);
+    throw e1;
+  }
+}
+
+function paintBusRouteSheet(model, opts) {
+  opts = opts || {};
+  const hint = document.getElementById('busRouteHint');
+  const body = document.getElementById('busRouteBody');
+  if (!body || !model) return false;
+  const etaMap = groupRouteEtaByDirSeq(model.etaRows || []);
+  if (opts.etasOnly) {
+    const cols = body.querySelectorAll('.eta-col[data-eta-dir]');
+    if (!cols.length) return false;
+    cols.forEach(function (el) {
+      const next = routeStopEtaHtml(etaMap, el.getAttribute('data-eta-dir'), el.getAttribute('data-eta-seq'));
+      if (el.innerHTML !== next) el.innerHTML = next;
+    });
+    return true;
+  }
+  if (hint) {
+    hint.className = 'bus-route-hint';
+    if (model.onlyDir) {
+      hint.textContent = (model.operator === 'CTB' ? '城巴官方到站' : '九巴官方到站');
+    } else {
+      hint.textContent = (model.operator === 'CTB' ? '城巴官方到站' : '九巴官方路線到站') +
+        ' · 高亮為你附近的站' + (model.bus.stopName ? '（' + model.bus.stopName + '）' : '');
+    }
+  }
+  body.innerHTML = (model.dirs || []).map(function (d) {
+    const label = directionLabelForApiDir(model.bus, d);
+    const watched = d === model.watchedDir;
+    const stops = (model.dirData[d] && model.dirData[d].stops) || [];
+    const head = model.onlyDir
+      ? ''
+      : ('<div class="bus-route-dir' + (watched ? ' is-watched' : '') + '">' + escapeHtml(label) + '</div>');
+    return (
+      head +
+      '<div class="bus-route-stops">' +
+        renderRouteStopRowsHtml(stops, etaMap, d, watched ? model.nearbyId : '', model.stopsMap) +
+      '</div>'
+    );
+  }).join('');
+  if (opts.scrollNear) {
+    const nearRow = document.getElementById('busNearStopRow');
+    if (nearRow && nearRow.scrollIntoView) {
+      setTimeout(function () {
+        try { nearRow.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+      }, 80);
+    }
+  }
+  return true;
+}
+
+function showBusRouteSheetError() {
+  const hint = document.getElementById('busRouteHint');
+  if (hint) {
+    hint.className = 'bus-route-hint bus-route-error';
+    hint.textContent = '無法載入沿線資料，請稍後再試。';
+  }
+  const body = document.getElementById('busRouteBody');
+  if (body) body.innerHTML = '<div class="bus-route-error">載入失敗</div>';
 }
 
 async function openBusRouteSheet(busOrId, opts) {
@@ -7778,123 +8008,79 @@ async function openBusRouteSheet(busOrId, opts) {
   const closeBtn = document.getElementById('busRouteClose');
   if (closeBtn) closeBtn.onclick = closeModal;
 
-  try {
-    const dirs = onlyDir
-      ? [watchedDir || 'O']
-      : (watchedDir === 'I' ? ['I', 'O'] : ['O', 'I']);
-    const dirData = {};
-    let stopsMap = {};
-    let etaRows = [];
-    let nearbyId = '';
+  const gen = busRouteSheetGen;
+  const isCurrent = function () {
+    return gen === busRouteSheetGen && !!document.getElementById('busRouteBody');
+  };
+  let model = null;
+  let painted = false;
+  let inFlight = false;
 
-    if (operator === 'CTB') {
-      for (let i = 0; i < dirs.length; i++) {
-        const d = dirs[i];
-        try {
-          const stops = await fetchCtbRouteStops(route, d);
-          dirData[d] = { serviceType: 1, stops: stops || [] };
-        } catch (e) {
-          dirData[d] = { serviceType: 1, stops: [] };
-        }
-      }
-      const allStopIds = [];
-      dirs.forEach(function (d) {
-        ((dirData[d] && dirData[d].stops) || []).forEach(function (rs) {
-          if (rs.stop) allStopIds.push(rs.stop);
-        });
-      });
-      await ensureCtbStopsMap(allStopIds);
-      stopsMap = ctbStopsById;
-      nearbyId = resolveCtbStopId(bus);
-      // Citybus has no route-eta bulk API — fetch per-stop ETA (concurrency limited)
-      const uniqueStops = [];
-      const seenStop = {};
-      allStopIds.forEach(function (id) {
-        if (!id || seenStop[id]) return;
-        seenStop[id] = true;
-        uniqueStops.push(id);
-      });
-      const hintEl = document.getElementById('busRouteHint');
-      if (hintEl) {
-        hintEl.className = 'bus-route-hint bus-route-loading';
-        hintEl.textContent = '載入城巴各站到站（約 ' + uniqueStops.length + ' 站）…';
-      }
-      const batches = await mapPool(uniqueStops, 6, async function (sid) {
-        try {
-          return await fetchCtbStopRouteEta(sid, route);
-        } catch (e) {
-          return [];
-        }
-      });
-      etaRows = [];
-      (batches || []).forEach(function (rows) {
-        (rows || []).forEach(function (row) { etaRows.push(row); });
-      });
-    } else {
-      stopsMap = await loadKmbStopsCache(false);
-      let serviceType = bus.serviceType || 1;
-      for (let i = 0; i < dirs.length; i++) {
-        const d = dirs[i];
-        try {
-          const probed = await fetchRouteStopsWithProbe(route, d, d === watchedDir ? bus.serviceType : undefined);
-          dirData[d] = probed;
-          if (d === watchedDir && probed.serviceType) serviceType = probed.serviceType;
-        } catch (e) {
-          dirData[d] = { serviceType: 1, stops: [] };
-        }
-      }
-      try {
-        etaRows = await fetchKmbRouteEta(route, serviceType);
-      } catch (e1) {
-        if (serviceType !== 1) {
-          try { etaRows = await fetchKmbRouteEta(route, 1); } catch (e2) { etaRows = []; }
-        }
-      }
-      nearbyId = resolveKmbStopId(bus);
-    }
-
-    const etaMap = groupRouteEtaByDirSeq(etaRows);
-    const hint = document.getElementById('busRouteHint');
-    if (hint) {
-      hint.className = 'bus-route-hint';
-      if (onlyDir) {
-        hint.textContent = (operator === 'CTB' ? '城巴官方到站' : '九巴官方到站');
-      } else {
-        hint.textContent = (operator === 'CTB' ? '城巴官方到站' : '九巴官方路線到站') +
-          ' · 高亮為你附近的站' + (bus.stopName ? '（' + bus.stopName + '）' : '');
-      }
-    }
-    const body = document.getElementById('busRouteBody');
-    if (!body) return;
-    body.innerHTML = dirs.map(function (d) {
-      const label = directionLabelForApiDir(bus, d);
-      const watched = d === watchedDir;
-      const stops = (dirData[d] && dirData[d].stops) || [];
-      const head = onlyDir
-        ? ''
-        : ('<div class="bus-route-dir' + (watched ? ' is-watched' : '') + '">' + escapeHtml(label) + '</div>');
-      return (
-        head +
-        '<div class="bus-route-stops">' +
-          renderRouteStopRowsHtml(stops, etaMap, d, watched ? nearbyId : '', stopsMap) +
-        '</div>'
-      );
-    }).join('');
-    const nearRow = document.getElementById('busNearStopRow');
-    if (nearRow && nearRow.scrollIntoView) {
-      setTimeout(function () {
-        try { nearRow.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
-      }, 80);
-    }
-  } catch (err) {
-    const hint = document.getElementById('busRouteHint');
-    if (hint) {
-      hint.className = 'bus-route-hint bus-route-error';
-      hint.textContent = '無法載入沿線資料，請稍後再試。';
-    }
-    const body = document.getElementById('busRouteBody');
-    if (body) body.innerHTML = '<div class="bus-route-error">載入失敗</div>';
+  async function loadAll() {
+    const loaded = await loadBusRouteSheetData(bus, onlyDir, isCurrent);
+    if (!loaded || !isCurrent()) return false;
+    model = loaded;
+    const didPaint = paintBusRouteSheet(model, { scrollNear: !painted });
+    if (didPaint) painted = true;
+    return didPaint;
   }
+
+  try {
+    await loadAll();
+  } catch (err) {
+    if (isCurrent() && !painted) showBusRouteSheetError();
+  }
+
+  if (!isCurrent()) return;
+
+  async function refreshEtas() {
+    if (!isCurrent() || inFlight) return;
+    if (!model) {
+      inFlight = true;
+      try {
+        const ok = await loadAll();
+        if (!ok && isCurrent() && !painted) showBusRouteSheetError();
+      } catch (e) {
+        if (isCurrent() && !painted) showBusRouteSheetError();
+      } finally {
+        inFlight = false;
+      }
+      return;
+    }
+    inFlight = true;
+    try {
+      const rows = await refetchBusRouteSheetEtas(model);
+      if (!isCurrent()) return;
+      model.etaRows = rows;
+      if (!paintBusRouteSheet(model, { etasOnly: true })) {
+        paintBusRouteSheet(model, { scrollNear: false });
+      }
+    } catch (e) {
+      // Keep the stops and the last ETAs when a refresh fails.
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  function tickMinutes() {
+    if (!isCurrent() || !model) return;
+    paintBusRouteSheet(model, { etasOnly: true });
+  }
+
+  function arm() {
+    if (gen !== busRouteSheetGen) return;
+    if (busRouteSheetTimer) clearInterval(busRouteSheetTimer);
+    if (busRouteSheetTick) clearInterval(busRouteSheetTick);
+    busRouteSheetTimer = null;
+    busRouteSheetTick = null;
+    if (document.visibilityState === 'hidden') return;
+    busRouteSheetTimer = setInterval(refreshEtas, BUS_ETA_POLL_MS);
+    busRouteSheetTick = setInterval(tickMinutes, BUS_ETA_TICK_MS);
+  }
+
+  busRouteSheetRefreshNow = refreshEtas;
+  busRouteSheetArm = arm;
+  arm();
 }
 
 /* ===== Header: date / clock / weather ===== */
@@ -8246,12 +8432,12 @@ let headerBusEtaTimer = null;
 let headerBusTickTimer = null;
 let headerBusEtaBound = false;
 
-async function refreshOneHeaderBus(spec) {
+async function refreshOneHeaderBus(spec, force) {
   const bus = spec.getBus();
   const key = busEtaCacheKey(bus);
   if (!key) return '';
   const cached = busEtaByStop[key];
-  if (cached && !cached.error && Date.now() - (Number(cached.at) || 0) < 20000) return key;
+  if (!force && cached && !cached.error && Date.now() - (Number(cached.at) || 0) < 20000) return key;
   try {
     let rows = [];
     if (resolveBusOperator(bus) === 'CTB') {
@@ -8279,8 +8465,11 @@ function paintBusCardsForEtaKey(key) {
   } catch (e) {}
 }
 
-async function refreshHeaderBusEta() {
-  const keys = await Promise.all(headerBusChipSpecs().map(refreshOneHeaderBus));
+async function refreshHeaderBusEta(opts) {
+  const force = !!(opts && opts.force);
+  const keys = await Promise.all(headerBusChipSpecs().map(function (spec) {
+    return refreshOneHeaderBus(spec, force);
+  }));
   renderHeaderBusEta();
   keys.forEach(paintBusCardsForEtaKey);
 }
@@ -8304,8 +8493,8 @@ function startHeaderBusEta() {
   refreshHeaderBusEta();
   if (headerBusEtaTimer) clearInterval(headerBusEtaTimer);
   if (headerBusTickTimer) clearInterval(headerBusTickTimer);
-  headerBusEtaTimer = setInterval(function () { refreshHeaderBusEta(); }, 60000);
-  headerBusTickTimer = setInterval(function () { renderHeaderBusEta(); }, 30000);
+  headerBusEtaTimer = setInterval(function () { refreshHeaderBusEta({ force: true }); }, BUS_ETA_POLL_MS);
+  headerBusTickTimer = setInterval(function () { renderHeaderBusEta(); }, BUS_ETA_TICK_MS);
   headerBusChipSpecs().forEach(bindHeaderBusChip);
   if (!headerBusEtaBound) {
     headerBusEtaBound = true;
