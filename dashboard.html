@@ -8095,7 +8095,8 @@ function gcalEventUrl(eventId) {
 async function probeGcalAccess() {
   if (gcalAccessState === 'ok') return { ok: true };
   try {
-    const res = await gcalApi('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(GCAL_CALENDAR_ID) + '?fields=id');
+    // calendars.get rejects calendar.events; events.list accepts it.
+    const res = await gcalApi(gcalCollectionUrl() + '?maxResults=1');
     await res.json();
     gcalAccessState = 'ok';
     return { ok: true };
@@ -8502,6 +8503,21 @@ async function gcalSync() {
   return { ok: true, changed: changed };
 }
 
+function gcalScopeGranted(resp) {
+  const oauth2 = window.google && google.accounts && google.accounts.oauth2;
+  if (oauth2 && typeof oauth2.hasGrantedAllScopes === 'function') {
+    try {
+      return !!oauth2.hasGrantedAllScopes(resp, GCAL_SCOPE);
+    } catch (e) {}
+  }
+  if (!resp || !resp.scope) return true;
+  return String(resp.scope).indexOf('calendar') !== -1;
+}
+
+function noteGcalAccessFromToken(resp) {
+  gcalAccessState = gcalScopeGranted(resp) ? 'unknown' : 'no-scope';
+}
+
 function ensureGdriveTokenClient() {
   if (gdriveTokenClient) return gdriveTokenClient;
   if (!gdriveHasClientId()) return null;
@@ -8515,8 +8531,7 @@ function ensureGdriveTokenClient() {
     callback: function (resp) {
       if (resp && resp.access_token) {
         storeGdriveToken(resp.access_token);
-        if (resp.scope && resp.scope.indexOf('calendar') === -1) gcalAccessState = 'no-scope';
-        else gcalAccessState = 'unknown';
+        noteGcalAccessFromToken(resp);
         updateGdriveUiConnected(true);
         setGdriveStatus('同步中…');
         runCloudSync({ pull: true });
@@ -8542,6 +8557,10 @@ function requestGdriveToken(opts) {
   if (!client) return false;
   const req = { login_hint: GCAL_ACCOUNT_EMAIL };
   if (opts.prompt !== undefined) req.prompt = opts.prompt;
+  if (opts.scope) {
+    req.scope = opts.scope;
+    req.include_granted_scopes = true;
+  }
   client.requestAccessToken(req);
   return true;
 }
@@ -8565,9 +8584,13 @@ function bindGdriveUi() {
         alert('Google 登入元件尚未載入，請稍後再試。');
         return;
       }
-      gcalAccessState = 'unknown';
+      const calendarIncremental = gcalAccessState === 'no-scope';
+      if (!calendarIncremental) gcalAccessState = 'unknown';
       gdriveTokenClient = null;
-      requestGdriveToken({ prompt: 'consent' });
+      // Drive-only grant: ask for calendar.events only. include_granted_scopes keeps Drive.
+      requestGdriveToken(calendarIncremental
+        ? { prompt: 'consent', scope: GCAL_SCOPE }
+        : { prompt: 'consent' });
     });
   }
   if (syncBtn) {
@@ -8610,8 +8633,7 @@ function tryGdriveSilentRestore() {
         client.callback = prevCb;
         if (resp && resp.access_token) {
           storeGdriveToken(resp.access_token);
-          if (resp.scope && resp.scope.indexOf('calendar') === -1) gcalAccessState = 'no-scope';
-          else gcalAccessState = 'unknown';
+          noteGcalAccessFromToken(resp);
           updateGdriveUiConnected(true);
           runCloudSync({ pull: true });
         } else if (gdriveAccessToken) {
