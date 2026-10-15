@@ -2,16 +2,6 @@
 <html lang="zh-Hant-HK">
 <head>
   <meta charset="UTF-8" />
-  <script>
-    /* Share view: ?view=1 — class is set before paint so mutation controls never flash. */
-    (function () {
-      try {
-        if (new URLSearchParams(location.search).get('view') === '1') {
-          document.documentElement.classList.add('view-only');
-        }
-      } catch (e) {}
-    })();
-  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <meta name="theme-color" content="#C5D4E0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1313,7 +1303,7 @@
       flex-wrap: wrap;
     }
     .form-row > * { flex: 1 1 auto; }
-    input[type="text"], input[type="url"], input[type="password"], input[type="date"], input[type="time"], input[type="datetime-local"], select, textarea {
+    input[type="text"], input[type="url"], input[type="date"], input[type="time"], input[type="datetime-local"], select, textarea {
       min-height: 44px;
       padding: 10px 12px;
       border: 1.5px solid var(--card-border, #334155);
@@ -2149,133 +2139,12 @@
       padding: 0 8px;
     }
 
-    /* ?view=1 read-only share (see VIEW_ONLY) */
-    .view-only-banner {
-      display: none;
-      margin: 12px 8px 0;
-      padding: 10px 14px;
-      border-radius: 14px;
-      text-align: center;
-      font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 0.02em;
-      line-height: 1.4;
-      background: #fff7ed;
-      color: #9a3412;
-      border: 1px solid #fdba74;
-    }
-    html.view-only .view-only-banner { display: block; }
-    html.view-only .sync-actions { display: none !important; }
-    html.view-only .theme-chips,
-    html.view-only .theme-chips-mobile,
-    html.view-only .theme-chips-desktop,
-    html.view-only #btnAddTodo,
-    html.view-only #btnAddEvent,
-    html.view-only #btnAddBus,
-    html.view-only #btnAddShortcut,
-    html.view-only #btnManageCats,
-    html.view-only .sc-actions,
-    html.view-only .sc-edit-btn,
-    html.view-only .todo-item .btn-icon,
-    html.view-only .event-item .btn-icon,
-    html.view-only .bus-del,
-    html.view-only .reorder-hint {
-      display: none !important;
-    }
-    html.view-only .todo-check {
-      pointer-events: none;
-    }
-    html.view-only .share-owner { display: none !important; }
-    html.view-only:not(.share-unlocked) .app { display: none !important; }
-    .share-lock { display: none; }
-    html.view-only:not(.share-unlocked) .share-lock {
-      display: flex;
-      position: fixed;
-      inset: 0;
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-      padding: 24px 16px;
-      background: #e7f3fb;
-    }
-    .share-lock-card {
-      width: min(420px, 100%);
-      background: #fff;
-      border-radius: 18px;
-      padding: 22px 18px 18px;
-      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
-      text-align: center;
-    }
-    .share-lock-card h2 {
-      margin: 0 0 8px;
-      font-size: 1.35rem;
-    }
-    .share-lock-msg {
-      margin: 0 0 14px;
-      color: #9a3412;
-      font-weight: 700;
-      font-size: 15px;
-      line-height: 1.45;
-    }
-    .share-lock-card form {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      text-align: left;
-    }
-    .share-lock-card form[hidden] { display: none !important; }
-    .share-owner {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin: 28px 8px 0;
-      padding: 0 8px;
-    }
-    html:not(.view-only) .footer-note {
-      margin-top: 12px;
-    }
-    .share-owner-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 700;
-      min-height: 40px;
-    }
-    .share-owner input[type="password"] {
-      width: min(220px, 100%);
-      min-height: 40px;
-      flex: 1 1 160px;
-    }
-    .share-owner-hint,
-    #shareOwnerStatus {
-      flex-basis: 100%;
-      text-align: center;
-      font-size: 12px;
-      color: var(--muted);
-      margin: 0;
-    }
-    #shareOwnerStatus:empty { display: none; }
-
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); border-radius: 10px; }
     ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 10px; }
   </style>
 </head>
 <body id="appBody" class="theme-sunny-beach">
-  <div class="share-lock" id="shareLock" role="dialog" aria-modal="true" aria-labelledby="shareLockTitle">
-    <div class="share-lock-card">
-      <h2 class="font-display" id="shareLockTitle">只睇模式</h2>
-      <p class="share-lock-msg" id="shareLockMsg">正在檢查分享…</p>
-      <form id="shareLockForm" hidden>
-        <label class="field-label" for="shareLockPassword">分享密碼</label>
-        <input type="password" id="shareLockPassword" autocomplete="current-password" maxlength="200" />
-        <button type="submit" class="btn btn-primary">進入</button>
-      </form>
-    </div>
-  </div>
   <div class="app">
     <header class="page-header">
       <div class="page-header-inner">
@@ -2333,8 +2202,6 @@
         </div>
       </div>
     </header>
-
-    <div class="view-only-banner" id="viewOnlyBanner" role="status">只睇模式 · 改動唔會儲存</div>
 
     <div class="sync-actions" style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px;margin-bottom:4px;padding:0 8px">
       <button type="button" class="btn btn-ghost btn-sm" id="gdriveConnectBtn">連接 Google Drive</button>
@@ -2480,7 +2347,7 @@
             <button type="button" class="btn btn-ghost btn-sm" id="btnRefreshBusEta">更新到站</button>
           </div>
         </div>
-        <p class="bus-list-hint"><span class="reorder-hint">長按或拖曳可重新排序 · </span>點卡片睇沿線</p>
+        <p class="bus-list-hint">長按或拖曳可重新排序 · 點卡片睇沿線</p>
         <div class="bus-list" id="busList"></div>
       </div>
         </div>
@@ -2506,24 +2373,13 @@
           <button type="button" class="btn btn-primary btn-sm" id="btnAddShortcut">＋ 新增捷徑</button>
           <button type="button" class="btn btn-ghost btn-sm" id="btnManageCats">管理分類</button>
         </div>
-        <p class="meta" style="margin-top:12px"><span class="reorder-hint">長按或拖曳可重新排序 · </span>點圖示開啟連結</p>
+        <p class="meta" style="margin-top:12px">長按或拖曳可重新排序 · 點圖示開啟連結</p>
       </div>
         </div>
       </div>
     </section>
 
     </div><!-- /.feature-stack -->
-
-    <div class="share-owner" id="shareOwner">
-      <label class="share-owner-toggle"><input type="checkbox" id="shareEnabledToggle" /> 允許只睇分享</label>
-      <input type="password" id="sharePasswordNew" placeholder="分享密碼（留空＝唔改）" autocomplete="new-password" maxlength="200" />
-      <button type="button" class="btn btn-ghost btn-sm" id="btnSaveShare">儲存分享設定</button>
-      <button type="button" class="btn btn-ghost btn-sm" id="btnCopyViewLink">複製只睇連結</button>
-      <span id="copyViewLinkNote" style="font-size:12px;color:var(--muted);align-self:center" aria-live="polite"></span>
-      <button type="button" class="btn btn-ghost btn-sm" id="btnCopyShareConfig">複製閘門設定</button>
-      <p class="share-owner-hint">朋友用 ?view=1 自己輸入密碼，連結唔會帶密碼。關掉分享或改密碼會令舊密碼失效；朋友頁面讀 share-config.json。</p>
-      <p id="shareOwnerStatus" aria-live="polite"></p>
-    </div>
 
     <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入 · 布丁仔</p>
   </div>
@@ -3246,6 +3102,90 @@ const SEED_EVENTS = [
     date: '2026-09-11',
     time: '',
     work: '代號峯（周恒峯，表第11行）；總計 8 節。已核實：11/12 上／下為 3A。其餘日期（11/9、18/9、12/3、28/5、11/6、18/6）班次見紙本全日編配表（OCR 未完全確認）。來源：星期五沒有課外活動課(全日)上課安排 2026-2027。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20261022',
+    title: '生態閣保養',
+    date: '2026-10-22',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸過濾器；更換底材。備註：24/10 家長教師會周年會員大會暨分級家長會。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20261119',
+    title: '生態閣保養',
+    date: '2026-11-19',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20261203',
+    title: '生態閣保養',
+    date: '2026-12-03',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；供應糧食；清洗魚缸過濾器；更換底材。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270107',
+    title: '生態閣保養',
+    date: '2027-01-07',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270128',
+    title: '生態閣保養',
+    date: '2027-01-28',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；供應糧食；清洗魚缸過濾器；更換底材。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270304',
+    title: '生態閣保養',
+    date: '2027-03-04',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270401',
+    title: '生態閣保養',
+    date: '2027-04-01',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；供應糧食；清洗魚缸過濾器；更換底材。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270506',
+    title: '生態閣保養',
+    date: '2027-05-06',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270603',
+    title: '生態閣保養',
+    date: '2027-06-03',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食；清洗魚缸過濾器；更換底材。備註：30/6 畢業典禮。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270628',
+    title: '生態閣保養',
+    date: '2027-06-28',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。備註：3/7 P.1–5 家長日。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270808',
+    title: '生態閣保養',
+    date: '2027-08-08',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；供應糧食；清洗魚缸過濾器；更換底材。表 15/10/2026。'
+  },
+  {
+    id: 'e_seed_eco_cabinet_20270902',
+    title: '生態閣保養',
+    date: '2027-09-02',
+    time: '10:30',
+    work: '科學科生態閣保養紀錄；清洗魚缸連更換缸水；清理守宮、鬆獅蜥恆溫箱及青蛙缸；供應糧食。表 15/10/2026。'
   }
 ];
 
@@ -3449,16 +3389,6 @@ function letterFallback(title) {
 }
 
 /* ===== State ===== */
-/** Read-only share view. Query: ?view=1
- *  Example: https://puddingchau.github.io/dashboard/?view=1
- *  Password is not in the URL. Guests read share-config.json (hash only).
- *  Personal sync-data.json loads only after the password matches.
- *  No dashboard localStorage writes and no Google Drive writes.
- */
-const VIEW_ONLY = new URLSearchParams(location.search).get('view') === '1';
-if (VIEW_ONLY) document.documentElement.classList.add('view-only');
-let shareViewUnlocked = false;
-
 let state = loadState();
 let activeCat = 'all';
 let todoTab = 'today';
@@ -3706,12 +3636,6 @@ function dedupeEventsByTitleDate(events) {
 }
 
 function loadState() {
-  // Locked share view keeps personal lists empty. After the password matches,
-  // show seeds + sync-data.json, not this browser's saved copy.
-  if (VIEW_ONLY) {
-    if (!shareViewUnlocked) return lockedEmptyState();
-    return normalizeState(null);
-  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -3745,8 +3669,7 @@ function normalizeState(data) {
     busExpanded: false,
     todoTab: 'today',
     theme: 'sunny-beach',
-    syncUpdatedAt: 0,
-    share: { enabled: false, salt: '', passwordHash: '', updatedAt: 0 }
+    syncUpdatedAt: 0
   };
   if (!data || typeof data !== 'object') return base;
 
@@ -3886,29 +3809,7 @@ function normalizeState(data) {
   if (prevSchema < 6) {
     base.theme = 'sunny-beach';
   }
-  base.share = normalizeShare(data.share);
   base.schemaVersion = SCHEMA_VERSION;
-  return base;
-}
-
-function normalizeShare(raw) {
-  const s = raw && typeof raw === 'object' ? raw : {};
-  return {
-    enabled: !!s.enabled,
-    salt: typeof s.salt === 'string' ? s.salt : '',
-    passwordHash: typeof s.passwordHash === 'string' ? s.passwordHash : '',
-    updatedAt: Number(s.updatedAt) || 0
-  };
-}
-
-/** Share view before unlock: no todos, events, shortcuts, or bus cards in memory. */
-function lockedEmptyState() {
-  const base = normalizeState(null);
-  base.todos = [];
-  base.events = [];
-  base.shortcuts = [];
-  base.categories = [];
-  base.busStops = [];
   return base;
 }
 
@@ -3924,8 +3825,7 @@ function buildExportPayload() {
     theme: state.theme || 'sunny-beach',
     todoTab: normalizeTodoTab(typeof todoTab !== 'undefined' ? todoTab : state.todoTab),
     eventsFilter: state.eventsFilter || 'today',
-    syncUpdatedAt: state.syncUpdatedAt || 0,
-    share: normalizeShare(state.share)
+    syncUpdatedAt: state.syncUpdatedAt || 0
   };
 }
 
@@ -3940,38 +3840,33 @@ function mergeSyncPayload(remote, opts) {
 }
 
 function saveState() {
-  if (!VIEW_ONLY) {
+  try {
+    const payload = {
+      schemaVersion: SCHEMA_VERSION,
+      shortcuts: state.shortcuts,
+      categories: state.categories,
+      todos: state.todos,
+      events: state.events,
+      eventsFilter: state.eventsFilter || 'today',
+      busStops: state.busStops,
+      trainingExpanded: !!state.trainingExpanded,
+      busExpanded: !!state.busExpanded,
+      todoTab: normalizeTodoTab(todoTab),
+      theme: state.theme || 'sunny-beach',
+      syncUpdatedAt: state.syncUpdatedAt || 0
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     try {
-      const payload = {
-        schemaVersion: SCHEMA_VERSION,
-        shortcuts: state.shortcuts,
-        categories: state.categories,
-        todos: state.todos,
-        events: state.events,
-        eventsFilter: state.eventsFilter || 'today',
-        busStops: state.busStops,
-        trainingExpanded: !!state.trainingExpanded,
-        busExpanded: !!state.busExpanded,
-        todoTab: normalizeTodoTab(todoTab),
-        theme: state.theme || 'sunny-beach',
-        syncUpdatedAt: state.syncUpdatedAt || 0,
-        share: normalizeShare(state.share)
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      try {
-        localStorage.setItem(STORAGE_KEY + '-export', JSON.stringify(buildExportPayload()));
-      } catch (e2) {}
-    } catch (e) {
-      console.warn('localStorage save failed', e);
-    }
+      localStorage.setItem(STORAGE_KEY + '-export', JSON.stringify(buildExportPayload()));
+    } catch (e2) {}
+  } catch (e) {
+    console.warn('localStorage save failed', e);
   }
   try { updateBlockSummaries(); } catch (e) {}
   try {
     if (document.getElementById('calGrid')) renderCalendar();
   } catch (e) {}
-  if (!VIEW_ONLY) {
-    try { scheduleGdriveAutoPush(); } catch (e) {}
-  }
+  try { scheduleGdriveAutoPush(); } catch (e) {}
 }
 
 
@@ -3979,7 +3874,6 @@ function saveState() {
 const THEME_PRESETS = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
 
 function applyTheme(preset, persist) {
-  if (VIEW_ONLY && persist !== false) return;
   const t = THEME_PRESETS.includes(preset) ? preset : 'sunny-beach';
   state.theme = t;
   const body = document.getElementById('appBody') || document.body;
@@ -3996,7 +3890,6 @@ function applyTheme(preset, persist) {
 
 document.querySelectorAll('.theme-chips').forEach(function (group) {
   group.addEventListener('click', function (e) {
-    if (VIEW_ONLY) return;
     const btn = e.target.closest('.theme-chip');
     if (!btn) return;
     applyTheme(btn.getAttribute('data-theme'), true);
@@ -4169,7 +4062,7 @@ function renderShortcuts() {
       ? '<img src="' + escapeHtml(fav) + '" alt="" loading="lazy" data-letter="' + escapeHtml(letter) + '">'
       : escapeHtml(letter);
     return (
-      '<div class="sc-item" draggable="' + (VIEW_ONLY ? 'false' : 'true') + '" data-id="' + escapeHtml(s.id) + '" role="link" tabindex="0" title="' + escapeHtml(s.title) + '">' +
+      '<div class="sc-item" draggable="true" data-id="' + escapeHtml(s.id) + '" role="link" tabindex="0" title="' + escapeHtml(s.title) + '">' +
         '<button type="button" class="sc-edit-btn" data-edit="' + escapeHtml(s.id) + '" aria-label="編輯">✎</button>' +
         '<div class="sc-icon">' + iconHtml + '</div>' +
         '<div class="sc-title">' + escapeHtml(s.title) + '</div>' +
@@ -4201,11 +4094,6 @@ function renderShortcuts() {
         if (sc && sc.url) window.open(sc.url, '_blank', 'noopener');
       }
     });
-
-    if (VIEW_ONLY) {
-      item.setAttribute('draggable', 'false');
-      return;
-    }
 
     const editBtn = item.querySelector('[data-edit]');
     editBtn.addEventListener('click', (e) => {
@@ -4287,7 +4175,6 @@ function renderShortcuts() {
 }
 
 function reorderShortcuts(fromId, toId) {
-  if (VIEW_ONLY) return;
   const fromIdx = state.shortcuts.findIndex(s => s.id === fromId);
   const toIdx = state.shortcuts.findIndex(s => s.id === toId);
   if (fromIdx < 0 || toIdx < 0) return;
@@ -4298,7 +4185,6 @@ function reorderShortcuts(fromId, toId) {
 }
 
 function openShortcutModal(editId) {
-  if (VIEW_ONLY) return;
   const sc = editId ? state.shortcuts.find(s => s.id === editId) : null;
   const catOpts = state.categories.map(c =>
     '<option value="' + escapeHtml(c.id) + '"' + (sc && sc.category === c.id ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>'
@@ -4349,7 +4235,6 @@ function openShortcutModal(editId) {
 document.getElementById('btnAddShortcut').addEventListener('click', () => openShortcutModal(null));
 
 document.getElementById('btnManageCats').addEventListener('click', () => {
-  if (VIEW_ONLY) return;
   openModal(
     '<h3>管理分類</h3>' +
     '<form class="form-stack" id="catAddForm">' +
@@ -4480,7 +4365,6 @@ document.querySelectorAll('#todos .subtab[data-todotab]').forEach(btn => {
 });
 
 function openTodoAddModal() {
-  if (VIEW_ONLY) return;
   openModal(
     '<h3>新增待辦</h3>' +
     '<form class="form-stack" id="todoAddForm">' +
@@ -4515,7 +4399,6 @@ function openTodoAddModal() {
 document.getElementById('btnAddTodo').addEventListener('click', openTodoAddModal);
 
 function reorderTodos(fromId, toId) {
-  if (VIEW_ONLY) return;
   const fromIdx = state.todos.findIndex(s => s.id === fromId);
   const toIdx = state.todos.findIndex(s => s.id === toId);
   if (fromIdx < 0 || toIdx < 0) return;
@@ -4530,10 +4413,6 @@ function reorderTodos(fromId, toId) {
 }
 
 function bindTodoDnD(row, list) {
-  if (VIEW_ONLY) {
-    row.removeAttribute('draggable');
-    return;
-  }
   const id = row.getAttribute('data-id');
   row.setAttribute('draggable', 'true');
 
@@ -4611,7 +4490,6 @@ function bindTodoDnD(row, list) {
 }
 
 function openTodoEditModal(editId) {
-  if (VIEW_ONLY) return;
   const t = state.todos.find(x => x.id === editId);
   if (!t) return;
   openModal(
@@ -4678,7 +4556,7 @@ function renderTodos() {
   list.innerHTML = items.map(t => {
     const d = parseDateOnly(t.due);
     const dd = daysDiff(d);
-    const dragCls = (VIEW_ONLY || t.done) ? '' : ' todo-draggable';
+    const dragCls = t.done ? '' : ' todo-draggable';
     const ord = t.done ? 0 : (++openOrd);
     const numHtml = t.done
       ? ''
@@ -4686,7 +4564,7 @@ function renderTodos() {
     return (
       '<div class="todo-item' + (t.done ? ' done' : '') + dragCls + '" data-id="' + escapeHtml(t.id) + '">' +
         numHtml +
-        '<input type="checkbox" class="todo-check" ' + (t.done ? 'checked' : '') + (VIEW_ONLY ? ' disabled' : '') + ' aria-label="完成" />' +
+        '<input type="checkbox" class="todo-check" ' + (t.done ? 'checked' : '') + ' aria-label="完成" />' +
         '<div class="todo-body">' +
           '<div class="todo-title">' + escapeHtml(t.title) + '</div>' +
           '<div class="meta">' +
@@ -4701,36 +4579,25 @@ function renderTodos() {
 
   list.querySelectorAll('.todo-item').forEach(row => {
     const id = row.getAttribute('data-id');
-    const check = row.querySelector('.todo-check');
-    if (check && !VIEW_ONLY) {
-      check.addEventListener('change', (e) => {
-        const t = state.todos.find(x => x.id === id);
-        if (!t) return;
-        t.done = e.target.checked;
-        t.updatedAt = Date.now();
-        // Keep relative order in state.todos; render puts done at bottom
-        saveState();
-        renderTodos();
-      });
-    }
-    const editBtn = row.querySelector('[data-edit]');
-    if (editBtn) {
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (VIEW_ONLY) return;
-        openTodoEditModal(id);
-      });
-    }
-    const delBtn = row.querySelector('[data-del]');
-    if (delBtn) {
-      delBtn.addEventListener('click', () => {
-        if (VIEW_ONLY) return;
-        state.todos = state.todos.filter(x => x.id !== id);
-        saveState();
-        renderTodos();
-      });
-    }
-    if (!VIEW_ONLY && row.classList.contains('todo-draggable')) bindTodoDnD(row, list);
+    row.querySelector('.todo-check').addEventListener('change', (e) => {
+      const t = state.todos.find(x => x.id === id);
+      if (!t) return;
+      t.done = e.target.checked;
+      t.updatedAt = Date.now();
+      // Keep relative order in state.todos; render puts done at bottom
+      saveState();
+      renderTodos();
+    });
+    row.querySelector('[data-edit]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openTodoEditModal(id);
+    });
+    row.querySelector('[data-del]').addEventListener('click', () => {
+      state.todos = state.todos.filter(x => x.id !== id);
+      saveState();
+      renderTodos();
+    });
+    if (row.classList.contains('todo-draggable')) bindTodoDnD(row, list);
   });
 }
 
@@ -4755,7 +4622,6 @@ document.querySelectorAll('#eventsFilterTabs .subtab').forEach(btn => {
 });
 
 function openEventAddModal() {
-  if (VIEW_ONLY) return;
   openModal(
     '<h3>新增學校活動</h3>' +
     '<form class="form-stack" id="eventAddForm">' +
@@ -4795,7 +4661,6 @@ function openEventAddModal() {
 document.getElementById('btnAddEvent').addEventListener('click', openEventAddModal);
 
 function openEventEditModal(editId) {
-  if (VIEW_ONLY) return;
   const ev = state.events.find(x => x.id === editId);
   if (!ev) return;
   openModal(
@@ -4905,24 +4770,16 @@ function renderEvents() {
   }).join('');
   list.querySelectorAll('.event-item').forEach(row => {
     const id = row.getAttribute('data-id');
-    const editBtn = row.querySelector('[data-edit]');
-    if (editBtn) {
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (VIEW_ONLY) return;
-        openEventEditModal(id);
-      });
-    }
-    const delBtn = row.querySelector('[data-del]');
-    if (delBtn) {
-      delBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (VIEW_ONLY) return;
-        state.events = state.events.filter(x => x.id !== id);
-        saveState();
-        renderEvents();
-      });
-    }
+    row.querySelector('[data-edit]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEventEditModal(id);
+    });
+    row.querySelector('[data-del]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.events = state.events.filter(x => x.id !== id);
+      saveState();
+      renderEvents();
+    });
     const body = row.querySelector('.todo-body');
     const workEl = row.querySelector('.event-work');
     if (body && workEl && workEl.scrollHeight > workEl.clientHeight + 1) {
@@ -6096,7 +5953,6 @@ function bindBusEtaControls() {
   if (addBtn && !addBtn._busAddBound) {
     addBtn._busAddBound = true;
     addBtn.addEventListener('click', function () {
-      if (VIEW_ONLY) return;
       openBusAddModal();
     });
   }
@@ -6193,7 +6049,6 @@ function destKeywordsFromDest(destTc) {
 }
 
 function reorderBuses(fromId, toId) {
-  if (VIEW_ONLY) return;
   if (!Array.isArray(state.busStops)) return;
   const fromIdx = state.busStops.findIndex(function (s) { return s.id === fromId; });
   const toIdx = state.busStops.findIndex(function (s) { return s.id === toId; });
@@ -6206,7 +6061,6 @@ function reorderBuses(fromId, toId) {
 }
 
 function deleteBusRoute(busId) {
-  if (VIEW_ONLY) return;
   const b = (state.busStops || []).find(function (x) { return x.id === busId; });
   if (!b) return;
   const label = (b.route || '') + (b.direction ? ' ' + b.direction : '');
@@ -6219,10 +6073,6 @@ function deleteBusRoute(busId) {
 }
 
 function bindBusDnD(card, list) {
-  if (VIEW_ONLY) {
-    card.removeAttribute('draggable');
-    return;
-  }
   const id = card.getAttribute('data-id');
   card.setAttribute('draggable', 'true');
 
@@ -6300,7 +6150,6 @@ function bindBusDnD(card, list) {
 }
 
 function openBusAddModal() {
-  if (VIEW_ONLY) return;
   openModal(
     '<h3>新增巴士路線</h3>' +
     '<form class="form-stack" id="busAddForm">' +
@@ -6530,7 +6379,7 @@ function renderBus() {
     const eta = formatBusEtaHtml(b, cached || null);
     const badge = busOperatorBadgeHtml(b);
     return (
-      '<div class="bus-card ' + busCardDirectionClass(b) + '" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '" draggable="' + (VIEW_ONLY ? 'false' : 'true') + '">' +
+      '<div class="bus-card ' + busCardDirectionClass(b) + '" data-id="' + escapeHtml(b.id) + '" role="button" tabindex="0" aria-label="睇沿線 ' + escapeHtml(b.route || '') + '" draggable="true">' +
         '<div class="bus-row">' +
           '<div class="bus-card-main">' +
             '<div class="bus-summary-row">' + badge +
@@ -6568,11 +6417,10 @@ function renderBus() {
       delBtn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        if (VIEW_ONLY) return;
         deleteBusRoute(id);
       });
     }
-    if (!VIEW_ONLY) bindBusDnD(card, list);
+    bindBusDnD(card, list);
   });
 
   bindBusEtaControls();
@@ -7151,14 +6999,6 @@ function applyRemoteSyncPayload(remote, opts) {
       state.eventsFilter = normalizeEventsFilter(remote.eventsFilter);
       changed = true;
     }
-    if (remote.share && typeof remote.share === 'object') {
-      const next = normalizeShare(remote.share);
-      const localTs = Number(state.share && state.share.updatedAt) || 0;
-      if (next.updatedAt > localTs) {
-        state.share = next;
-        changed = true;
-      }
-    }
   }
   return changed;
 }
@@ -7169,7 +7009,6 @@ function reRenderAfterSync(extras) {
   try { updateBlockSummaries(); } catch (e) {}
   if (extras) {
     try { applyTheme(state.theme || 'sunny-beach', false); } catch (e) {}
-    try { syncShareOwnerUI(); } catch (e) {}
     try { syncTodoTabUI(); } catch (e) {}
     try { syncEventsFilterUI(); } catch (e) {}
     try { renderCatChips(); } catch (e) {}
@@ -7250,7 +7089,6 @@ function formatGdriveSyncTime(ts) {
 }
 
 function storeGdriveToken(token) {
-  if (VIEW_ONLY) return;
   gdriveAccessToken = token || null;
   try {
     if (token) sessionStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, token);
@@ -7272,12 +7110,6 @@ function gdriveAuthHeaders() {
 
 async function gdriveApi(url, opts) {
   opts = opts || {};
-  if (VIEW_ONLY) {
-    const method = String(opts.method || 'GET').toUpperCase();
-    if (method !== 'GET' && method !== 'HEAD') {
-      throw new Error('view-only: Drive writes are blocked');
-    }
-  }
   const headers = Object.assign({}, gdriveAuthHeaders(), opts.headers || {});
   const res = await fetch(url, Object.assign({}, opts, { headers }));
   if (!res.ok) {
@@ -7290,7 +7122,6 @@ async function gdriveApi(url, opts) {
 }
 
 async function gdriveVerifyOrFindFileId() {
-  if (VIEW_ONLY) return null;
   const stored = localStorage.getItem(GDRIVE_FILE_ID_KEY) || gdriveFileId;
   if (stored) {
     try {
@@ -7319,7 +7150,6 @@ async function gdriveVerifyOrFindFileId() {
 }
 
 async function gdriveCreateSyncFile() {
-  if (VIEW_ONLY) return null;
   const payload = buildSyncPayload();
   // Sync covers todos + events + busStops + shortcuts (+ categories/theme in payload)
   if (!Array.isArray(payload.todos)) payload.todos = state.todos || [];
@@ -7352,7 +7182,6 @@ async function gdriveCreateSyncFile() {
 }
 
 async function gdrivePull() {
-  if (VIEW_ONLY) return false;
   const fileId = await gdriveVerifyOrFindFileId();
   const res = await gdriveApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media');
   const remote = await res.json();
@@ -7367,7 +7196,6 @@ async function gdrivePull() {
 }
 
 async function gdrivePush() {
-  if (VIEW_ONLY) return false;
   const fileId = await gdriveVerifyOrFindFileId();
   const payload = buildSyncPayload();
   // Sync covers todos + events + busStops + shortcuts (+ categories/theme)
@@ -7388,7 +7216,6 @@ async function gdrivePush() {
 }
 
 function scheduleGdriveAutoPush() {
-  if (VIEW_ONLY) return;
   if (!gdriveIsConnected()) return;
   if (gdriveAutoPushTimer) clearTimeout(gdriveAutoPushTimer);
   gdriveAutoPushTimer = setTimeout(function () {
@@ -7446,7 +7273,6 @@ function ensureGdriveTokenClient() {
 }
 
 function requestGdriveToken(opts) {
-  if (VIEW_ONLY) return false;
   opts = opts || {};
   const client = ensureGdriveTokenClient();
   if (!client) return false;
@@ -7457,7 +7283,6 @@ function requestGdriveToken(opts) {
 }
 
 async function gdriveSyncNow() {
-  if (VIEW_ONLY) return;
   if (!gdriveAccessToken) {
     setGdriveStatus('請先連接');
     return;
@@ -7481,7 +7306,6 @@ function bindGdriveUi() {
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   if (connectBtn) {
     connectBtn.addEventListener('click', function () {
-      if (VIEW_ONLY) return;
       if (!gdriveHasClientId()) {
         alert('尚未設定 Google OAuth Client ID，請稍後再試。');
         setGdriveStatus('待設定 OAuth Client ID');
@@ -7496,7 +7320,6 @@ function bindGdriveUi() {
   }
   if (syncBtn) {
     syncBtn.addEventListener('click', function () {
-      if (VIEW_ONLY) return;
       gdriveSyncNow();
     });
   }
@@ -7506,7 +7329,6 @@ function bindGdriveUi() {
 }
 
 function tryGdriveSilentRestore() {
-  if (VIEW_ONLY) return;
   if (!gdriveHasClientId()) return;
   restoreGdriveTokenFromSession();
   const hasFileId = !!localStorage.getItem(GDRIVE_FILE_ID_KEY);
@@ -7554,438 +7376,32 @@ function bindSyncUi() {
   /* Export/import buttons removed; Drive sync uses buildExportPayload / applyRemoteSyncPayload. */
 }
 
-/** Owner control: copy origin + pathname + ?view=1 (password is not in the URL). */
-function viewOnlyShareUrl() {
-  return location.origin + location.pathname + '?view=1';
-}
-
-function copyPlainText(text) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    return navigator.clipboard.writeText(text).then(function () { return true; }).catch(function () {
-      return copyPlainTextFallback(text);
-    });
-  }
-  return Promise.resolve(copyPlainTextFallback(text));
-}
-
-function copyPlainTextFallback(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.setAttribute('readonly', '');
-  ta.style.position = 'fixed';
-  ta.style.left = '-9999px';
-  document.body.appendChild(ta);
-  ta.select();
-  let ok = false;
-  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-  ta.remove();
-  return ok;
-}
-
-function bindCopyViewLink() {
-  const btn = document.getElementById('btnCopyViewLink');
-  const note = document.getElementById('copyViewLinkNote');
-  if (!btn || btn._copyBound || VIEW_ONLY) return;
-  btn._copyBound = true;
-  btn.addEventListener('click', function () {
-    const url = viewOnlyShareUrl();
-    copyPlainText(url).then(function (ok) {
-      if (!note) return;
-      note.textContent = ok ? '已複製' : url;
-      if (ok) {
-        setTimeout(function () {
-          if (note.textContent === '已複製') note.textContent = '';
-        }, 1600);
-      }
-    });
-  });
-}
-
-function initViewOnlyChrome() {
-  if (!VIEW_ONLY) return;
-  document.documentElement.classList.add('view-only');
-  document.querySelectorAll('.theme-chip').forEach(function (btn) {
-    btn.disabled = true;
-    btn.setAttribute('aria-disabled', 'true');
-  });
-  const note = document.querySelector('.footer-note');
-  if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 布丁仔';
-}
-
-/* ===== Share password gate =====
- * Published gate is share-config.json (no todos/events). Hash is SHA-256
- * of salt + "\\n" + password. Plaintext is never stored.
- * Guests re-read the gate on load, on focus, and every few seconds, so a
- * new hash or shareEnabled:false locks old passwords out.
- */
-const SHARE_GRANT_KEY = 'dash-hub-share-grant';
-let currentShareGate = null;
-let shareWatchTimer = null;
-let shareCheckInFlight = false;
-let shareUiSyncing = false;
-let dashboardBooted = false;
-let dashboardBound = false;
-
-function hashesEqual(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string' || !a || a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-function randomShareSalt() {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
-}
-
-async function sha256Hex(text) {
-  const data = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
-}
-
-/** SHA-256(salt + newline + password). Salt is public; password is not stored. */
-async function hashSharePassword(password, salt) {
-  return sha256Hex(String(salt || '') + '\n' + String(password || ''));
-}
-
-function shareConfigFromState(share) {
-  const s = normalizeShare(share);
-  return {
-    shareEnabled: !!s.enabled,
-    shareSalt: s.salt,
-    sharePasswordHash: s.passwordHash,
-    updatedAt: s.updatedAt || 0
-  };
-}
-
-function normalizeShareConfig(data) {
-  if (!data || typeof data !== 'object') return null;
-  const nested = data.share && typeof data.share === 'object' ? data.share : null;
-  const enabled = data.shareEnabled != null ? data.shareEnabled : (nested ? nested.enabled : false);
-  const salt = data.shareSalt != null ? data.shareSalt : (nested ? nested.salt : '');
-  const hash = data.sharePasswordHash != null ? data.sharePasswordHash : (nested ? nested.passwordHash : '');
-  const updatedAt = data.updatedAt != null ? data.updatedAt : (nested ? nested.updatedAt : 0);
-  return {
-    shareEnabled: !!enabled,
-    shareSalt: typeof salt === 'string' ? salt : '',
-    sharePasswordHash: typeof hash === 'string' ? hash : '',
-    updatedAt: Number(updatedAt) || 0
-  };
-}
-
-function shareGateOpen(gate) {
-  return !!(gate && gate.shareEnabled && gate.shareSalt && gate.sharePasswordHash);
-}
-
-async function fetchShareConfig() {
-  const res = await fetch('share-config.json?_=' + Date.now(), { cache: 'no-store' });
-  if (!res.ok) return null;
-  return normalizeShareConfig(await res.json());
-}
-
-function rememberShareGrant(gate) {
-  try {
-    sessionStorage.setItem(SHARE_GRANT_KEY, JSON.stringify({
-      sharePasswordHash: gate.sharePasswordHash,
-      shareSalt: gate.shareSalt
-    }));
-  } catch (e) {}
-}
-
-function clearShareGrant() {
-  try { sessionStorage.removeItem(SHARE_GRANT_KEY); } catch (e) {}
-}
-
-function grantMatches(gate) {
-  if (!shareGateOpen(gate)) return false;
-  try {
-    const raw = sessionStorage.getItem(SHARE_GRANT_KEY);
-    if (!raw) return false;
-    const saved = JSON.parse(raw);
-    return hashesEqual(saved.sharePasswordHash, gate.sharePasswordHash) &&
-      hashesEqual(saved.shareSalt, gate.shareSalt);
-  } catch (e) {
-    return false;
-  }
-}
-
-function setShareLock(mode) {
-  const msg = document.getElementById('shareLockMsg');
-  const form = document.getElementById('shareLockForm');
-  const text = {
-    loading: '正在檢查分享…',
-    closed: '分享已關閉',
-    prompt: '請輸入分享密碼',
-    wrong: '密碼唔正確',
-    changed: '分享密碼已更改，請再輸入',
-    error: '暫時未能確認分享設定',
-    noconfig: '分享未設定密碼',
-    opening: '正在開啟…'
-  };
-  if (msg) msg.textContent = text[mode] || text.error;
-  const showForm = mode === 'prompt' || mode === 'wrong' || mode === 'changed';
-  if (form) form.hidden = !showForm;
-}
-
-function wipeShareSurface() {
-  shareViewUnlocked = false;
-  document.documentElement.classList.remove('share-unlocked');
-  try { stopBusEtaAutoRefresh(); } catch (e) {}
-  ['todoList', 'eventList', 'busList', 'shortcutGrid', 'calGrid', 'courseList', 'calDayItems', 'catChips'].forEach(function (id) {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = '';
-  });
-  state = loadState();
-}
-
-function lockShareView(mode) {
-  clearShareGrant();
-  wipeShareSurface();
-  setShareLock(mode || 'closed');
-}
-
-function renderDashboardSurfaces() {
-  applyTheme(state.theme || 'sunny-beach', false);
-  todoTab = normalizeTodoTab(state.todoTab);
-  syncTodoTabUI();
-  syncExpandableSections();
-  renderCatChips();
-  renderShortcuts();
-  renderTodos();
-  syncEventsFilterUI();
-  renderEvents();
-  renderCalendar();
-  renderTraining();
-  renderBus();
-  updateBlockSummaries();
-  syncShareOwnerUI();
-}
-
-function bootDashboard(opts) {
-  opts = opts || {};
-  initViewOnlyChrome();
-  renderDashboardSurfaces();
-  if (!dashboardBound) {
-    dashboardBound = true;
-    bindExpandableHeaders();
-    bindCalendarControls();
-    bindBusEtaControls();
-    bindSyncUi();
-    bindGdriveUi();
-    bindCopyViewLink();
-    bindShareOwnerUi();
-    startHeaderInfo();
-    if (!VIEW_ONLY) tryGdriveSilentRestore();
-    scrollToSectionFromHash();
-  }
-  if (state.busExpanded) startBusNearbyAndEta(true);
-  dashboardBooted = true;
-  if (opts.importCloud) return autoImportFromCloud();
-  return Promise.resolve();
-}
-
-async function unlockShareView() {
-  shareViewUnlocked = true;
-  state = loadState();
-  setShareLock('opening');
-  try {
-    await bootDashboard({ importCloud: true });
-  } catch (e) {}
-  document.documentElement.classList.add('share-unlocked');
-  const pw = document.getElementById('shareLockPassword');
-  if (pw) pw.value = '';
-}
-
-async function recheckShareGate() {
-  if (!VIEW_ONLY || shareCheckInFlight) return;
-  shareCheckInFlight = true;
-  try {
-    let gate = null;
-    try { gate = await fetchShareConfig(); } catch (e) { gate = null; }
-    if (!gate) return;
-    currentShareGate = gate;
-    if (!shareViewUnlocked) {
-      if (grantMatches(gate)) await unlockShareView();
-      else setShareLock(shareGateOpen(gate) ? 'prompt' : (gate.shareEnabled ? 'noconfig' : 'closed'));
-      return;
-    }
-    if (!grantMatches(gate)) {
-      lockShareView(shareGateOpen(gate) ? 'changed' : (gate.shareEnabled ? 'noconfig' : 'closed'));
-    }
-  } finally {
-    shareCheckInFlight = false;
-  }
-}
-
-function startShareWatch() {
-  if (shareWatchTimer) return;
-  shareWatchTimer = setInterval(recheckShareGate, 8000);
-  window.addEventListener('focus', recheckShareGate);
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') recheckShareGate();
-  });
-}
-
-async function bootShareGate() {
-  initViewOnlyChrome();
-  setShareLock('loading');
-  const form = document.getElementById('shareLockForm');
-  if (form && !form._shareBound) {
-    form._shareBound = true;
-    form.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const input = document.getElementById('shareLockPassword');
-      const password = input ? input.value : '';
-      const gate = currentShareGate;
-      if (!shareGateOpen(gate)) {
-        setShareLock('closed');
-        return;
-      }
-      let ok = false;
-      try { ok = hashesEqual(await hashSharePassword(password, gate.shareSalt), gate.sharePasswordHash); } catch (err) { ok = false; }
-      if (input) input.value = '';
-      if (!ok) {
-        setShareLock('wrong');
-        return;
-      }
-      rememberShareGrant(gate);
-      await unlockShareView();
-    });
-  }
-  let gate = null;
-  try { gate = await fetchShareConfig(); } catch (e) { gate = null; }
-  currentShareGate = gate;
-  if (gate && grantMatches(gate)) {
-    await unlockShareView();
-  } else if (!gate) {
-    setShareLock('error');
-  } else if (!shareGateOpen(gate)) {
-    setShareLock(gate.shareEnabled ? 'noconfig' : 'closed');
-  } else {
-    setShareLock('prompt');
-  }
-  startShareWatch();
-}
-
-function setShareOwnerStatus(text) {
-  const el = document.getElementById('shareOwnerStatus');
-  if (el) el.textContent = text || '';
-}
-
-function syncShareOwnerUI() {
-  const toggle = document.getElementById('shareEnabledToggle');
-  if (!toggle) return;
-  shareUiSyncing = true;
-  toggle.checked = !!normalizeShare(state.share).enabled;
-  shareUiSyncing = false;
-}
-
-async function saveShareSettings(opts) {
-  if (VIEW_ONLY) return;
-  opts = opts || {};
-  const toggle = document.getElementById('shareEnabledToggle');
-  const field = document.getElementById('sharePasswordNew');
-  const prev = normalizeShare(state.share);
-  let enabled = !!(toggle && toggle.checked);
-  const typed = field ? String(field.value || '') : '';
-  if (opts.rotatePassword && !typed && enabled && !prev.passwordHash) {
-    if (toggle) {
-      shareUiSyncing = true;
-      toggle.checked = false;
-      shareUiSyncing = false;
-    }
-    setShareOwnerStatus('請先輸入分享密碼，再按儲存分享設定');
-    return;
-  }
-  if (enabled && !prev.passwordHash && !opts.rotatePassword) {
-    if (toggle) {
-      shareUiSyncing = true;
-      toggle.checked = false;
-      shareUiSyncing = false;
-    }
-    setShareOwnerStatus('請先輸入分享密碼，再按儲存分享設定');
-    return;
-  }
-  let salt = prev.salt;
-  let passwordHash = prev.passwordHash;
-  if (opts.rotatePassword && typed) {
-    if (!crypto.subtle || !crypto.getRandomValues) {
-      setShareOwnerStatus('呢個瀏覽器未能設定密碼');
-      return;
-    }
-    salt = randomShareSalt();
-    passwordHash = await hashSharePassword(typed, salt);
-    if (field) field.value = '';
-  }
-  if (enabled && !passwordHash) {
-    enabled = false;
-    if (toggle) {
-      shareUiSyncing = true;
-      toggle.checked = false;
-      shareUiSyncing = false;
-    }
-    setShareOwnerStatus('請先輸入分享密碼，再按儲存分享設定');
-    return;
-  }
-  if (enabled === prev.enabled && salt === prev.salt && passwordHash === prev.passwordHash) {
-    setShareOwnerStatus(enabled ? '分享設定冇變' : '分享已經關閉');
-    return;
-  }
-  state.share = {
-    enabled: enabled,
-    salt: salt,
-    passwordHash: passwordHash,
-    updatedAt: Date.now()
-  };
-  saveState();
-  syncShareOwnerUI();
-  if (!enabled && opts.rotatePassword && typed) setShareOwnerStatus('已更新分享密碼，分享仍然關閉。貼上 share-config.json 後舊密碼會失效。');
-  else if (!enabled) setShareOwnerStatus('分享已關閉，舊密碼唔會再入到。請將閘門設定貼上 share-config.json。');
-  else if (opts.rotatePassword && typed) setShareOwnerStatus('已更新分享密碼，舊密碼失效。請將閘門設定貼上 share-config.json。');
-  else setShareOwnerStatus('已允許只睇分享。請將閘門設定貼上 share-config.json，朋友先用到。');
-}
-
-function bindShareOwnerUi() {
-  if (VIEW_ONLY) return;
-  const toggle = document.getElementById('shareEnabledToggle');
-  const saveBtn = document.getElementById('btnSaveShare');
-  const copyBtn = document.getElementById('btnCopyShareConfig');
-  if (toggle && !toggle._shareBound) {
-    toggle._shareBound = true;
-    toggle.addEventListener('change', function () {
-      if (shareUiSyncing) return;
-      const field = document.getElementById('sharePasswordNew');
-      const typed = field && String(field.value || '');
-      if (toggle.checked && typed) saveShareSettings({ rotatePassword: true });
-      else saveShareSettings({ rotatePassword: false });
-    });
-  }
-  if (saveBtn && !saveBtn._shareBound) {
-    saveBtn._shareBound = true;
-    saveBtn.addEventListener('click', function () {
-      saveShareSettings({ rotatePassword: true });
-    });
-  }
-  if (copyBtn && !copyBtn._shareBound) {
-    copyBtn._shareBound = true;
-    copyBtn.addEventListener('click', function () {
-      const body = JSON.stringify(shareConfigFromState(state.share), null, 2);
-      copyPlainText(body).then(function (ok) {
-        setShareOwnerStatus(ok ? '已複製閘門設定（貼上做 share-config.json，冇明文密碼）' : '未能複製');
-      });
-    });
-  }
-  syncShareOwnerUI();
-}
-
 /* ===== Init ===== */
-if (VIEW_ONLY) {
-  bootShareGate();
-} else {
-  bootDashboard({ importCloud: true });
-}
+applyTheme(state.theme || 'sunny-beach', false);
+todoTab = normalizeTodoTab(state.todoTab);
+syncTodoTabUI();
+syncExpandableSections();
+bindExpandableHeaders();
+bindCalendarControls();
+renderCatChips();
+renderShortcuts();
+renderTodos();
+syncEventsFilterUI();
+renderEvents();
+renderCalendar();
+renderTraining();
+renderBus();
+bindBusEtaControls();
+if (state.busExpanded) startBusNearbyAndEta(true);
+startHeaderInfo();
+updateBlockSummaries();
+bindSyncUi();
+bindGdriveUi();
+autoImportFromCloud();
+tryGdriveSilentRestore();
+
+/* Hash deep-link: scroll (expand training/bus if targeted) */
+scrollToSectionFromHash();
 </script>
 </body>
 </html>
