@@ -2434,7 +2434,7 @@
             <button type="button" class="subtab" data-events-filter="tomorrow">明天</button>
             <button type="button" class="subtab" data-events-filter="dayAfter">後天</button>
             <button type="button" class="subtab" data-events-filter="week">一周內</button>
-            <button type="button" class="subtab" data-events-filter="month">一個月內</button>
+            <button type="button" class="subtab" data-events-filter="all">全部</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnAddEvent">＋ 新增</button>
         </div>
@@ -3542,14 +3542,15 @@ function eventForExport(e) {
   return n;
 }
 
-const EVENTS_FILTERS = ['today', 'tomorrow', 'dayAfter', 'week', 'month'];
+const EVENTS_FILTERS = ['today', 'tomorrow', 'dayAfter', 'week', 'all'];
 
 function normalizeEventsFilter(raw) {
+  // Saved "month" and legacy custom / 30 / 60 / 90 windows become "all".
+  if (raw === 'month') return 'all';
   if (EVENTS_FILTERS.includes(raw)) return raw;
-  // Migrate old eventsViewDays
-  if (raw && typeof raw === 'object' && raw.mode === 'custom') return 'month';
+  if (raw && typeof raw === 'object' && raw.mode === 'custom') return 'all';
   const n = Number(raw);
-  if (n === 30 || n === 60 || n === 90) return 'month';
+  if (n === 30 || n === 60 || n === 90) return 'all';
   return 'today';
 }
 
@@ -3570,7 +3571,7 @@ function toYMD(d) {
 
 function getEventsFilterRange(filter) {
   const today = todayLocal();
-  const f = EVENTS_FILTERS.includes(filter) ? filter : 'today';
+  const f = normalizeEventsFilter(filter);
   if (f === 'today') return { start: today, end: today, label: '今天' };
   if (f === 'tomorrow') {
     const t = addDaysYMD(today, 1);
@@ -3583,8 +3584,8 @@ function getEventsFilterRange(filter) {
   if (f === 'week') {
     return { start: today, end: addDaysYMD(today, 6), label: '一周內' };
   }
-  // month: today through today+29 (rolling 30 days including today)
-  return { start: today, end: addDaysYMD(today, 29), label: '一個月內' };
+  // all: no date window
+  return { start: null, end: null, label: '全部', unbounded: true };
 }
 
 function eventOnDate(ev, day) {
@@ -3594,6 +3595,7 @@ function eventOnDate(ev, day) {
 }
 
 function eventInFilter(ev, filter) {
+  if (normalizeEventsFilter(filter) === 'all') return true;
   const d = parseDateOnly(ev.date);
   if (!d) return false;
   const win = getEventsFilterRange(filter);
@@ -3607,13 +3609,17 @@ function countEventsToday() {
 }
 
 function eventsFilterHintText() {
+  const kind = eventsKindLabel(state.eventsKind);
+  if (normalizeEventsFilter(state.eventsFilter) === 'all') return '顯示全部' + kind;
   const win = getEventsFilterRange(state.eventsFilter);
-  return '顯示' + win.label + '的' + eventsKindLabel(state.eventsKind);
+  return '顯示' + win.label + '的' + kind;
 }
 
 function eventsFilterEmptyText() {
+  const kind = eventsKindLabel(state.eventsKind);
+  if (normalizeEventsFilter(state.eventsFilter) === 'all') return '暫無' + kind;
   const win = getEventsFilterRange(state.eventsFilter);
-  return win.label + '暫無' + eventsKindLabel(state.eventsKind);
+  return win.label + '暫無' + kind;
 }
 
 function ensureDefaultCategories(cats) {
