@@ -727,6 +727,15 @@
       font-weight: 500;
       white-space: nowrap;
     }
+    .hdr-date-short {
+      display: none;
+      margin-top: 1px;
+      font-size: 0.625rem;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+      letter-spacing: 0.01em;
+    }
     .hdr-lunar-block {
       text-align: left;
       font-size: 0.625rem;
@@ -1011,6 +1020,222 @@
     .theme-chip[data-theme="toy"] { background: linear-gradient(135deg, #A0673B 0%, #E8B84A 45%, #87B8E0 100%); }
     .theme-chip[data-theme="rain-cafe"] { background: linear-gradient(135deg, #6B8A9E 0%, #C5D4E0 45%, #E8B84A 100%); }
     .theme-chip[data-theme="sunny-beach"] { background: linear-gradient(135deg, #38BDF8 0%, #FDE68A 50%, #34D399 100%); }
+
+    /* Phone: one dense glass info row. Desktop (≥640px) keeps the richer pills. */
+    @media (max-width: 639px) {
+      .page-header {
+        margin-bottom: 6px;
+        padding: 4px var(--app-pad-x) 5px;
+      }
+      .page-header > .sync-actions {
+        margin: 0 0 3px;
+        gap: 4px;
+      }
+      .page-header-inner {
+        gap: 3px 8px;
+        align-items: center;
+      }
+      .header-brand,
+      .header-brand-main {
+        gap: 6px;
+      }
+      .header-brand-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 0.7rem;
+        font-size: 0.95rem;
+        box-shadow: 0 4px 10px -4px var(--card-shadow);
+      }
+      .page-header h1 {
+        font-size: 0.95rem;
+      }
+      .page-header .header-subtitle {
+        margin-top: 0;
+        font-size: 0.62rem;
+        line-height: 1.15;
+      }
+      .header-corner {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 2px 5px;
+        max-width: none;
+      }
+      .hdr-cat-jump {
+        gap: 3px;
+      }
+      .hdr-cat-btn {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        font-size: 11px;
+      }
+      .theme-chips-mobile {
+        gap: 3px;
+      }
+      .theme-chips-mobile .theme-chip {
+        width: 13px;
+        height: 13px;
+        border-width: 1px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+      }
+      .theme-chips-mobile .theme-chip.active {
+        box-shadow: 0 0 0 1.5px var(--accent-primary), 0 1px 3px rgba(0, 0, 0, 0.12);
+        transform: none;
+      }
+      .header-widgets {
+        display: grid;
+        grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr) minmax(0, 1.12fr);
+        gap: 0;
+        align-items: stretch;
+        padding: 0;
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--card-bg, rgba(255, 255, 255, 0.72));
+        border: 1px solid var(--card-border, rgba(255, 255, 255, 0.45));
+        box-shadow: 0 4px 14px -8px var(--card-shadow, rgba(0, 0, 0, 0.25));
+        backdrop-filter: blur(18px) saturate(1.3);
+        -webkit-backdrop-filter: blur(18px) saturate(1.3);
+      }
+      .header-widgets > .glass-card.hdr-glass,
+      body.theme-sunny-beach .header-widgets > .glass-card.hdr-glass,
+      body.theme-rain-cafe .header-widgets > .glass-card.hdr-glass {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-radius: 0;
+        min-width: 0;
+        width: auto;
+        padding: 5px 7px;
+        gap: 4px;
+        align-items: center;
+      }
+      .header-widgets > .glass-card.hdr-glass + .glass-card.hdr-glass,
+      body.theme-sunny-beach .header-widgets > .glass-card.hdr-glass + .glass-card.hdr-glass,
+      body.theme-rain-cafe .header-widgets > .glass-card.hdr-glass + .glass-card.hdr-glass {
+        box-shadow: inset 1px 0 0 rgba(15, 39, 64, 0.12);
+      }
+      .hdr-datetime {
+        text-align: center;
+        width: 100%;
+      }
+      .header-widgets > .hdr-glass:first-child {
+        justify-content: center;
+      }
+      .hdr-clock {
+        font-size: 0.95rem;
+        letter-spacing: 0.02em;
+        line-height: 1.05;
+      }
+      .hdr-date {
+        display: none;
+      }
+      .hdr-date-short {
+        display: block;
+        font-size: 0.62rem;
+        line-height: 1.25;
+      }
+      .hdr-weather-icon {
+        font-size: 1.05rem;
+      }
+      .hdr-weather-body {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: baseline;
+        column-gap: 4px;
+        row-gap: 0;
+        min-width: 0;
+        flex: 1;
+        width: 100%;
+      }
+      .hdr-bus-body {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+      }
+      .hdr-weather-top {
+        display: contents;
+      }
+      .hdr-bus-top {
+        min-width: 0;
+        gap: 3px;
+        overflow: hidden;
+      }
+      .hdr-weather-temp {
+        grid-column: 1;
+        grid-row: 1;
+        font-size: 0.75rem;
+        line-height: 1.2;
+      }
+      .hdr-weather-sub {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: start;
+        margin-top: 0;
+        font-size: 0.62rem;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+      .hdr-weather-cond {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        font-size: 0.62rem;
+        line-height: 1.25;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .hdr-weather-live {
+        display: none;
+      }
+      .hdr-bus-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+      }
+      .hdr-bus-route,
+      .hdr-bus-eta {
+        font-size: 0.68rem;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .hdr-bus-eta {
+        font-size: 0.62rem;
+      }
+      .hdr-bus-sub {
+        display: none;
+      }
+      .feature-stack {
+        margin-top: 0;
+      }
+    }
+    /* Very narrow phones: time + weather, then the bus on a second tight row. */
+    @media (max-width: 359px) {
+      .header-widgets {
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+      }
+      .header-widgets > .hdr-bus,
+      body.theme-sunny-beach .header-widgets > .glass-card.hdr-bus,
+      body.theme-rain-cafe .header-widgets > .glass-card.hdr-bus {
+        grid-column: 1 / -1;
+        box-shadow: inset 0 1px 0 rgba(15, 39, 64, 0.12);
+      }
+      .hdr-bus-top {
+        flex-direction: row;
+        align-items: baseline;
+        gap: 6px;
+      }
+      .hdr-bus-sub {
+        display: block;
+      }
+    }
 
     /* Feature sections — responsive CSS grid (wireframe: todo|events|calendar / training+bus|shortcuts) */
     .feature-stack {
@@ -2640,6 +2865,7 @@
             <div class="hdr-datetime">
               <div class="hdr-clock font-display" id="hdrClock">--:--</div>
               <div class="hdr-date" id="hdrDate">—</div>
+              <div class="hdr-date-short" id="hdrDateShort">—</div>
             </div>
           </div>
 
@@ -2650,7 +2876,7 @@
                 <span class="hdr-weather-temp" id="hdrWeatherTemp">載入中…</span>
                 <span class="hdr-weather-cond" id="hdrWeatherCond"></span>
               </div>
-              <div class="hdr-weather-sub">即時氣象 • 濕度 <span id="hdrWeatherHum">—</span></div>
+              <div class="hdr-weather-sub"><span class="hdr-weather-live">即時氣象 • </span>濕度 <span id="hdrWeatherHum">—</span></div>
             </div>
           </div>
 
@@ -7651,11 +7877,17 @@ function formatHkDate(p) {
   return p.y + '年' + p.m + '月' + p.d + '日 (' + WEEKDAYS_HK[p.weekday] + ')';
 }
 
+function formatHkDateShort(p) {
+  return p.m + '/' + p.d + ' (' + WEEKDAYS_HK[p.weekday] + ')';
+}
+
 function tickHeaderClock() {
   const p = hkNowParts();
   const dateEl = document.getElementById('hdrDate');
+  const shortEl = document.getElementById('hdrDateShort');
   const clockEl = document.getElementById('hdrClock');
   if (dateEl) dateEl.textContent = formatHkDate(p);
+  if (shortEl) shortEl.textContent = formatHkDateShort(p);
   if (clockEl) clockEl.textContent = p.hh + ':' + p.mm;
 }
 
@@ -7664,17 +7896,26 @@ function setWeatherUI(temp, cond, humidity, failed, icon) {
   const c = document.getElementById('hdrWeatherCond');
   const h = document.getElementById('hdrWeatherHum');
   const ic = document.getElementById('hdrWeatherIcon');
+  const chip = document.getElementById('hdrWeatherChip');
   if (failed) {
     if (t) t.textContent = '天氣暫時未能更新';
     if (c) c.textContent = '';
     if (h) h.textContent = '—';
     if (ic) ic.textContent = '⛅';
+    if (chip) chip.title = '香港天氣暫時未能更新';
     return;
   }
   if (t) t.textContent = temp != null ? (temp + '°C') : '—';
   if (c) c.textContent = cond || '';
   if (h) h.textContent = (humidity != null && humidity !== '') ? (humidity + '%') : '—';
   if (ic) ic.textContent = icon || '⛅';
+  if (chip) {
+    const bits = ['香港天氣'];
+    if (temp != null) bits.push(temp + '°C');
+    if (cond) bits.push(cond);
+    if (humidity != null && humidity !== '') bits.push('濕度 ' + humidity + '%');
+    chip.title = bits.join(' · ');
+  }
 }
 
 function pickHkoTemp(data) {
