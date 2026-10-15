@@ -833,6 +833,15 @@
       white-space: nowrap;
       margin-top: 1px;
     }
+    .hdr-bus-pair {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      min-width: 0;
+    }
+    @media (min-width: 900px) {
+      .hdr-bus-pair { gap: 10px; }
+    }
     .hdr-cat-jump {
       display: flex;
       justify-content: flex-end;
@@ -1101,7 +1110,7 @@
       }
       .header-widgets {
         display: grid;
-        grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr) minmax(0, 1.12fr);
+        grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
         gap: 0;
         align-items: stretch;
         padding: 0;
@@ -1112,6 +1121,15 @@
         box-shadow: 0 4px 14px -8px var(--card-shadow, rgba(0, 0, 0, 0.25));
         backdrop-filter: blur(18px) saturate(1.3);
         -webkit-backdrop-filter: blur(18px) saturate(1.3);
+      }
+      /* Clock and weather stay on row 1. Both E36A chips share row 2. */
+      .hdr-bus-pair {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 0;
+        min-width: 0;
+        box-shadow: inset 0 1px 0 rgba(15, 39, 64, 0.12);
       }
       .header-widgets > .glass-card.hdr-glass,
       body.theme-sunny-beach .header-widgets > .glass-card.hdr-glass,
@@ -1169,7 +1187,27 @@
       .hdr-bus-body {
         min-width: 0;
         flex: 1;
+        width: 100%;
         overflow: hidden;
+      }
+      .header-widgets .hdr-bus-pair > .glass-card.hdr-bus,
+      body.theme-sunny-beach .header-widgets .hdr-bus-pair > .glass-card.hdr-bus,
+      body.theme-rain-cafe .header-widgets .hdr-bus-pair > .glass-card.hdr-bus {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-radius: 0;
+        min-width: 0;
+        width: auto;
+        padding: 5px 7px;
+        gap: 4px;
+      }
+      .header-widgets .hdr-bus-pair > .glass-card.hdr-bus + .glass-card.hdr-bus,
+      body.theme-sunny-beach .header-widgets .hdr-bus-pair > .glass-card.hdr-bus + .glass-card.hdr-bus,
+      body.theme-rain-cafe .header-widgets .hdr-bus-pair > .glass-card.hdr-bus + .glass-card.hdr-bus {
+        box-shadow: inset 1px 0 0 rgba(15, 39, 64, 0.12);
       }
       .hdr-weather-top {
         display: contents;
@@ -1208,46 +1246,46 @@
       .hdr-weather-live {
         display: none;
       }
-      .hdr-bus-top {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0;
+      .hdr-bus-pair .hdr-bus-top {
+        flex-direction: row;
+        align-items: baseline;
+        gap: 4px;
+        min-width: 0;
       }
-      .hdr-bus-route,
-      .hdr-bus-eta {
+      .hdr-bus-pair .hdr-bus-route,
+      .hdr-bus-pair .hdr-bus-eta {
         font-size: 0.68rem;
         max-width: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .hdr-bus-eta {
-        font-size: 0.62rem;
+      .hdr-bus-pair .hdr-bus-route {
+        flex: 1 1 auto;
+        min-width: 0;
       }
-      .hdr-bus-sub {
-        display: none;
+      .hdr-bus-pair .hdr-bus-eta {
+        flex: 0 0 auto;
+        font-size: 0.68rem;
+      }
+      .hdr-bus-pair .hdr-bus-sub {
+        display: block;
+        font-size: 0.58rem;
+        line-height: 1.2;
       }
       .feature-stack {
         margin-top: 0;
       }
     }
-    /* Very narrow phones: time + weather, then the bus on a second tight row. */
+    /* Very narrow phones: stack each chip so the route and ETA stay readable. */
     @media (max-width: 359px) {
-      .header-widgets {
-        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+      .hdr-bus-pair .hdr-bus-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
       }
-      .header-widgets > .hdr-bus,
-      body.theme-sunny-beach .header-widgets > .glass-card.hdr-bus,
-      body.theme-rain-cafe .header-widgets > .glass-card.hdr-bus {
-        grid-column: 1 / -1;
-        box-shadow: inset 0 1px 0 rgba(15, 39, 64, 0.12);
-      }
-      .hdr-bus-top {
-        flex-direction: row;
-        align-items: baseline;
-        gap: 6px;
-      }
-      .hdr-bus-sub {
-        display: block;
+      .hdr-bus-pair .hdr-bus-route,
+      .hdr-bus-pair .hdr-bus-eta {
+        font-size: 0.64rem;
       }
     }
 
@@ -2893,13 +2931,24 @@
             </div>
           </div>
 
-          <div class="glass-card hdr-glass hdr-bus" id="hdrBusChip" title="E36A 由昇薈開往元朗 · 點擊睇沿線站" role="button" tabindex="0" aria-label="睇 E36A 往元朗沿線站">
-            <div class="hdr-bus-body">
-              <div class="hdr-bus-top">
-                <span class="hdr-bus-route">E36A → 元朗</span>
-                <span class="hdr-bus-eta" id="hdrBusEta">…</span>
+          <div class="hdr-bus-pair">
+            <div class="glass-card hdr-glass hdr-bus" id="hdrBusChipTc" title="E36A 由天耀開往東涌 · 點擊睇沿線站" role="button" tabindex="0" aria-label="睇 E36A 往東涌沿線站">
+              <div class="hdr-bus-body">
+                <div class="hdr-bus-top">
+                  <span class="hdr-bus-route">E36A → 東涌</span>
+                  <span class="hdr-bus-eta" id="hdrBusEtaTc">…</span>
+                </div>
+                <div class="hdr-bus-sub">天耀</div>
               </div>
-              <div class="hdr-bus-sub">昇薈</div>
+            </div>
+            <div class="glass-card hdr-glass hdr-bus" id="hdrBusChip" title="E36A 由昇薈開往元朗 · 點擊睇沿線站" role="button" tabindex="0" aria-label="睇 E36A 往元朗沿線站">
+              <div class="hdr-bus-body">
+                <div class="hdr-bus-top">
+                  <span class="hdr-bus-route">E36A → 元朗</span>
+                  <span class="hdr-bus-eta" id="hdrBusEta">…</span>
+                </div>
+                <div class="hdr-bus-sub">昇薈</div>
+              </div>
             </div>
           </div>
         </div>
@@ -7700,7 +7749,9 @@ function renderRouteStopRowsHtml(stops, etaMap, apiDir, nearbyKmbId, stopsMap) {
   }).join('');
 }
 
-async function openBusRouteSheet(busOrId) {
+async function openBusRouteSheet(busOrId, opts) {
+  opts = opts || {};
+  const onlyDir = !!opts.onlyDir;
   let bus = null;
   if (busOrId && typeof busOrId === 'object') {
     bus = normalizeBusEntry(busOrId);
@@ -7712,8 +7763,12 @@ async function openBusRouteSheet(busOrId) {
   const watchedDir = resolveBusApiDir(bus);
   const operator = resolveBusOperator(bus);
   const opLabel = operator === 'CTB' ? '城巴' : '九巴';
+  const dirLabel = directionLabelForApiDir(bus, watchedDir);
+  const titleHtml = onlyDir
+    ? escapeHtml(dirLabel)
+    : (escapeHtml(route || '巴士') + ' 沿線 <span class="bus-op-badge ' + (operator === 'CTB' ? 'is-ctb' : 'is-kmb') + '">' + opLabel + '</span>');
   openModal(
-    '<h3>' + escapeHtml(route || '巴士') + ' 沿線 <span class="bus-op-badge ' + (operator === 'CTB' ? 'is-ctb' : 'is-kmb') + '">' + opLabel + '</span></h3>' +
+    '<h3>' + titleHtml + '</h3>' +
     '<p class="bus-route-hint bus-route-loading" id="busRouteHint">載入沿線站點與到站時間…</p>' +
     '<div id="busRouteBody"><div class="bus-route-loading">請稍候</div></div>' +
     '<div class="modal-actions">' +
@@ -7724,7 +7779,9 @@ async function openBusRouteSheet(busOrId) {
   if (closeBtn) closeBtn.onclick = closeModal;
 
   try {
-    const dirs = watchedDir === 'I' ? ['I', 'O'] : ['O', 'I'];
+    const dirs = onlyDir
+      ? [watchedDir || 'O']
+      : (watchedDir === 'I' ? ['I', 'O'] : ['O', 'I']);
     const dirData = {};
     let stopsMap = {};
     let etaRows = [];
@@ -7799,11 +7856,13 @@ async function openBusRouteSheet(busOrId) {
     const etaMap = groupRouteEtaByDirSeq(etaRows);
     const hint = document.getElementById('busRouteHint');
     if (hint) {
-      const destSample = (etaRows.find(function (r) { return r && r.dest_tc; }) || {}).dest_tc;
       hint.className = 'bus-route-hint';
-      hint.textContent = (operator === 'CTB' ? '城巴官方到站' : '九巴官方路線到站') +
-        ' · 高亮為你附近的站' + (bus.stopName ? '（' + bus.stopName + '）' : '') +
-        (destSample ? '' : '');
+      if (onlyDir) {
+        hint.textContent = (operator === 'CTB' ? '城巴官方到站' : '九巴官方到站');
+      } else {
+        hint.textContent = (operator === 'CTB' ? '城巴官方到站' : '九巴官方路線到站') +
+          ' · 高亮為你附近的站' + (bus.stopName ? '（' + bus.stopName + '）' : '');
+      }
     }
     const body = document.getElementById('busRouteBody');
     if (!body) return;
@@ -7811,8 +7870,11 @@ async function openBusRouteSheet(busOrId) {
       const label = directionLabelForApiDir(bus, d);
       const watched = d === watchedDir;
       const stops = (dirData[d] && dirData[d].stops) || [];
+      const head = onlyDir
+        ? ''
+        : ('<div class="bus-route-dir' + (watched ? ' is-watched' : '') + '">' + escapeHtml(label) + '</div>');
       return (
-        '<div class="bus-route-dir' + (watched ? ' is-watched' : '') + '">' + escapeHtml(label) + '</div>' +
+        head +
         '<div class="bus-route-stops">' +
           renderRouteStopRowsHtml(stops, etaMap, d, watched ? nearbyId : '', stopsMap) +
         '</div>'
@@ -8092,6 +8154,41 @@ function headerBusE36aYl() {
   });
 }
 
+/** E36A 天耀 → 東涌. Same seed stop as the 往東涌 card (天耀邨耀民樓). */
+function headerBusE36aTc() {
+  const seed = (typeof SEED_BUS !== 'undefined' ? SEED_BUS : []).find(function (b) { return b && b.id === 'bus_e36a_tc'; });
+  return normalizeBusEntry(seed || {
+    id: 'hdr_bus_e36a_tc',
+    route: 'E36A',
+    operator: 'KMB',
+    direction: '往東涌(逸東)',
+    stopName: '天耀邨耀民樓',
+    stopId: 'TN580',
+    kmbStopId: '8C8037479F88F500',
+    destKeywords: ['東涌'],
+    apiDir: 'O'
+  });
+}
+
+function headerBusChipSpecs() {
+  return [
+    {
+      chipId: 'hdrBusChipTc',
+      etaId: 'hdrBusEtaTc',
+      getBus: headerBusE36aTc,
+      idleTitle: 'E36A 由天耀開往東涌',
+      titlePrefix: 'E36A 天耀 → 東涌'
+    },
+    {
+      chipId: 'hdrBusChip',
+      etaId: 'hdrBusEta',
+      getBus: headerBusE36aYl,
+      idleTitle: 'E36A 由昇薈開往元朗',
+      titlePrefix: 'E36A 昇薈 → 元朗'
+    }
+  ];
+}
+
 function formatHeaderEtaCountdown(etaIso) {
   if (!etaIso) return null;
   const t = new Date(etaIso).getTime();
@@ -8102,11 +8199,11 @@ function formatHeaderEtaCountdown(etaIso) {
   return mins + ' 分';
 }
 
-function headerBusNextView() {
-  const bus = headerBusE36aYl();
+function headerBusNextView(spec) {
+  const bus = spec.getBus();
   const key = busEtaCacheKey(bus);
   const payload = key ? busEtaByStop[key] : null;
-  if (!payload) return { text: '…', title: 'E36A 由昇薈開往元朗' };
+  if (!payload) return { text: '…', title: spec.idleTitle };
   if (payload.error) return { text: '未能更新', title: '暫時無法取得 E36A 到站時間' };
   const matched = filterStopEtaRows(payload.rows, bus);
   if (matched.length) {
@@ -8114,7 +8211,7 @@ function headerBusNextView() {
     const rmk = String(matched[0].rmk_tc || '').trim();
     return {
       text: label || '沒有班次',
-      title: 'E36A 昇薈 → 元朗' + (rmk ? '（' + rmk + '）' : '')
+      title: spec.titlePrefix + (rmk ? '（' + rmk + '）' : '')
     };
   }
   const route = String(bus.route || '').trim().toUpperCase();
@@ -8131,34 +8228,30 @@ function headerBusNextView() {
   let text = '沒有班次';
   if (rmk.indexOf('最後班次已過') !== -1) text = '尾班已過';
   else if (rmk && rmk.length <= 6) text = rmk;
-  return { text: text, title: 'E36A 昇薈 → 元朗' + (rmk ? '（' + rmk + '）' : '暫無班次') };
+  return { text: text, title: spec.titlePrefix + (rmk ? '（' + rmk + '）' : '暫無班次') };
 }
 
 function renderHeaderBusEta() {
-  const el = document.getElementById('hdrBusEta');
-  const chip = document.getElementById('hdrBusChip');
-  if (!el) return;
-  const view = headerBusNextView();
-  el.textContent = view.text;
-  if (chip) chip.title = view.title + ' · 點擊睇沿線站';
+  headerBusChipSpecs().forEach(function (spec) {
+    const el = document.getElementById(spec.etaId);
+    const chip = document.getElementById(spec.chipId);
+    if (!el) return;
+    const view = headerBusNextView(spec);
+    el.textContent = view.text;
+    if (chip) chip.title = view.title + ' · 點擊睇沿線站';
+  });
 }
 
 let headerBusEtaTimer = null;
 let headerBusTickTimer = null;
 let headerBusEtaBound = false;
 
-async function refreshHeaderBusEta() {
-  const bus = headerBusE36aYl();
+async function refreshOneHeaderBus(spec) {
+  const bus = spec.getBus();
   const key = busEtaCacheKey(bus);
-  if (!key) {
-    renderHeaderBusEta();
-    return;
-  }
+  if (!key) return '';
   const cached = busEtaByStop[key];
-  if (cached && !cached.error && Date.now() - (Number(cached.at) || 0) < 20000) {
-    renderHeaderBusEta();
-    return;
-  }
+  if (cached && !cached.error && Date.now() - (Number(cached.at) || 0) < 20000) return key;
   try {
     let rows = [];
     if (resolveBusOperator(bus) === 'CTB') {
@@ -8170,7 +8263,11 @@ async function refreshHeaderBusEta() {
   } catch (err) {
     busEtaByStop[key] = { rows: [], error: String(err && err.message || err), at: Date.now() };
   }
-  renderHeaderBusEta();
+  return key;
+}
+
+function paintBusCardsForEtaKey(key) {
+  if (!key) return;
   try {
     document.querySelectorAll('.bus-card').forEach(function (card) {
       const id = card.getAttribute('data-id');
@@ -8182,6 +8279,26 @@ async function refreshHeaderBusEta() {
   } catch (e) {}
 }
 
+async function refreshHeaderBusEta() {
+  const keys = await Promise.all(headerBusChipSpecs().map(refreshOneHeaderBus));
+  renderHeaderBusEta();
+  keys.forEach(paintBusCardsForEtaKey);
+}
+
+function bindHeaderBusChip(spec) {
+  const chip = document.getElementById(spec.chipId);
+  if (!chip || chip.getAttribute('data-hdr-bus-bound') === '1') return;
+  chip.setAttribute('data-hdr-bus-bound', '1');
+  const openTt = function () { openBusRouteSheet(spec.getBus(), { onlyDir: true }); };
+  chip.addEventListener('click', openTt);
+  chip.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openTt();
+    }
+  });
+}
+
 function startHeaderBusEta() {
   renderHeaderBusEta();
   refreshHeaderBusEta();
@@ -8189,22 +8306,12 @@ function startHeaderBusEta() {
   if (headerBusTickTimer) clearInterval(headerBusTickTimer);
   headerBusEtaTimer = setInterval(function () { refreshHeaderBusEta(); }, 60000);
   headerBusTickTimer = setInterval(function () { renderHeaderBusEta(); }, 30000);
+  headerBusChipSpecs().forEach(bindHeaderBusChip);
   if (!headerBusEtaBound) {
     headerBusEtaBound = true;
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') refreshHeaderBusEta();
     });
-    const chip = document.getElementById('hdrBusChip');
-    if (chip) {
-      const openTt = function () { openBusRouteSheet(headerBusE36aYl()); };
-      chip.addEventListener('click', openTt);
-      chip.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          openTt();
-        }
-      });
-    }
   }
 }
 
