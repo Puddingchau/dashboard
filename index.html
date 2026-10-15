@@ -801,6 +801,11 @@
     .hdr-bus {
       gap: 0;
       padding: 6px 12px;
+      cursor: pointer;
+    }
+    .hdr-bus:focus-visible {
+      outline: 2px solid var(--accent-primary, #3B82F6);
+      outline-offset: 2px;
     }
     .hdr-bus-body { text-align: left; min-width: 0; }
     .hdr-bus-top {
@@ -1033,7 +1038,7 @@
       }
       .page-header-inner {
         gap: 3px 8px;
-        align-items: center;
+        align-items: start;
       }
       .header-brand,
       .header-brand-main {
@@ -1054,15 +1059,18 @@
         font-size: 0.62rem;
         line-height: 1.15;
       }
+      /* First row: brand on the left, 工／校／人 pills at the top-right.
+         Theme dots sit under the pills so they do not push the pills into the title. */
       .header-corner {
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 2px 5px;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: flex-end;
+        justify-content: flex-start;
+        gap: 4px 0;
         max-width: none;
       }
       .hdr-cat-jump {
+        flex-shrink: 0;
         gap: 3px;
       }
       .hdr-cat-btn {
@@ -2422,7 +2430,6 @@
       color: var(--muted, #64748b);
     }
     .bus-route-error { color: #b45309; }
-
     /* Modal — industrial panel */
     .modal-backdrop {
       position: fixed;
@@ -2886,7 +2893,7 @@
             </div>
           </div>
 
-          <div class="glass-card hdr-glass hdr-bus" id="hdrBusChip" title="E36A 由昇薈開往元朗">
+          <div class="glass-card hdr-glass hdr-bus" id="hdrBusChip" title="E36A 由昇薈開往元朗 · 點擊睇沿線站" role="button" tabindex="0" aria-label="睇 E36A 往元朗沿線站">
             <div class="hdr-bus-body">
               <div class="hdr-bus-top">
                 <span class="hdr-bus-route">E36A → 元朗</span>
@@ -7693,8 +7700,13 @@ function renderRouteStopRowsHtml(stops, etaMap, apiDir, nearbyKmbId, stopsMap) {
   }).join('');
 }
 
-async function openBusRouteSheet(busId) {
-  const bus = (state.busStops || []).map(normalizeBusEntry).find(function (b) { return b.id === busId; });
+async function openBusRouteSheet(busOrId) {
+  let bus = null;
+  if (busOrId && typeof busOrId === 'object') {
+    bus = normalizeBusEntry(busOrId);
+  } else {
+    bus = (state.busStops || []).map(normalizeBusEntry).find(function (b) { return b.id === busOrId; });
+  }
   if (!bus) return;
   const route = String(bus.route || '').trim().toUpperCase();
   const watchedDir = resolveBusApiDir(bus);
@@ -8128,7 +8140,7 @@ function renderHeaderBusEta() {
   if (!el) return;
   const view = headerBusNextView();
   el.textContent = view.text;
-  if (chip) chip.title = view.title;
+  if (chip) chip.title = view.title + ' · 點擊睇沿線站';
 }
 
 let headerBusEtaTimer = null;
@@ -8182,6 +8194,17 @@ function startHeaderBusEta() {
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') refreshHeaderBusEta();
     });
+    const chip = document.getElementById('hdrBusChip');
+    if (chip) {
+      const openTt = function () { openBusRouteSheet(headerBusE36aYl()); };
+      chip.addEventListener('click', openTt);
+      chip.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openTt();
+        }
+      });
+    }
   }
 }
 
