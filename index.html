@@ -2863,8 +2863,18 @@
       font-size: 12px;
       color: var(--muted);
       margin: 0;
+      white-space: pre-line;
+      user-select: text;
     }
     #shareOwnerStatus:empty { display: none; }
+    #shareTokenForm {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: min(280px, 100%);
+    }
+    #shareTokenForm[hidden] { display: none !important; }
+    #shareTokenForm input { width: 100%; }
 
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); border-radius: 10px; }
@@ -3175,6 +3185,11 @@
     <footer class="page-footer">
       <div class="share-owner" id="shareOwner">
         <button type="button" class="btn btn-primary btn-sm" id="btnShareToggle">分享</button>
+        <form id="shareTokenForm" hidden>
+          <label class="field-label" for="sharePagesToken">GitHub token（只需一次）</label>
+          <input type="password" id="sharePagesToken" autocomplete="off" spellcheck="false" placeholder="ghp_… 或 github_pat_…" />
+          <button type="submit" class="btn btn-primary btn-sm">記住並更新閘門</button>
+        </form>
         <p id="shareOwnerStatus" aria-live="polite"></p>
       </div>
       <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入 · 布丁仔</p>
@@ -9910,8 +9925,10 @@ function applyShareEntryTheme() {
  * of salt + "\n" + password. Plaintext is never written to the gate or Drive.
  * shareExpiresAt is epoch ms, 3 hours after 分享. Guests re-read the gate on
  * load, on focus, and every few seconds, so shareEnabled:false or a passed
- * expiry makes old links fail. 分享 commits that gate to GitHub Pages when a
- * repo token is stored locally as dash-hub-pages-token.
+ * expiry makes old links fail. 分享 always mints a new 4-digit password and
+ * commits that gate to GitHub Pages. A repo token lives in localStorage as
+ * dash-hub-pages-token; the first Share asks once and remembers it. If the
+ * push fails, the status says the public gate was not updated.
  */
 const SHARE_GRANT_KEY = 'dash-hub-share-grant';
 const SHARE_PLAIN_KEY = 'dash-hub-share-plain';
@@ -10246,14 +10263,67 @@ function pagesGateToken() {
   }
 }
 
+function rememberPagesGateToken(token) {
+  const value = String(token || '').trim();
+  try {
+    if (value) localStorage.setItem('dash-hub-pages-token', value);
+    else localStorage.removeItem('dash-hub-pages-token');
+    sessionStorage.removeItem('dash-hub-pages-token');
+  } catch (e) {}
+  return value;
+}
+
+function showShareTokenForm() {
+  const form = document.getElementById('shareTokenForm');
+  if (form) form.hidden = false;
+  const input = document.getElementById('sharePagesToken');
+  if (input) input.focus();
+}
+
+function hideShareTokenForm() {
+  const form = document.getElementById('shareTokenForm');
+  if (form) form.hidden = true;
+  const input = document.getElementById('sharePagesToken');
+  if (input) input.value = '';
+}
+
+/** Ask once per browser. Later Share taps reuse localStorage. */
+function ensurePagesGateToken(interactive) {
+  const existing = pagesGateToken();
+  if (existing) return existing;
+  if (!interactive) return '';
+  const form = document.getElementById('shareTokenForm');
+  if (form && !form.hidden) {
+    showShareTokenForm();
+    return '';
+  }
+  let entered = '';
+  try {
+    entered = window.prompt('更新公開分享閘門需要 GitHub token，只需貼上一次，會記在這部裝置。', '') || '';
+  } catch (e) {
+    entered = '';
+  }
+  const token = rememberPagesGateToken(entered);
+  if (!token) showShareTokenForm();
+  return token;
+}
+
 function utf8ToBase64(text) {
   return btoa(unescape(encodeURIComponent(String(text || ''))));
+}
+
+function sharePushFailureText(result) {
+  if (!result || result.reason === 'notoken') return '閘門未更新：未有 GitHub token';
+  if (result.reason === 'auth') return '閘門未更新：GitHub token 無效，已清除，請再按分享';
+  if (result.reason === 'network') return '閘門未更新：連線失敗';
+  if (result.status) return '閘門未更新：GitHub ' + result.status;
+  return '閘門未更新';
 }
 
 /** Commit share-config.json on main so GitHub Pages serves the new gate. */
 async function pushPagesShareGate(config) {
   const token = pagesGateToken();
-  if (!token) return false;
+  if (!token) return { ok: false, reason: 'notoken' };
   const body = JSON.stringify(config, null, 2) + '\n';
   const api = 'https://api.github.com/repos/' + PAGES_GATE_REPO + '/contents/' + PAGES_GATE_PATH;
   const headers = {
@@ -10265,11 +10335,17 @@ async function pushPagesShareGate(config) {
   let sha = '';
   try {
     const cur = await fetch(api + '?ref=main', { headers: headers, cache: 'no-store' });
+    if (cur.status === 401 || cur.status === 403) {
+      rememberPagesGateToken('');
+      return { ok: false, reason: 'auth', status: cur.status };
+    }
     if (cur.ok) {
       const meta = await cur.json();
       sha = meta && meta.sha ? meta.sha : '';
     }
-  } catch (e) {}
+  } catch (e) {
+    return { ok: false, reason: 'network' };
+  }
   const payload = {
     message: config && config.shareEnabled ? 'Enable read-only share for 3 hours' : 'Stop read-only share',
     content: utf8ToBase64(body),
@@ -10278,9 +10354,14 @@ async function pushPagesShareGate(config) {
   if (sha) payload.sha = sha;
   try {
     const res = await fetch(api, { method: 'PUT', headers: headers, body: JSON.stringify(payload) });
-    return !!res.ok;
+    if (res.status === 401 || res.status === 403) {
+      rememberPagesGateToken('');
+      return { ok: false, reason: 'auth', status: res.status };
+    }
+    if (!res.ok) return { ok: false, reason: 'http', status: res.status };
+    return { ok: true };
   } catch (e) {
-    return false;
+    return { ok: false, reason: 'network' };
   }
 }
 
@@ -10290,56 +10371,78 @@ async function startShareSession() {
     setShareOwnerStatus('呢個瀏覽器未能開啟分享');
     return;
   }
-  const prev = normalizeShare(state.share);
-  let salt = prev.salt;
-  let passwordHash = prev.passwordHash;
-  let createdPlain = '';
-  if (!passwordHash || !salt) {
-    createdPlain = randomSharePassword();
-    salt = randomShareSalt();
-    passwordHash = await hashSharePassword(createdPlain, salt);
-    rememberSharePlain(createdPlain);
+  const token = ensurePagesGateToken(true);
+  if (!token) {
+    setShareOwnerStatus('閘門未更新：未有 GitHub token');
+    return;
   }
+  const createdPlain = randomSharePassword();
+  const salt = randomShareSalt();
+  const passwordHash = await hashSharePassword(createdPlain, salt);
   const now = Date.now();
-  state.share = {
+  const share = {
     enabled: true,
     salt: salt,
     passwordHash: passwordHash,
     updatedAt: now,
     expiresAt: now + SHARE_TTL_MS
   };
+  const pushed = await pushPagesShareGate(shareConfigFromState(share));
+  if (!pushed.ok) {
+    setShareOwnerStatus(sharePushFailureText(pushed));
+    if (pushed.reason === 'auth' || pushed.reason === 'notoken') showShareTokenForm();
+    return;
+  }
+  state.share = share;
   saveState();
-  const token = pagesGateToken();
-  const pushed = token ? await pushPagesShareGate(shareConfigFromState(state.share)) : false;
+  rememberSharePlain(createdPlain);
+  hideShareTokenForm();
   syncShareOwnerUI();
-  const copied = await copyPlainText(viewOnlyShareUrl());
-  let status = copied ? '已複製連結 · 3 小時後自動停止' : viewOnlyShareUrl();
-  if (createdPlain) status += ' · 密碼 ' + createdPlain;
-  if (token && !pushed) status += ' · 閘門未更新';
-  setShareOwnerStatus(status);
+  const handoff = viewOnlyShareUrl() + '\n密碼 ' + createdPlain;
+  const copied = await copyPlainText(handoff);
+  setShareOwnerStatus((copied ? '已複製連結同密碼' : '未能複製，請手動複製') + '\n' + handoff + '\n3 小時後自動停止');
 }
 
 async function stopShareSession(opts) {
   if (VIEW_ONLY) return;
   opts = opts || {};
+  const interactive = opts.reason !== 'expired';
   if (shareStopTimer) {
     clearTimeout(shareStopTimer);
     shareStopTimer = null;
   }
   const prev = normalizeShare(state.share);
-  state.share = {
+  const next = {
     enabled: false,
     salt: prev.salt,
     passwordHash: prev.passwordHash,
     updatedAt: Date.now(),
     expiresAt: 0
   };
+  const token = interactive ? ensurePagesGateToken(true) : pagesGateToken();
+  if (!token) {
+    if (interactive) {
+      setShareOwnerStatus('閘門未更新：未有 GitHub token');
+    } else {
+      state.share = next;
+      saveState();
+      syncShareOwnerUI();
+    }
+    return;
+  }
+  const pushed = await pushPagesShareGate(shareConfigFromState(next));
+  if (!pushed.ok) {
+    setShareOwnerStatus(sharePushFailureText(pushed));
+    if (interactive && (pushed.reason === 'auth' || pushed.reason === 'notoken')) showShareTokenForm();
+    syncShareOwnerUI();
+    return;
+  }
+  state.share = next;
   saveState();
-  const token = pagesGateToken();
-  const pushed = token ? await pushPagesShareGate(shareConfigFromState(state.share)) : false;
+  hideShareTokenForm();
   syncShareOwnerUI();
   if (opts.reason === 'expired') setShareOwnerStatus('分享已自動停止');
-  else setShareOwnerStatus((!token || pushed) ? '已停止分享' : '已停止分享 · 閘門未更新');
+  else setShareOwnerStatus('已停止分享');
 }
 
 async function expireShareIfNeeded() {
@@ -10363,6 +10466,31 @@ function bindShareOwnerUi() {
       } finally {
         shareActionBusy = false;
         btn.disabled = false;
+        syncShareOwnerUI();
+      }
+    });
+  }
+  const tokenForm = document.getElementById('shareTokenForm');
+  if (tokenForm && !tokenForm._shareBound) {
+    tokenForm._shareBound = true;
+    tokenForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (shareActionBusy) return;
+      const input = document.getElementById('sharePagesToken');
+      const token = rememberPagesGateToken(input ? input.value : '');
+      if (!token) {
+        setShareOwnerStatus('閘門未更新：未有 GitHub token');
+        showShareTokenForm();
+        return;
+      }
+      shareActionBusy = true;
+      if (btn) btn.disabled = true;
+      try {
+        if (shareSessionActive(state.share)) await stopShareSession({});
+        else await startShareSession();
+      } finally {
+        shareActionBusy = false;
+        if (btn) btn.disabled = false;
         syncShareOwnerUI();
       }
     });

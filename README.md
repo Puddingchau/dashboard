@@ -12,12 +12,12 @@
 
 擁有者喺頁底可以：
 
-- 按「分享」：開啟只睇、沿用已有密碼或自動產生一組 4 位密碼、設定 3 小時後到期，並複製 `?view=1` 連結
+- 按「分享」：開新一組 4 位密碼、設定 3 小時後到期，並複製 `?view=1` 連結同密碼
 - 分享緊時按「停止分享」：即刻設 `shareEnabled` 為 false，舊連結失效
 
 到期時間寫入本機同 Drive 同步檔的 `share.expiresAt`，以及閘門的 `shareExpiresAt`。朋友頁面同閘門都會檢查呢個時間。
 
-要把閘門寫上 GitHub Pages，瀏覽器需要有 repo token（`localStorage` 鍵 `dash-hub-pages-token`）。有 token 時「分享」／「停止分享」會更新 `main` 上的 `share-config.json`。冇 token 時連結仍會複製，本機同 Drive 的分享狀態會更新，但公開頁要等 `share-config.json` 部署後朋友先會見到新閘門。
+公開閘門要寫上 GitHub Pages。第一次按「分享」或「停止分享」若未有 repo token，頁面會問一次，並記在 `localStorage` 鍵 `dash-hub-pages-token`。之後同一部裝置按「分享」就會更新 `main` 上的 `share-config.json`，並顯示連結同密碼。推送失敗時狀態會寫明閘門未更新，唔會當成已經分享。
 
 ### 點樣撤銷
 
