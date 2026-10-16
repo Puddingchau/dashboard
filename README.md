@@ -4,30 +4,19 @@
 
 ## 只睇連結
 
-`https://puddingchau.github.io/dashboard/?view=1`
+擁有者按頁底「分享」，頁面即刻複製一條只睇連結，並顯示「已複製連結」。連結形狀：
 
-連結本身冇密碼。朋友打開之後要輸入分享密碼，先至會載入 `sync-data.json`。密碼唔啱、未輸入、分享已關閉，或者超過 `shareExpiresAt`，畫面會鎖住，唔會顯示待辦、活動或 Drive 資料，亦唔會寫入本機 dashboard 狀態或 Google Drive。
+`https://puddingchau.github.io/dashboard/?view=1&exp=<到期>&t=<開始>`
 
-閘門檔係 [`share-config.json`](share-config.json)（開關、salt、SHA-256、`shareExpiresAt`，冇明文密碼，亦冇待辦／活動）。雜湊係 `SHA-256(salt + 換行 + 密碼)`。
+朋友打開就可以睇已發佈的待辦同活動，唔使密碼。畫面係只睇：唔會寫入本機 dashboard 狀態，亦唔會寫入 Google Drive 或 GitHub Pages。
 
-擁有者喺頁底可以：
+連結由按下「分享」起計 3 小時失效（`exp`）。未過期時按鈕會變成「停止分享」。朋友頁面會再讀 [`share-config.json`](share-config.json)；如果閘門已關閉，而且 `updatedAt` 新過或等於呢次連結的 `t`，畫面會鎖住。`updatedAt` 為 0 唔算停止，所以一份關閉中的閘門唔會擋著更新的連結。
 
-- 按「分享」：每次都做齊兩件事。開新一組 4 位密碼、設定 3 小時後到期，複製 `?view=1` 連結同密碼，並且把而家的待辦、活動（個人同學校）、巴士站、捷徑同分類寫入 `sync-data.json` 推上 `main`。明文密碼只會出現喺你複製到的狀態，唔會寫入 `sync-data.json` 或 `share-config.json`。已連接 Google 時會先走「立即同步」，再用最新資料發佈；Google 離線就用本機資料。
-- 分享緊時按「停止分享」：即刻設 `shareEnabled` 為 false，舊連結失效。停止分享唔會清走上次發佈的 `sync-data.json`；下一次按「分享」先會再發佈一份新快照。
+頁底冇 GitHub token 欄，亦冇「記住並更新」。擁有者的 Google Drive 同步照舊，唔使喺頁面貼上 `ghp_` token。如果這部裝置之前已經記低 `dash-hub-pages-token`，分享同停止仍然會靜靜更新 `share-config.json`；開啟分享時亦會更新 `sync-data.json`。冇 token 都一樣複製到連結，朋友睇到而家 Pages 上的 `sync-data.json`。
 
-到期時間寫入本機同 Drive 同步檔的 `share.expiresAt`，以及閘門的 `shareExpiresAt`。朋友頁面同閘門都會檢查呢個時間。
-
-公開閘門同分享快照都要寫上 GitHub Pages，用同一個 `dash-hub-pages-token`。第一次按「分享」或「停止分享」若未有 repo token，頁面會問一次，並記在 `localStorage` 鍵 `dash-hub-pages-token`。之後同一部裝置每次按「分享」都會更新 `main` 上的 `share-config.json` 同 `sync-data.json`，並顯示連結同密碼。閘門推送失敗時狀態會寫明閘門未更新，唔會當成已經分享。快照推送失敗時狀態會寫明分享資料未更新。
-
-### 點樣核對分享快照
-
-1. 擁有者有待辦同個人活動，按「分享」（token 有效）。
-2. 打開 `https://puddingchau.github.io/dashboard/sync-data.json`，確認 `todos` 有項目，`events` 入面有 `kind: "personal"`。
-3. 用 `?view=1` 加剛複製的密碼解鎖，待辦列表同「個人活動」應見到同一批資料。
+冇 `exp` 的舊連結 `?view=1`：閘門如果仲有 salt 同密碼雜湊，仍然要輸入密碼。雜湊係 `SHA-256(salt + 換行 + 密碼)`，明文唔會寫入閘門或同步檔。新的「分享」唔再產生密碼。
 
 ### 點樣撤銷
 
-1. 按「停止分享」，或者等開啟後 3 小時自動停止。
-2. 公開的 `share-config.json` 要變成 `shareEnabled: false`，或者 `shareExpiresAt` 已過。朋友下次開啟、或者個分頁返到前景，都會重新讀閘門。已開住的內容會收起。
-
-而家倉庫入面的閘門係關閉，所以公開連結會顯示「分享已關閉」，直到你開啟分享並更新 `share-config.json`。
+1. 按「停止分享」，或者等 3 小時，擁有者頁面會自動停止。
+2. 連結過咗 `exp` 就會顯示「分享已結束」。停止分享如果更新到公開閘門（裝置上已有 token），朋友下次開啟或返到前景都會收起內容。

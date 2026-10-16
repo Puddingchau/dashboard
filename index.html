@@ -2882,16 +2882,32 @@
       margin: 0;
       white-space: pre-line;
       user-select: text;
+      word-break: break-all;
     }
     #shareOwnerStatus:empty { display: none; }
-    #shareTokenForm {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      width: min(280px, 100%);
+    .share-toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%) translateY(8px);
+      max-width: calc(100% - 32px);
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(30, 38, 46, 0.92);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 80;
+      transition: opacity 0.2s ease, transform 0.2s ease;
     }
-    #shareTokenForm[hidden] { display: none !important; }
-    #shareTokenForm input { width: 100%; }
+    .share-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
 
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); border-radius: 10px; }
@@ -3202,12 +3218,8 @@
     <footer class="page-footer">
       <div class="share-owner" id="shareOwner">
         <button type="button" class="btn btn-primary btn-sm" id="btnShareToggle">分享</button>
-        <form id="shareTokenForm" hidden>
-          <label class="field-label" for="sharePagesToken">GitHub token（只需一次）</label>
-          <input type="password" id="sharePagesToken" autocomplete="off" spellcheck="false" placeholder="ghp_… 或 github_pat_…" />
-          <button type="submit" class="btn btn-primary btn-sm">記住並更新</button>
-        </form>
         <p id="shareOwnerStatus" aria-live="polite"></p>
+        <div id="shareToast" class="share-toast" role="status"></div>
       </div>
       <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入 · 布丁仔</p>
     </footer>
@@ -10025,9 +10037,15 @@ function bindSyncUi() {
   /* Export/import buttons removed; Drive sync uses buildExportPayload / applyRemoteSyncPayload. */
 }
 
-/** Owner control: copy origin + pathname + ?view=1 (password is not in the URL). */
-function viewOnlyShareUrl() {
-  return location.origin + location.pathname + '?view=1';
+/** Owner control: copy origin + pathname + ?view=1&exp=&t= (no password in the URL). */
+function viewOnlyShareUrl(expiresAt, issuedAt) {
+  const base = location.origin + location.pathname + '?view=1';
+  const exp = Number(expiresAt) || 0;
+  if (!exp) return base;
+  let url = base + '&exp=' + exp;
+  const t = Number(issuedAt) || 0;
+  if (t) url += '&t=' + t;
+  return url;
 }
 
 function copyPlainText(text) {
@@ -10082,21 +10100,20 @@ function applyShareEntryTheme() {
   if (meta) meta.setAttribute('content', '#1E2C3A');
 }
 
-/* ===== Share password gate =====
- * Every 分享 tap does both, permanently: mint a new 4-digit password, commit
- * share-config.json, and publish the current todos / events (personal and
- * school) / busStops / shortcuts / categories to sync-data.json on main.
- * The gate file has no todos or events. Hash is SHA-256 of salt + "\n" +
- * password. Plaintext is never written to the gate, to sync-data.json, or
- * to Drive. shareExpiresAt is epoch ms, 3 hours after 分享. Guests re-read
- * the gate on load, on focus, and every few seconds, so shareEnabled:false
- * or a passed expiry makes old links fail. A repo token lives in
- * localStorage as dash-hub-pages-token; the first Share asks once and
- * remembers it. If either push fails, the status says which one failed.
+/* ===== Share gate =====
+ * 分享 copies a read-only link at once: ?view=1&exp=<ms>&t=<ms>.
+ * Friends can view until exp (3 hours after t). That link has no password.
+ * 停止分享 turns the local session off. If dash-hub-pages-token is already
+ * stored, the existing Pages push updates share-config.json (and, when the
+ * session is on, sync-data.json) with no token field and no prompt.
+ * A disabled gate whose updatedAt is at or after this link's t closes it.
+ * updatedAt 0 is not a stop, so a closed file does not block a newer link.
+ * Legacy ?view=1 with no exp still asks for the password when the gate has a hash.
  */
 const SHARE_GRANT_KEY = 'dash-hub-share-grant';
-const SHARE_PLAIN_KEY = 'dash-hub-share-plain';
 const SHARE_TTL_MS = 3 * 60 * 60 * 1000;
+const SHARE_TTL_SKEW_MS = 2 * 60 * 1000;
+const SHARE_CLOCK_SKEW_MS = 15 * 60 * 1000;
 const PAGES_GATE_REPO = 'Puddingchau/dashboard';
 const PAGES_GATE_PATH = 'share-config.json';
 const PAGES_SYNC_PATH = 'sync-data.json';
@@ -10107,26 +10124,14 @@ let dashboardBooted = false;
 let dashboardBound = false;
 let shareStopTimer = null;
 let shareActionBusy = false;
-let shareTokenIntent = 'start';
+let shareToastTimer = null;
+let sharePublishChain = Promise.resolve();
 
 function hashesEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || !a || a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
-}
-
-function randomShareSalt() {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
-}
-
-function randomSharePassword() {
-  const bytes = new Uint8Array(2);
-  crypto.getRandomValues(bytes);
-  const n = ((bytes[0] << 8) | bytes[1]) % 10000;
-  return String(n).padStart(4, '0');
 }
 
 async function sha256Hex(text) {
@@ -10170,25 +10175,65 @@ function normalizeShareConfig(data) {
   };
 }
 
-function shareGateOpen(gate) {
-  if (!gate || !gate.shareEnabled || !gate.shareSalt || !gate.sharePasswordHash) return false;
+function shareWindowActive(gate) {
+  if (!gate || !gate.shareEnabled) return false;
   const exp = Number(gate.shareExpiresAt) || 0;
-  if (!exp || Date.now() > exp) return false;
-  return true;
+  return !!(exp && Date.now() <= exp);
+}
+
+function shareGateNeedsPassword(gate) {
+  return !!(gate && gate.shareSalt && gate.sharePasswordHash);
 }
 
 function shareLockModeForGate(gate) {
   if (!gate) return 'error';
-  if (shareGateOpen(gate)) return 'prompt';
+  if (shareWindowActive(gate)) return shareGateNeedsPassword(gate) ? 'prompt' : 'open';
   const exp = Number(gate.shareExpiresAt) || 0;
   if (gate.shareEnabled && exp && Date.now() > exp) return 'expired';
-  if (gate.shareEnabled && (!gate.shareSalt || !gate.sharePasswordHash)) return 'noconfig';
+  if (gate.shareEnabled && !exp) return 'noconfig';
   return 'closed';
+}
+
+function shareQuery() {
+  try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(); }
+}
+
+function shareLinkExp() {
+  const n = Number(shareQuery().get('exp'));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function shareLinkIssuedAt() {
+  const t = Number(shareQuery().get('t'));
+  if (Number.isFinite(t) && t > 0) return t;
+  const exp = shareLinkExp();
+  return exp ? exp - SHARE_TTL_MS : 0;
+}
+
+function shareLinkStopped(gate, issued) {
+  if (!gate || gate.shareEnabled !== false) return false;
+  const stoppedAt = Number(gate.updatedAt) || 0;
+  if (!stoppedAt || !issued) return false;
+  return stoppedAt >= issued;
+}
+
+/** '' when this ?view=1&exp link may be shown. 'closed' / 'expired' otherwise. */
+function shareLinkBlockReason(gate) {
+  const exp = shareLinkExp();
+  if (!exp) return '';
+  const issued = shareLinkIssuedAt();
+  if (!issued || exp <= issued) return 'expired';
+  if (exp - issued > SHARE_TTL_MS + SHARE_TTL_SKEW_MS) return 'expired';
+  // Cap the end even when t is omitted (issued is then derived from exp).
+  if (exp - Date.now() > SHARE_TTL_MS + SHARE_CLOCK_SKEW_MS) return 'expired';
+  if (shareLinkStopped(gate, issued)) return 'closed';
+  if (Date.now() > exp) return 'expired';
+  return '';
 }
 
 function shareSessionActive(share) {
   const s = normalizeShare(share);
-  if (!s.enabled || !s.salt || !s.passwordHash) return false;
+  if (!s.enabled) return false;
   const exp = Number(s.expiresAt) || 0;
   return !!(exp && Date.now() <= exp);
 }
@@ -10212,12 +10257,8 @@ function clearShareGrant() {
   try { sessionStorage.removeItem(SHARE_GRANT_KEY); } catch (e) {}
 }
 
-function rememberSharePlain(password) {
-  try { sessionStorage.setItem(SHARE_PLAIN_KEY, String(password || '')); } catch (e) {}
-}
-
 function grantMatches(gate) {
-  if (!shareGateOpen(gate)) return false;
+  if (!shareWindowActive(gate) || !shareGateNeedsPassword(gate)) return false;
   try {
     const raw = sessionStorage.getItem(SHARE_GRANT_KEY);
     if (!raw) return false;
@@ -10324,22 +10365,49 @@ async function unlockShareView() {
   if (pw) pw.value = '';
 }
 
+function applyShareLinkGate(gate, fetched) {
+  const reason = shareLinkBlockReason(fetched ? gate : currentShareGate);
+  if (!reason) {
+    if (!shareViewUnlocked) return unlockShareView();
+    return Promise.resolve();
+  }
+  if (shareViewUnlocked) lockShareView(reason);
+  else setShareLock(reason);
+  return Promise.resolve();
+}
+
 async function recheckShareGate() {
   if (!VIEW_ONLY || shareCheckInFlight) return;
   shareCheckInFlight = true;
   try {
     let gate = null;
-    try { gate = await fetchShareConfig(); } catch (e) { gate = null; }
-    if (!gate) return;
-    currentShareGate = gate;
-    if (!shareViewUnlocked) {
-      if (grantMatches(gate)) await unlockShareView();
-      else setShareLock(shareLockModeForGate(gate));
+    let fetched = false;
+    try {
+      gate = await fetchShareConfig();
+      fetched = !!gate;
+    } catch (e) {
+      gate = null;
+    }
+    if (fetched) currentShareGate = gate;
+    if (shareLinkExp()) {
+      await applyShareLinkGate(gate, fetched);
       return;
     }
-    if (!grantMatches(gate)) {
-      lockShareView(shareGateOpen(gate) ? 'changed' : shareLockModeForGate(gate));
+    if (!fetched) return;
+    if (!shareViewUnlocked) {
+      if (grantMatches(gate)) {
+        await unlockShareView();
+        return;
+      }
+      const mode = shareLockModeForGate(gate);
+      if (mode === 'open') await unlockShareView();
+      else setShareLock(mode);
+      return;
     }
+    if (grantMatches(gate)) return;
+    const mode = shareLockModeForGate(gate);
+    if (mode === 'open') return;
+    lockShareView(mode === 'prompt' ? 'changed' : mode);
   } finally {
     shareCheckInFlight = false;
   }
@@ -10352,44 +10420,61 @@ function startShareWatch() {
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') recheckShareGate();
   });
+  const exp = shareLinkExp();
+  if (exp && exp > Date.now()) {
+    setTimeout(function () { recheckShareGate(); }, Math.min(exp - Date.now() + 50, 2147483647));
+  }
+}
+
+function bindShareLockForm() {
+  const form = document.getElementById('shareLockForm');
+  if (!form || form._shareBound) return;
+  form._shareBound = true;
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const input = document.getElementById('shareLockPassword');
+    const password = input ? input.value : '';
+    const gate = currentShareGate;
+    if (!shareWindowActive(gate) || !shareGateNeedsPassword(gate)) {
+      setShareLock(shareLockModeForGate(gate));
+      return;
+    }
+    let ok = false;
+    try { ok = hashesEqual(await hashSharePassword(password, gate.shareSalt), gate.sharePasswordHash); } catch (err) { ok = false; }
+    if (input) input.value = '';
+    if (!ok) {
+      setShareLock('wrong');
+      return;
+    }
+    rememberShareGrant(gate);
+    await unlockShareView();
+  });
 }
 
 async function bootShareGate() {
   applyShareEntryTheme();
   initViewOnlyChrome();
   setShareLock('loading');
-  const form = document.getElementById('shareLockForm');
-  if (form && !form._shareBound) {
-    form._shareBound = true;
-    form.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const input = document.getElementById('shareLockPassword');
-      const password = input ? input.value : '';
-      const gate = currentShareGate;
-      if (!shareGateOpen(gate)) {
-        setShareLock(shareLockModeForGate(gate));
-        return;
-      }
-      let ok = false;
-      try { ok = hashesEqual(await hashSharePassword(password, gate.shareSalt), gate.sharePasswordHash); } catch (err) { ok = false; }
-      if (input) input.value = '';
-      if (!ok) {
-        setShareLock('wrong');
-        return;
-      }
-      rememberShareGrant(gate);
-      await unlockShareView();
-    });
-  }
+  bindShareLockForm();
   let gate = null;
-  try { gate = await fetchShareConfig(); } catch (e) { gate = null; }
-  currentShareGate = gate;
-  if (gate && grantMatches(gate)) {
-    await unlockShareView();
-  } else if (!gate) {
+  let fetched = false;
+  try {
+    gate = await fetchShareConfig();
+    fetched = !!gate;
+  } catch (e) {
+    gate = null;
+  }
+  if (fetched) currentShareGate = gate;
+  if (shareLinkExp()) {
+    await applyShareLinkGate(gate, fetched);
+  } else if (!fetched) {
     setShareLock('error');
+  } else if (grantMatches(gate)) {
+    await unlockShareView();
   } else {
-    setShareLock(shareLockModeForGate(gate));
+    const mode = shareLockModeForGate(gate);
+    if (mode === 'open') await unlockShareView();
+    else setShareLock(mode);
   }
   startShareWatch();
 }
@@ -10397,6 +10482,17 @@ async function bootShareGate() {
 function setShareOwnerStatus(text) {
   const el = document.getElementById('shareOwnerStatus');
   if (el) el.textContent = text || '';
+}
+
+function showShareToast(text) {
+  const el = document.getElementById('shareToast');
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.add('show');
+  if (shareToastTimer) clearTimeout(shareToastTimer);
+  shareToastTimer = setTimeout(function () {
+    el.classList.remove('show');
+  }, 2200);
 }
 
 function syncShareOwnerUI() {
@@ -10417,7 +10513,7 @@ function scheduleShareAutoStop() {
   if (VIEW_ONLY) return;
   const s = normalizeShare(state.share);
   if (!shareSessionActive(s)) return;
-  const delay = Math.max(0, s.expiresAt - Date.now());
+  const delay = Math.max(0, Math.min(s.expiresAt - Date.now(), 2147483647));
   shareStopTimer = setTimeout(function () {
     shareStopTimer = null;
     stopShareSession({ reason: 'expired' });
@@ -10442,55 +10538,11 @@ function rememberPagesGateToken(token) {
   return value;
 }
 
-function showShareTokenForm(intent) {
-  if (intent) shareTokenIntent = intent;
-  const form = document.getElementById('shareTokenForm');
-  if (form) form.hidden = false;
-  const input = document.getElementById('sharePagesToken');
-  if (input) input.focus();
-}
-
-function hideShareTokenForm() {
-  const form = document.getElementById('shareTokenForm');
-  if (form) form.hidden = true;
-  const input = document.getElementById('sharePagesToken');
-  if (input) input.value = '';
-}
-
-/** Ask once per browser. Later Share taps reuse localStorage. */
-function ensurePagesGateToken(interactive, intent) {
-  const existing = pagesGateToken();
-  if (existing) return existing;
-  if (!interactive) return '';
-  const form = document.getElementById('shareTokenForm');
-  if (form && !form.hidden) {
-    showShareTokenForm(intent || shareTokenIntent || 'start');
-    return '';
-  }
-  let entered = '';
-  try {
-    entered = window.prompt('更新公開分享需要 GitHub token（閘門同待辦／活動），只需貼上一次，會記在這部裝置。', '') || '';
-  } catch (e) {
-    entered = '';
-  }
-  const token = rememberPagesGateToken(entered);
-  if (!token) showShareTokenForm(intent || 'start');
-  return token;
-}
-
 function utf8ToBase64(text) {
   return btoa(unescape(encodeURIComponent(String(text || ''))));
 }
 
-function sharePushFailureText(result) {
-  if (!result || result.reason === 'notoken') return '閘門未更新：未有 GitHub token';
-  if (result.reason === 'auth') return '閘門未更新：GitHub token 無效，已清除，請再按分享';
-  if (result.reason === 'network') return '閘門未更新：連線失敗';
-  if (result.status) return '閘門未更新：GitHub ' + result.status;
-  return '閘門未更新';
-}
-
-/** Commit one file on main with dash-hub-pages-token (same path as the gate). */
+/** Commit one file on main with a token already stored on this device. */
 async function pushPagesFile(path, text, message) {
   const token = pagesGateToken();
   if (!token) return { ok: false, reason: 'notoken' };
@@ -10543,7 +10595,7 @@ async function pushPagesShareGate(config) {
 
 /**
  * Guest snapshot. Same fields as Drive sync, including personal and school
- * events. Share stays a hash-only object; the password gate is share-config.json.
+ * events. Plaintext passwords are never written.
  */
 function pagesSyncPayload() {
   const payload = buildSyncPayload();
@@ -10554,144 +10606,75 @@ function pagesSyncPayload() {
   return payload;
 }
 
-/** Commit sync-data.json on main so ?view=1 guests see this snapshot after the password. */
+/** Commit sync-data.json on main so ?view=1 guests see this snapshot. */
 async function pushPagesSyncData() {
   const body = JSON.stringify(pagesSyncPayload(), null, 2) + '\n';
   return pushPagesFile(PAGES_SYNC_PATH, body, 'Publish read-only share snapshot');
 }
 
-function syncPushFailureText(result) {
-  let why = '分享資料未更新';
-  if (!result || result.reason === 'notoken') why = '分享資料未更新：未有 GitHub token';
-  else if (result.reason === 'auth') why = '分享資料未更新：GitHub token 無效，已清除';
-  else if (result.reason === 'network') why = '分享資料未更新：連線失敗';
-  else if (result.status) why = '分享資料未更新：GitHub ' + result.status;
-  if (result && (result.reason === 'auth' || result.reason === 'notoken')) {
-    return why + '\n請貼上 token 再提交，會再寫一次待辦同活動';
-  }
-  return why + '\n閘門已開啟，客人暫時睇到舊資料。請停止分享後再按分享';
-}
-
-async function retryShareSnapshot() {
-  setShareOwnerStatus('正在更新分享資料…');
-  const snap = await pushPagesSyncData();
-  if (!snap.ok) {
-    setShareOwnerStatus(syncPushFailureText(snap));
-    if (snap.reason === 'auth' || snap.reason === 'notoken') showShareTokenForm('snapshot');
+async function publishShareNow() {
+  if (VIEW_ONLY || !pagesGateToken()) return;
+  const latest = shareConfigFromState(state.share);
+  const wantSnapshot = !!latest.shareEnabled;
+  let pushed = null;
+  try { pushed = await pushPagesShareGate(latest); } catch (e) { return; }
+  if (!pushed || !pushed.ok) {
+    if (pushed && pushed.reason === 'auth') rememberPagesGateToken('');
     return;
   }
-  hideShareTokenForm();
-  let plain = '';
-  try { plain = sessionStorage.getItem(SHARE_PLAIN_KEY) || ''; } catch (e) { plain = ''; }
-  const handoff = viewOnlyShareUrl() + (plain ? '\n密碼 ' + plain : '');
-  setShareOwnerStatus('已更新分享資料\n' + handoff + '\n3 小時後自動停止');
+  if (!wantSnapshot || !shareSessionActive(state.share) || !pagesGateToken()) return;
+  let snap = null;
+  try { snap = await pushPagesSyncData(); } catch (e) { return; }
+  if (snap && snap.reason === 'auth') rememberPagesGateToken('');
 }
 
-/** 立即同步 when Google is connected. Offline or missing token keeps local state. */
-async function refreshOwnerStateForShare() {
-  if (VIEW_ONLY || !gdriveAccessToken) return { attempted: false, ok: false };
-  const waitUntil = Date.now() + 20000;
-  while (gdriveSyncInFlight && Date.now() < waitUntil) {
-    await new Promise(function (resolve) { setTimeout(resolve, 200); });
-  }
-  try {
-    const result = await gdriveSyncNow();
-    if (!result || result.skipped) return { attempted: true, ok: false };
-    return { attempted: true, ok: !!(result.driveOk || result.pulled) };
-  } catch (e) {
-    return { attempted: true, ok: false };
-  }
+/** Best-effort Pages update. Never asks for a token. Later taps publish the latest session. */
+function publishShareQuietly() {
+  if (VIEW_ONLY || !pagesGateToken()) return;
+  const job = sharePublishChain.then(function () { return publishShareNow(); });
+  sharePublishChain = job.then(function () {}, function () {});
 }
 
 async function startShareSession() {
   if (VIEW_ONLY) return;
-  if (!crypto.subtle || !crypto.getRandomValues) {
-    setShareOwnerStatus('呢個瀏覽器未能開啟分享');
-    return;
-  }
-  const token = ensurePagesGateToken(true);
-  if (!token) {
-    setShareOwnerStatus('閘門未更新：未有 GitHub token');
-    return;
-  }
-  setShareOwnerStatus(gdriveAccessToken ? '正在同步，準備分享…' : '正在準備分享…');
-  const driveRefresh = await refreshOwnerStateForShare();
-  const createdPlain = randomSharePassword();
-  const salt = randomShareSalt();
-  const passwordHash = await hashSharePassword(createdPlain, salt);
   const now = Date.now();
-  const share = {
+  state.share = {
     enabled: true,
-    salt: salt,
-    passwordHash: passwordHash,
+    salt: '',
+    passwordHash: '',
     updatedAt: now,
     expiresAt: now + SHARE_TTL_MS
   };
-  const pushed = await pushPagesShareGate(shareConfigFromState(share));
-  if (!pushed.ok) {
-    setShareOwnerStatus(sharePushFailureText(pushed));
-    if (pushed.reason === 'auth' || pushed.reason === 'notoken') showShareTokenForm('start');
-    return;
-  }
-  state.share = share;
   saveState();
-  const snap = await pushPagesSyncData();
-  rememberSharePlain(createdPlain);
   syncShareOwnerUI();
-  const handoff = viewOnlyShareUrl() + '\n密碼 ' + createdPlain;
-  const copied = await copyPlainText(handoff);
-  let status = (copied ? '已複製連結同密碼' : '未能複製，請手動複製') + '\n' + handoff + '\n3 小時後自動停止';
-  if (driveRefresh.attempted && !driveRefresh.ok) status += '\nGoogle 離線，已用本機資料';
-  if (!snap.ok) {
-    status = syncPushFailureText(snap) + '\n' + status;
-    if (snap.reason === 'auth' || snap.reason === 'notoken') showShareTokenForm('snapshot');
-    else hideShareTokenForm();
-  } else {
-    hideShareTokenForm();
-  }
-  setShareOwnerStatus(status);
+  const url = viewOnlyShareUrl(state.share.expiresAt, state.share.updatedAt);
+  const copied = await copyPlainText(url);
+  showShareToast(copied ? '已複製連結' : '未能複製連結');
+  setShareOwnerStatus(copied ? '' : url);
+  publishShareQuietly();
 }
 
 async function stopShareSession(opts) {
   if (VIEW_ONLY) return;
   opts = opts || {};
-  const interactive = opts.reason !== 'expired';
   if (shareStopTimer) {
     clearTimeout(shareStopTimer);
     shareStopTimer = null;
   }
   const prev = normalizeShare(state.share);
-  const next = {
+  const now = Date.now();
+  state.share = {
     enabled: false,
     salt: prev.salt,
     passwordHash: prev.passwordHash,
-    updatedAt: Date.now(),
+    updatedAt: now > prev.updatedAt ? now : prev.updatedAt + 1,
     expiresAt: 0
   };
-  const token = interactive ? ensurePagesGateToken(true, 'stop') : pagesGateToken();
-  if (!token) {
-    if (interactive) {
-      setShareOwnerStatus('閘門未更新：未有 GitHub token');
-    } else {
-      state.share = next;
-      saveState();
-      syncShareOwnerUI();
-    }
-    return;
-  }
-  const pushed = await pushPagesShareGate(shareConfigFromState(next));
-  if (!pushed.ok) {
-    setShareOwnerStatus(sharePushFailureText(pushed));
-    if (interactive && (pushed.reason === 'auth' || pushed.reason === 'notoken')) showShareTokenForm('stop');
-    syncShareOwnerUI();
-    return;
-  }
-  state.share = next;
   saveState();
-  hideShareTokenForm();
   syncShareOwnerUI();
-  if (opts.reason === 'expired') setShareOwnerStatus('分享已自動停止');
-  else setShareOwnerStatus('已停止分享');
+  showShareToast(opts.reason === 'expired' ? '分享已自動停止' : '已停止分享');
+  setShareOwnerStatus('');
+  publishShareQuietly();
 }
 
 async function expireShareIfNeeded() {
@@ -10719,36 +10702,9 @@ function bindShareOwnerUi() {
       }
     });
   }
-  const tokenForm = document.getElementById('shareTokenForm');
-  if (tokenForm && !tokenForm._shareBound) {
-    tokenForm._shareBound = true;
-    tokenForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      if (shareActionBusy) return;
-      const input = document.getElementById('sharePagesToken');
-      const token = rememberPagesGateToken(input ? input.value : '');
-      if (!token) {
-        setShareOwnerStatus('閘門未更新：未有 GitHub token');
-        showShareTokenForm(shareTokenIntent || 'start');
-        return;
-      }
-      shareActionBusy = true;
-      if (btn) btn.disabled = true;
-      try {
-        if (shareTokenIntent === 'snapshot' && shareSessionActive(state.share)) await retryShareSnapshot();
-        else if (shareTokenIntent === 'stop' || shareSessionActive(state.share)) await stopShareSession({});
-        else await startShareSession();
-      } finally {
-        shareActionBusy = false;
-        if (btn) btn.disabled = false;
-        syncShareOwnerUI();
-      }
-    });
-  }
   syncShareOwnerUI();
   expireShareIfNeeded();
 }
-
 
 /* ===== Init ===== */
 if (VIEW_ONLY) {
