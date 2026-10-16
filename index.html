@@ -3188,7 +3188,7 @@
         <form id="shareTokenForm" hidden>
           <label class="field-label" for="sharePagesToken">GitHub token（只需一次）</label>
           <input type="password" id="sharePagesToken" autocomplete="off" spellcheck="false" placeholder="ghp_… 或 github_pat_…" />
-          <button type="submit" class="btn btn-primary btn-sm">記住並更新閘門</button>
+          <button type="submit" class="btn btn-primary btn-sm">記住並更新</button>
         </form>
         <p id="shareOwnerStatus" aria-live="polite"></p>
       </div>
@@ -9163,19 +9163,23 @@ function cloudStatusDetail(driveOk, gcalResult) {
 
 async function runCloudSync(opts) {
   opts = opts || {};
-  if (VIEW_ONLY) return;
+  if (VIEW_ONLY) return { driveOk: false, pulled: false, skipped: 'view-only' };
   if (!gdriveAccessToken) {
     setGdriveStatus('請先連接');
-    return;
+    return { driveOk: false, pulled: false, skipped: 'notoken' };
   }
-  if (gdriveSyncInFlight) return;
+  if (gdriveSyncInFlight) return { driveOk: false, pulled: false, skipped: 'inflight' };
   gdriveSyncInFlight = true;
   setGdriveStatus('同步中…');
   let driveOk = false;
+  let pulled = false;
   let gcalResult = { ok: false, reason: '' };
   try {
     if (opts.pull !== false) {
-      try { await gdrivePull(); } catch (e) { console.warn('GDrive pull failed', e); }
+      try {
+        await gdrivePull();
+        pulled = true;
+      } catch (e) { console.warn('GDrive pull failed', e); }
     }
     try {
       gcalResult = await gcalSync();
@@ -9196,6 +9200,7 @@ async function runCloudSync(opts) {
     setGdriveStatus(cloudStatusText(driveOk, gcalResult), cloudStatusDetail(driveOk, gcalResult));
     updateGdriveUiConnected(!!gdriveAccessToken);
   }
+  return { driveOk: driveOk, pulled: pulled };
 }
 
 /* ===== Google Calendar (personal events only, primary of GCAL_ACCOUNT_EMAIL) ===== */
@@ -9928,20 +9933,23 @@ function applyShareEntryTheme() {
 }
 
 /* ===== Share password gate =====
- * Published gate is share-config.json (no todos/events). Hash is SHA-256
- * of salt + "\n" + password. Plaintext is never written to the gate or Drive.
- * shareExpiresAt is epoch ms, 3 hours after 分享. Guests re-read the gate on
- * load, on focus, and every few seconds, so shareEnabled:false or a passed
- * expiry makes old links fail. 分享 always mints a new 4-digit password and
- * commits that gate to GitHub Pages. A repo token lives in localStorage as
- * dash-hub-pages-token; the first Share asks once and remembers it. If the
- * push fails, the status says the public gate was not updated.
+ * Every 分享 tap does both, permanently: mint a new 4-digit password, commit
+ * share-config.json, and publish the current todos / events (personal and
+ * school) / busStops / shortcuts / categories to sync-data.json on main.
+ * The gate file has no todos or events. Hash is SHA-256 of salt + "\n" +
+ * password. Plaintext is never written to the gate, to sync-data.json, or
+ * to Drive. shareExpiresAt is epoch ms, 3 hours after 分享. Guests re-read
+ * the gate on load, on focus, and every few seconds, so shareEnabled:false
+ * or a passed expiry makes old links fail. A repo token lives in
+ * localStorage as dash-hub-pages-token; the first Share asks once and
+ * remembers it. If either push fails, the status says which one failed.
  */
 const SHARE_GRANT_KEY = 'dash-hub-share-grant';
 const SHARE_PLAIN_KEY = 'dash-hub-share-plain';
 const SHARE_TTL_MS = 3 * 60 * 60 * 1000;
 const PAGES_GATE_REPO = 'Puddingchau/dashboard';
 const PAGES_GATE_PATH = 'share-config.json';
+const PAGES_SYNC_PATH = 'sync-data.json';
 let currentShareGate = null;
 let shareWatchTimer = null;
 let shareCheckInFlight = false;
@@ -9949,6 +9957,7 @@ let dashboardBooted = false;
 let dashboardBound = false;
 let shareStopTimer = null;
 let shareActionBusy = false;
+let shareTokenIntent = 'start';
 
 function hashesEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || !a || a.length !== b.length) return false;
@@ -10280,7 +10289,8 @@ function rememberPagesGateToken(token) {
   return value;
 }
 
-function showShareTokenForm() {
+function showShareTokenForm(intent) {
+  if (intent) shareTokenIntent = intent;
   const form = document.getElementById('shareTokenForm');
   if (form) form.hidden = false;
   const input = document.getElementById('sharePagesToken');
@@ -10295,23 +10305,23 @@ function hideShareTokenForm() {
 }
 
 /** Ask once per browser. Later Share taps reuse localStorage. */
-function ensurePagesGateToken(interactive) {
+function ensurePagesGateToken(interactive, intent) {
   const existing = pagesGateToken();
   if (existing) return existing;
   if (!interactive) return '';
   const form = document.getElementById('shareTokenForm');
   if (form && !form.hidden) {
-    showShareTokenForm();
+    showShareTokenForm(intent || shareTokenIntent || 'start');
     return '';
   }
   let entered = '';
   try {
-    entered = window.prompt('更新公開分享閘門需要 GitHub token，只需貼上一次，會記在這部裝置。', '') || '';
+    entered = window.prompt('更新公開分享需要 GitHub token（閘門同待辦／活動），只需貼上一次，會記在這部裝置。', '') || '';
   } catch (e) {
     entered = '';
   }
   const token = rememberPagesGateToken(entered);
-  if (!token) showShareTokenForm();
+  if (!token) showShareTokenForm(intent || 'start');
   return token;
 }
 
@@ -10327,12 +10337,11 @@ function sharePushFailureText(result) {
   return '閘門未更新';
 }
 
-/** Commit share-config.json on main so GitHub Pages serves the new gate. */
-async function pushPagesShareGate(config) {
+/** Commit one file on main with dash-hub-pages-token (same path as the gate). */
+async function pushPagesFile(path, text, message) {
   const token = pagesGateToken();
   if (!token) return { ok: false, reason: 'notoken' };
-  const body = JSON.stringify(config, null, 2) + '\n';
-  const api = 'https://api.github.com/repos/' + PAGES_GATE_REPO + '/contents/' + PAGES_GATE_PATH;
+  const api = 'https://api.github.com/repos/' + PAGES_GATE_REPO + '/contents/' + path;
   const headers = {
     Authorization: 'Bearer ' + token,
     Accept: 'application/vnd.github+json',
@@ -10354,8 +10363,8 @@ async function pushPagesShareGate(config) {
     return { ok: false, reason: 'network' };
   }
   const payload = {
-    message: config && config.shareEnabled ? 'Enable read-only share for 3 hours' : 'Stop read-only share',
-    content: utf8ToBase64(body),
+    message: message,
+    content: utf8ToBase64(text),
     branch: 'main'
   };
   if (sha) payload.sha = sha;
@@ -10372,6 +10381,75 @@ async function pushPagesShareGate(config) {
   }
 }
 
+/** Commit share-config.json on main so GitHub Pages serves the new gate. */
+async function pushPagesShareGate(config) {
+  const body = JSON.stringify(config, null, 2) + '\n';
+  const message = config && config.shareEnabled ? 'Enable read-only share for 3 hours' : 'Stop read-only share';
+  return pushPagesFile(PAGES_GATE_PATH, body, message);
+}
+
+/**
+ * Guest snapshot. Same fields as Drive sync, including personal and school
+ * events. Share stays a hash-only object; the password gate is share-config.json.
+ */
+function pagesSyncPayload() {
+  const payload = buildSyncPayload();
+  payload.share = normalizeShare(payload.share);
+  delete payload.password;
+  delete payload.sharePassword;
+  delete payload.sharePlain;
+  return payload;
+}
+
+/** Commit sync-data.json on main so ?view=1 guests see this snapshot after the password. */
+async function pushPagesSyncData() {
+  const body = JSON.stringify(pagesSyncPayload(), null, 2) + '\n';
+  return pushPagesFile(PAGES_SYNC_PATH, body, 'Publish read-only share snapshot');
+}
+
+function syncPushFailureText(result) {
+  let why = '分享資料未更新';
+  if (!result || result.reason === 'notoken') why = '分享資料未更新：未有 GitHub token';
+  else if (result.reason === 'auth') why = '分享資料未更新：GitHub token 無效，已清除';
+  else if (result.reason === 'network') why = '分享資料未更新：連線失敗';
+  else if (result.status) why = '分享資料未更新：GitHub ' + result.status;
+  if (result && (result.reason === 'auth' || result.reason === 'notoken')) {
+    return why + '\n請貼上 token 再提交，會再寫一次待辦同活動';
+  }
+  return why + '\n閘門已開啟，客人暫時睇到舊資料。請停止分享後再按分享';
+}
+
+async function retryShareSnapshot() {
+  setShareOwnerStatus('正在更新分享資料…');
+  const snap = await pushPagesSyncData();
+  if (!snap.ok) {
+    setShareOwnerStatus(syncPushFailureText(snap));
+    if (snap.reason === 'auth' || snap.reason === 'notoken') showShareTokenForm('snapshot');
+    return;
+  }
+  hideShareTokenForm();
+  let plain = '';
+  try { plain = sessionStorage.getItem(SHARE_PLAIN_KEY) || ''; } catch (e) { plain = ''; }
+  const handoff = viewOnlyShareUrl() + (plain ? '\n密碼 ' + plain : '');
+  setShareOwnerStatus('已更新分享資料\n' + handoff + '\n3 小時後自動停止');
+}
+
+/** 立即同步 when Google is connected. Offline or missing token keeps local state. */
+async function refreshOwnerStateForShare() {
+  if (VIEW_ONLY || !gdriveAccessToken) return { attempted: false, ok: false };
+  const waitUntil = Date.now() + 20000;
+  while (gdriveSyncInFlight && Date.now() < waitUntil) {
+    await new Promise(function (resolve) { setTimeout(resolve, 200); });
+  }
+  try {
+    const result = await gdriveSyncNow();
+    if (!result || result.skipped) return { attempted: true, ok: false };
+    return { attempted: true, ok: !!(result.driveOk || result.pulled) };
+  } catch (e) {
+    return { attempted: true, ok: false };
+  }
+}
+
 async function startShareSession() {
   if (VIEW_ONLY) return;
   if (!crypto.subtle || !crypto.getRandomValues) {
@@ -10383,6 +10461,8 @@ async function startShareSession() {
     setShareOwnerStatus('閘門未更新：未有 GitHub token');
     return;
   }
+  setShareOwnerStatus(gdriveAccessToken ? '正在同步，準備分享…' : '正在準備分享…');
+  const driveRefresh = await refreshOwnerStateForShare();
   const createdPlain = randomSharePassword();
   const salt = randomShareSalt();
   const passwordHash = await hashSharePassword(createdPlain, salt);
@@ -10397,17 +10477,26 @@ async function startShareSession() {
   const pushed = await pushPagesShareGate(shareConfigFromState(share));
   if (!pushed.ok) {
     setShareOwnerStatus(sharePushFailureText(pushed));
-    if (pushed.reason === 'auth' || pushed.reason === 'notoken') showShareTokenForm();
+    if (pushed.reason === 'auth' || pushed.reason === 'notoken') showShareTokenForm('start');
     return;
   }
   state.share = share;
   saveState();
+  const snap = await pushPagesSyncData();
   rememberSharePlain(createdPlain);
-  hideShareTokenForm();
   syncShareOwnerUI();
   const handoff = viewOnlyShareUrl() + '\n密碼 ' + createdPlain;
   const copied = await copyPlainText(handoff);
-  setShareOwnerStatus((copied ? '已複製連結同密碼' : '未能複製，請手動複製') + '\n' + handoff + '\n3 小時後自動停止');
+  let status = (copied ? '已複製連結同密碼' : '未能複製，請手動複製') + '\n' + handoff + '\n3 小時後自動停止';
+  if (driveRefresh.attempted && !driveRefresh.ok) status += '\nGoogle 離線，已用本機資料';
+  if (!snap.ok) {
+    status = syncPushFailureText(snap) + '\n' + status;
+    if (snap.reason === 'auth' || snap.reason === 'notoken') showShareTokenForm('snapshot');
+    else hideShareTokenForm();
+  } else {
+    hideShareTokenForm();
+  }
+  setShareOwnerStatus(status);
 }
 
 async function stopShareSession(opts) {
@@ -10426,7 +10515,7 @@ async function stopShareSession(opts) {
     updatedAt: Date.now(),
     expiresAt: 0
   };
-  const token = interactive ? ensurePagesGateToken(true) : pagesGateToken();
+  const token = interactive ? ensurePagesGateToken(true, 'stop') : pagesGateToken();
   if (!token) {
     if (interactive) {
       setShareOwnerStatus('閘門未更新：未有 GitHub token');
@@ -10440,7 +10529,7 @@ async function stopShareSession(opts) {
   const pushed = await pushPagesShareGate(shareConfigFromState(next));
   if (!pushed.ok) {
     setShareOwnerStatus(sharePushFailureText(pushed));
-    if (interactive && (pushed.reason === 'auth' || pushed.reason === 'notoken')) showShareTokenForm();
+    if (interactive && (pushed.reason === 'auth' || pushed.reason === 'notoken')) showShareTokenForm('stop');
     syncShareOwnerUI();
     return;
   }
@@ -10487,13 +10576,14 @@ function bindShareOwnerUi() {
       const token = rememberPagesGateToken(input ? input.value : '');
       if (!token) {
         setShareOwnerStatus('閘門未更新：未有 GitHub token');
-        showShareTokenForm();
+        showShareTokenForm(shareTokenIntent || 'start');
         return;
       }
       shareActionBusy = true;
       if (btn) btn.disabled = true;
       try {
-        if (shareSessionActive(state.share)) await stopShareSession({});
+        if (shareTokenIntent === 'snapshot' && shareSessionActive(state.share)) await retryShareSnapshot();
+        else if (shareTokenIntent === 'stop' || shareSessionActive(state.share)) await stopShareSession({});
         else await startShareSession();
       } finally {
         shareActionBusy = false;
