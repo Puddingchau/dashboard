@@ -4745,14 +4745,9 @@ function normalizeState(data) {
     });
   }
   base.events = dedupeEventsByTitleDate(base.events);
-  // Prefer new key; migrate old eventsViewDays
-  if (data.eventsFilter != null) {
-    base.eventsFilter = normalizeEventsFilter(data.eventsFilter);
-  } else if (data.eventsViewDays != null) {
-    base.eventsFilter = normalizeEventsFilter(data.eventsViewDays);
-  } else {
-    base.eventsFilter = 'today';
-  }
+  // Date filters always open on 今天. A saved eventsFilter / legacy eventsViewDays
+  // (30/60/90/month normalize to 全部) must not move the tab on the next load.
+  base.eventsFilter = 'today';
   base.eventsKind = normalizeEventsKind(data.eventsKind);
   base.busStops = migrateBusStops(data.busStops);
   const exp = data.expandedSection;
@@ -4761,7 +4756,8 @@ function normalizeState(data) {
     : (['shortcuts', 'todos', 'events', 'training', 'bus', 'calendar'].includes(exp) ? exp : null);
   base.trainingExpanded = !!data.trainingExpanded;
   base.busExpanded = !!data.busExpanded;
-  base.todoTab = normalizeTodoTab(data.todoTab);
+  // Same rule as eventsFilter: do not restore 明天 / 七天內 from the last session.
+  base.todoTab = 'today';
   const THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
   const THEME_MIGRATE = {
     mist: 'sky', mint: 'cloud', sand: 'clear', lilac: 'dusk',
@@ -4811,8 +4807,10 @@ function buildExportPayload() {
     categories: Array.isArray(state.categories) ? state.categories : [],
     busStops: Array.isArray(state.busStops) ? state.busStops : [],
     theme: state.theme || 'sunny-beach',
-    todoTab: normalizeTodoTab(typeof todoTab !== 'undefined' ? todoTab : state.todoTab),
-    eventsFilter: state.eventsFilter || 'today',
+    // Always publish 今天. The in-memory tab can differ until reload; storing
+    // the session choice made the next load and the other device jump.
+    todoTab: 'today',
+    eventsFilter: 'today',
     eventsKind: normalizeEventsKind(state.eventsKind),
     syncUpdatedAt: state.syncUpdatedAt || 0,
     share: normalizeShare(state.share)
@@ -4839,12 +4837,12 @@ function saveState(opts) {
         categories: state.categories,
         todos: state.todos,
         events: state.events,
-        eventsFilter: state.eventsFilter || 'today',
+        eventsFilter: 'today',
         eventsKind: normalizeEventsKind(state.eventsKind),
         busStops: state.busStops,
         trainingExpanded: !!state.trainingExpanded,
         busExpanded: !!state.busExpanded,
-        todoTab: normalizeTodoTab(todoTab),
+        todoTab: 'today',
         theme: state.theme || 'sunny-beach',
         syncUpdatedAt: state.syncUpdatedAt || 0,
         share: normalizeShare(state.share)
@@ -8988,15 +8986,8 @@ function applyRemoteSyncPayload(remote, opts) {
       // empty remote: keep local busStops (do not wipe)
     }
     // Theme is device-local. Drive and Pages sync must not overwrite it.
-    if (remote.todoTab != null) {
-      state.todoTab = normalizeTodoTab(remote.todoTab);
-      todoTab = state.todoTab;
-      changed = true;
-    }
-    if (remote.eventsFilter != null) {
-      state.eventsFilter = normalizeEventsFilter(remote.eventsFilter);
-      changed = true;
-    }
+    // todoTab / eventsFilter are session-only and always start on 今天.
+    // Applying the remote copy was the jump to 明天 / 全部 after Drive or Pages refresh.
     if (remote.eventsKind != null) {
       const nextKind = normalizeEventsKind(remote.eventsKind);
       if (nextKind !== state.eventsKind) {
@@ -10277,7 +10268,10 @@ function lockShareView(mode) {
 
 function renderDashboardSurfaces() {
   applyTheme(state.theme || 'sunny-beach', false);
-  todoTab = normalizeTodoTab(state.todoTab);
+  // Cold paint (and a share unlock, which reloads state) opens on 今天.
+  todoTab = 'today';
+  state.todoTab = 'today';
+  state.eventsFilter = 'today';
   syncTodoTabUI();
   syncExpandableSections();
   renderCatChips();
