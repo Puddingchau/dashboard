@@ -1864,6 +1864,23 @@
       flex-direction: column;
       gap: 6px;
     }
+    /* Phone: 個人活動 and 學校活動 share #eventList. Show about five cards,
+       then scroll inside the list so the page does not stack every card. */
+    @media (max-width: 639px) {
+      #events .event-list {
+        position: relative;
+        max-height: var(--event-list-max, none);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: auto;
+        scrollbar-width: thin;
+        scrollbar-gutter: stable;
+        touch-action: pan-y;
+      }
+      #events .event-list > .event-item {
+        flex-shrink: 0;
+      }
+    }
     .course-list {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -3070,7 +3087,7 @@
         <div class="block-body-inner">
       <div class="card glass-card">
         <div class="note-banner" id="busNote" style="background:var(--accent-light);color:var(--accent-badge-text)">
-          九巴／龍運到站時間（官方 API）。展開後會用定位找各線最近站；約每 60 秒自動更新。夜間無班次屬正常。
+          九巴／龍運／城巴到站時間（官方 API）。展開後會用定位找各線最近站；顯示時約每 30 秒自動更新。夜間無班次屬正常。
         </div>
         <div class="section-toolbar">
           <button type="button" class="btn btn-primary btn-sm" id="btnAddBus">＋ 新增</button>
@@ -5845,6 +5862,51 @@ function sortEventsNearestFirst(list) {
   });
 }
 
+let eventListFitBound = false;
+
+function fitEventListToFiveCards() {
+  const list = document.getElementById('eventList');
+  if (!list) return;
+  const phone = window.matchMedia('(max-width: 639px)').matches;
+  if (!phone) {
+    list.style.removeProperty('--event-list-max');
+    return;
+  }
+  list.style.removeProperty('--event-list-max');
+  const cards = list.querySelectorAll('.event-item');
+  if (cards.length <= 5) return;
+  const apply = function () {
+    const first = cards[0];
+    const fifth = cards[4];
+    let height = fifth.offsetTop + fifth.offsetHeight;
+    if (!(height > first.offsetHeight)) {
+      height = (5 * first.offsetHeight) + (4 * 6);
+    }
+    // A short peek of the next card shows that the list itself scrolls.
+    list.style.setProperty('--event-list-max', Math.ceil(height + 14) + 'px');
+  };
+  apply();
+  // A scrollbar can wrap the work line and change card heights. Measure again.
+  apply();
+}
+
+function bindEventListFit() {
+  if (eventListFitBound) return;
+  eventListFitBound = true;
+  let timer = null;
+  const schedule = function () {
+    clearTimeout(timer);
+    timer = setTimeout(fitEventListToFiveCards, 60);
+  };
+  window.addEventListener('resize', schedule);
+  const mq = window.matchMedia('(max-width: 639px)');
+  if (mq.addEventListener) mq.addEventListener('change', schedule);
+  else if (mq.addListener) mq.addListener(schedule);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { fitEventListToFiveCards(); }).catch(function () {});
+  }
+}
+
 function renderEvents() {
   try {
     const before = (state.events || []).length;
@@ -5870,6 +5932,8 @@ function renderEvents() {
 
   if (!visible.length) {
     list.innerHTML = '<div class="empty">' + escapeHtml(eventsFilterEmptyText()) + '</div>';
+    bindEventListFit();
+    fitEventListToFiveCards();
     return;
   }
   list.innerHTML = visible.map(ev => {
@@ -5938,6 +6002,7 @@ function renderEvents() {
       const toggleExpand = () => {
         const expanded = row.classList.toggle('expanded');
         body.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        fitEventListToFiveCards();
       };
       body.addEventListener('click', toggleExpand);
       body.addEventListener('keydown', (e) => {
@@ -5948,6 +6013,8 @@ function renderEvents() {
       });
     }
   });
+  bindEventListFit();
+  fitEventListToFiveCards();
 }
 
 
@@ -6234,6 +6301,8 @@ function renderTraining() {
 
 /* ===== Bus + KMB live ETA ===== */
 let busEtaTimer = null;
+let busEtaTickTimer = null;
+let busEtaVisBound = false;
 let busEtaInFlight = null;
 /** @type {Record<string, {rows: any[], error?: string, at: number}>} */
 const busEtaByStop = {};
@@ -6962,8 +7031,23 @@ async function resolveNearbyStopsForBuses(opts) {
   }
 }
 
+function busFetchWithTimeout(promise, ms) {
+  let timer = null;
+  const timeout = new Promise(function (_, reject) {
+    timer = setTimeout(function () { reject(new Error('timeout')); }, ms);
+  });
+  return Promise.race([promise, timeout]).then(function (value) {
+    clearTimeout(timer);
+    return value;
+  }, function (err) {
+    clearTimeout(timer);
+    throw err;
+  });
+}
+
 async function refreshAllBusEtas(opts) {
   const force = !!(opts && opts.force);
+  const quiet = !!(opts && opts.quiet);
   const buses = Array.isArray(state.busStops) ? state.busStops : [];
   /** @type {{key:string, op:string, stopId:string, route:string}[]} */
   const jobs = [];
@@ -6990,9 +7074,9 @@ async function refreshAllBusEtas(opts) {
       setBusEtaEl(etaEl, b, { rows: [], error: 'missing' });
       return;
     }
-    if (force || !busEtaByStop[key]) {
+    if (!quiet && (force || !busEtaByStop[key])) {
       setBusEtaEl(etaEl, b, null);
-    } else {
+    } else if (busEtaByStop[key]) {
       setBusEtaEl(etaEl, b, busEtaByStop[key]);
     }
   });
@@ -7009,9 +7093,9 @@ async function refreshAllBusEtas(opts) {
       try {
         let rows = [];
         if (job.op === 'CTB') {
-          rows = await fetchCtbStopRouteEta(job.stopId, job.route);
+          rows = await busFetchWithTimeout(fetchCtbStopRouteEta(job.stopId, job.route), 12000);
         } else {
-          rows = await fetchKmbStopEta(job.stopId);
+          rows = await busFetchWithTimeout(fetchKmbStopEta(job.stopId), 12000);
         }
         busEtaByStop[job.key] = { rows: rows, at: Date.now() };
       } catch (err) {
@@ -7052,15 +7136,71 @@ async function refreshAllBusEtas(opts) {
   }
 }
 
+function busSectionShown() {
+  return !!(state && state.busExpanded) && document.visibilityState !== 'hidden';
+}
+
+function repaintBusEtaPills() {
+  const buses = Array.isArray(state.busStops) ? state.busStops : [];
+  buses.forEach(function (b) {
+    const card = document.querySelector('.bus-card[data-id="' + String(b.id).replace(/"/g, '') + '"]');
+    const etaEl = card && card.querySelector('.bus-eta');
+    const key = busEtaCacheKey(b);
+    if (!etaEl || !key || !busEtaByStop[key]) return;
+    setBusEtaEl(etaEl, b, busEtaByStop[key]);
+  });
+}
+
 function stopBusEtaAutoRefresh() {
   if (busEtaTimer) {
     clearInterval(busEtaTimer);
     busEtaTimer = null;
   }
+  if (busEtaTickTimer) {
+    clearInterval(busEtaTickTimer);
+    busEtaTickTimer = null;
+  }
+}
+
+function armBusEtaAutoRefresh() {
+  stopBusEtaAutoRefresh();
+  if (!busSectionShown()) return;
+  let pollMs = 30000;
+  let tickMs = 15000;
+  if (typeof BUS_ETA_POLL_MS === 'number' && BUS_ETA_POLL_MS > 0) pollMs = BUS_ETA_POLL_MS;
+  if (typeof BUS_ETA_TICK_MS === 'number' && BUS_ETA_TICK_MS > 0) tickMs = BUS_ETA_TICK_MS;
+  busEtaTimer = setInterval(function () {
+    if (busSectionShown()) refreshAllBusEtas({ force: true, quiet: true });
+  }, pollMs);
+  busEtaTickTimer = setInterval(function () {
+    if (busSectionShown()) repaintBusEtaPills();
+  }, tickMs);
+}
+
+function bindBusEtaVisibility() {
+  if (busEtaVisBound) return;
+  busEtaVisBound = true;
+  document.addEventListener('visibilitychange', function () {
+    if (!state || !state.busExpanded || document.visibilityState === 'hidden') {
+      stopBusEtaAutoRefresh();
+      return;
+    }
+    armBusEtaAutoRefresh();
+    refreshAllBusEtas({ force: true, quiet: true });
+  });
+  window.addEventListener('pageshow', function (event) {
+    if (!event.persisted) return;
+    if (!state || !state.busExpanded || document.visibilityState === 'hidden') return;
+    armBusEtaAutoRefresh();
+    refreshAllBusEtas({ force: true, quiet: true });
+  });
 }
 
 async function startBusNearbyAndEta(immediate) {
-  stopBusEtaAutoRefresh();
+  bindBusEtaVisibility();
+  // Start the interval before GPS / the first fetch. A hung request must not
+  // leave the open bus panel updating only when the user taps 更新到站.
+  armBusEtaAutoRefresh();
   if (immediate) {
     try {
       await resolveNearbyStopsForBuses({ forceGeo: !busGeo });
@@ -7069,12 +7209,9 @@ async function startBusNearbyAndEta(immediate) {
       updateBusLocationNote('最近站更新失敗，仍顯示已儲存站點');
       renderBus();
     }
-    await refreshAllBusEtas({ force: true });
+    try { await refreshAllBusEtas({ force: true }); } catch (e) {}
+    if (busSectionShown() && !busEtaTimer) armBusEtaAutoRefresh();
   }
-  stopBusEtaAutoRefresh();
-  busEtaTimer = setInterval(function () {
-    if (state.busExpanded) refreshAllBusEtas({ force: true });
-  }, 60000);
 }
 
 function startBusEtaAutoRefresh(immediate) {
@@ -7114,6 +7251,7 @@ function bindBusEtaControls() {
       openBusAddModal();
     });
   }
+  bindBusEtaVisibility();
 }
 
 function busCardMetaLine(b) {
