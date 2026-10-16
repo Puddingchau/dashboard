@@ -1,7 +1,7 @@
 {
-  "shareEnabled": true,
-  "shareSalt": "40e4d7d1fac8b2e8738408f555dca86f",
-  "sharePasswordHash": "c98f3f4aa1b359737b11cf58b67a4160e7c583753aaa039aeaeae3e236e1c03e",
-  "shareExpiresAt": 1792127200329,
-  "updatedAt": 1792116400329
+  "shareEnabled": false,
+  "shareSalt": "",
+  "sharePasswordHash": "",
+  "shareExpiresAt": 0,
+  "updatedAt": 0
 }
