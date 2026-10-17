@@ -1,7 +1,15 @@
 {
-  "updatedAt": 1792238443898,
+  "updatedAt": 1792241438839,
   "schemaVersion": 11,
   "todos": [
+    {
+      "id": "t_mvcd7d9lgmfzn",
+      "title": "訂11月飯",
+      "due": "2026-10-19",
+      "done": false,
+      "createdAt": 1792239635433,
+      "updatedAt": 1792239635433
+    },
     {
       "id": "t_mvcce1nwmxcph",
       "title": "買紫洋蔥",
@@ -17,6 +25,14 @@
       "done": false,
       "createdAt": 1792238010709,
       "updatedAt": 1792238023079
+    },
+    {
+      "id": "t_mvccxq7ogd68m",
+      "title": "設定AI平台Whatsapp信訊",
+      "due": "2026-10-19",
+      "done": false,
+      "createdAt": 1792239185652,
+      "updatedAt": 1792239185652
     },
     {
       "id": "t_mvccb7ldfzroj",
@@ -1259,8 +1275,9 @@
       "work": "",
       "kind": "personal",
       "done": false,
-      "updatedAt": 1792061510961,
+      "updatedAt": 1792239343029,
       "createdAt": 1792061510961,
+      "contentUpdatedAt": 1792061510961,
       "gcalEventId": "71ijgcpj6tgjgb9nc9im8b9k65h30bb160qmcbb3ccom4p336soj0phic4",
       "gcalUpdated": 1792076680409
     },
@@ -1531,16 +1548,16 @@
       "route": "E36A",
       "operator": "KMB",
       "direction": "往東涌(逸東)",
-      "stopName": "裕雅苑雅盛閣",
-      "stopId": "TC239",
-      "kmbStopId": "0EB1DDFEBF0D09E0",
+      "stopName": "迎東邨",
+      "stopId": "TC992",
+      "kmbStopId": "7F8BF075DDF6231A",
       "ctbStopId": "",
       "destKeywords": [
         "東涌"
       ],
       "apiDir": "O",
-      "nearbyDistM": 171,
-      "nearbySeq": 13,
+      "nearbyDistM": 84,
+      "nearbySeq": 15,
       "serviceType": 1
     },
     {
@@ -1548,17 +1565,17 @@
       "route": "E21D",
       "operator": "CTB",
       "direction": "往航天城 (經:東涌北)",
-      "stopName": "裕雅苑雅盛閣, 怡東路",
-      "stopId": "003814",
+      "stopName": "迎東邨, 迎東路",
+      "stopId": "003950",
       "kmbStopId": "",
-      "ctbStopId": "003814",
+      "ctbStopId": "003950",
       "destKeywords": [
         "航天城 (經:東涌北)",
         "航天城"
       ],
       "apiDir": "O",
-      "nearbyDistM": 158,
-      "nearbySeq": 22,
+      "nearbyDistM": 152,
+      "nearbySeq": 24,
       "serviceType": 1
     },
     {
@@ -1566,16 +1583,16 @@
       "route": "E37",
       "operator": "KMB",
       "direction": "往機場(地面運輸中心)",
-      "stopName": "東堤灣畔",
-      "stopId": "TC196",
-      "kmbStopId": "277DD90A63454F48",
+      "stopName": "東涌消防局",
+      "stopId": "TC195",
+      "kmbStopId": "AC0BDA78C106FF7A",
       "ctbStopId": "",
       "destKeywords": [
         "機場"
       ],
       "apiDir": "O",
-      "nearbyDistM": 1231,
-      "nearbySeq": 18,
+      "nearbyDistM": 1657,
+      "nearbySeq": 17,
       "serviceType": 1
     },
     {
@@ -1583,16 +1600,16 @@
       "route": "E36A",
       "operator": "KMB",
       "direction": "往元朗(德業街)",
-      "stopName": "裕雅商場",
-      "stopId": "TC241",
-      "kmbStopId": "D62C524F32F472E6",
+      "stopName": "翔東邨",
+      "stopId": "TC955",
+      "kmbStopId": "C9479F7A9B2C43CE",
       "ctbStopId": "",
       "destKeywords": [
         "元朗"
       ],
       "apiDir": "I",
-      "nearbyDistM": 57,
-      "nearbySeq": 14,
+      "nearbyDistM": 42,
+      "nearbySeq": 11,
       "serviceType": 1
     },
     {
@@ -1609,7 +1626,7 @@
         "西九"
       ],
       "apiDir": "O",
-      "nearbyDistM": 18042,
+      "nearbyDistM": 17734,
       "nearbySeq": 4,
       "serviceType": 1
     },
@@ -1627,7 +1644,7 @@
         "柏景"
       ],
       "apiDir": "O",
-      "nearbyDistM": 18333,
+      "nearbyDistM": 17886,
       "nearbySeq": 11,
       "serviceType": 1
     },
@@ -1636,17 +1653,17 @@
       "route": "E21D",
       "operator": "CTB",
       "direction": "往大角咀 (維港灣)",
-      "stopName": "裕雅商場, 怡東路",
-      "stopId": "003815",
+      "stopName": "翔東邨",
+      "stopId": "003943",
       "kmbStopId": "",
-      "ctbStopId": "003815",
+      "ctbStopId": "003943",
       "destKeywords": [
         "大角咀 (維港灣)",
         "大角咀"
       ],
       "apiDir": "I",
-      "nearbyDistM": 58,
-      "nearbySeq": 18,
+      "nearbyDistM": 22,
+      "nearbySeq": 15,
       "serviceType": 1
     }
   ],
@@ -1654,7 +1671,7 @@
   "todoTab": "today",
   "eventsFilter": "today",
   "eventsKind": "personal",
-  "syncUpdatedAt": 1792238437662,
+  "syncUpdatedAt": 1792241429217,
   "share": {
     "enabled": true,
     "salt": "",
