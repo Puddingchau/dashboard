@@ -1,7 +1,31 @@
 {
-  "updatedAt": 1792242705892,
+  "updatedAt": 1792265405957,
   "schemaVersion": 11,
   "todos": [
+    {
+      "id": "t_mv9nk8mkrqoy8",
+      "title": "買GYM票",
+      "due": "",
+      "done": true,
+      "createdAt": 1792075633579,
+      "updatedAt": 1792133791257
+    },
+    {
+      "id": "t_mv9njvc63fl1b",
+      "title": "聯絡機電取相",
+      "due": "",
+      "done": false,
+      "createdAt": 1792075616358,
+      "updatedAt": 1792078272830
+    },
+    {
+      "id": "t_mv9ulp9kreuqz",
+      "title": "P6 6D6E 觀課日期",
+      "due": "",
+      "done": true,
+      "createdAt": 1792087459112,
+      "updatedAt": 1792133793546
+    },
     {
       "id": "t_mvcd7d9lgmfzn",
       "title": "訂11月飯",
@@ -67,28 +91,12 @@
       "updatedAt": 1792232991765
     },
     {
-      "id": "t_mv9nk8mkrqoy8",
-      "title": "買GYM票",
-      "due": "",
-      "done": true,
-      "createdAt": 1792075633579,
-      "updatedAt": 1792133791257
-    },
-    {
-      "id": "t_mv9njvc63fl1b",
-      "title": "聯絡機電取相",
-      "due": "",
+      "id": "t_mvckb44aj1ov6",
+      "title": "早宣內容",
+      "due": "2026-10-19",
       "done": false,
-      "createdAt": 1792075616358,
-      "updatedAt": 1792078272830
-    },
-    {
-      "id": "t_mv9ulp9kreuqz",
-      "title": "P6 6D6E 觀課日期",
-      "due": "",
-      "done": true,
-      "createdAt": 1792087459112,
-      "updatedAt": 1792133793546
+      "createdAt": 1792251567514,
+      "updatedAt": 1792251567514
     }
   ],
   "events": [
@@ -820,6 +828,39 @@
       "gcalEventId": ""
     },
     {
+      "id": "e_seed_siufan_prep_20261015",
+      "title": "P4,5 Siufan共備",
+      "date": "2026-10-15",
+      "time": "14:30",
+      "work": "P.4、P.5 Siufan 共備。",
+      "kind": "school",
+      "done": false,
+      "updatedAt": 1791993247613,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_seed_exam_sci_gs_weight_20261015",
+      "title": "上學期期考：P.3／P.6 科學與人文各佔常識50%",
+      "date": "2026-11-17",
+      "time": "",
+      "work": "峯／科學科；P.3、P.6 科學與人文各佔合併常識分 50%；P.4、P.5 科學與人文於成績表分列獨立科目。乙類通告第055號。",
+      "kind": "school",
+      "done": false,
+      "updatedAt": 1728900001000,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_seed_exam_sci_exempt_p2_20261117",
+      "title": "上學期期考：P.2 免考科學／人文等",
+      "date": "2026-11-17",
+      "time": "",
+      "work": "P.2 免人文、科學、音樂、體育（該節自修）；P.3 免體育／音樂；P.4 免音樂。乙類通告第055號。",
+      "kind": "school",
+      "done": false,
+      "updatedAt": 1728900001000,
+      "gcalEventId": ""
+    },
+    {
       "id": "e_seed_exam_p6_papers_20261201",
       "title": "小六班主任交卷／家長閱卷",
       "date": "2026-12-01",
@@ -869,39 +910,6 @@
       "date": "2026-09-11",
       "time": "",
       "work": "代號峯（周恒峯，表第11行）；總計 8 節。已核實：11/12 上／下為 3A。其餘日期（11/9、18/9、12/3、28/5、11/6、18/6）班次見紙本全日編配表（OCR 未完全確認）。來源：星期五沒有課外活動課(全日)上課安排 2026-2027。",
-      "kind": "school",
-      "done": false,
-      "updatedAt": 1728900001000,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_seed_siufan_prep_20261015",
-      "title": "P4,5 Siufan共備",
-      "date": "2026-10-15",
-      "time": "14:30",
-      "work": "P.4、P.5 Siufan 共備。",
-      "kind": "school",
-      "done": false,
-      "updatedAt": 1791993247613,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_seed_exam_sci_gs_weight_20261015",
-      "title": "上學期期考：P.3／P.6 科學與人文各佔常識50%",
-      "date": "2026-11-17",
-      "time": "",
-      "work": "峯／科學科；P.3、P.6 科學與人文各佔合併常識分 50%；P.4、P.5 科學與人文於成績表分列獨立科目。乙類通告第055號。",
-      "kind": "school",
-      "done": false,
-      "updatedAt": 1728900001000,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_seed_exam_sci_exempt_p2_20261117",
-      "title": "上學期期考：P.2 免考科學／人文等",
-      "date": "2026-11-17",
-      "time": "",
-      "work": "P.2 免人文、科學、音樂、體育（該節自修）；P.3 免體育／音樂；P.4 免音樂。乙類通告第055號。",
       "kind": "school",
       "done": false,
       "updatedAt": 1728900001000,
@@ -1040,6 +1048,38 @@
       "gcalEventId": ""
     },
     {
+      "id": "e_seed_it_carnival_20261027",
+      "title": "創新科技嘉年華（帶隊）",
+      "date": "2026-10-27",
+      "time": "13:00",
+      "work": "峯／帶隊；香港科學園；對象 P.5（每班約7人）；峯負責 D 組 5D。同行：謝曉紅、杜詩韻、李嘉瑩、李智康。12:50 禮堂放書包即出發；活動 14:00–15:30；約 16:30 A 區放學。統籌謝曉紅。創新科技嘉年華 2026。",
+      "kind": "school",
+      "done": false,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_seed_it_carnival_photos_20261030",
+      "title": "嘉年華相片上傳 N.photo 限期",
+      "date": "2026-10-30",
+      "time": "",
+      "work": "全體帶隊老師；27/10 創新科技嘉年華相片於 30/10 前上載 N.photo。",
+      "kind": "school",
+      "done": false,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_seed_steam_briefing_20261016",
+      "title": "「常識百搭」STEAM 展覽簡介會（Zoom）",
+      "date": "2026-10-16",
+      "time": "14:30",
+      "work": "教育局資優組 EI0020270016；16/10 14:30–17:30；等候室 14:15 開放。Zoom 會議 ID 853 4068 6501，密碼 737942。用英文全名登入；遲到／早退超 30 分鐘無 CPD。查詢 3698 3457。",
+      "kind": "school",
+      "done": true,
+      "updatedAt": 1792133764333,
+      "contentUpdatedAt": 1792133764333,
+      "gcalEventId": ""
+    },
+    {
       "id": "e_mv9365bb2q2st",
       "title": "羽毛球",
       "date": "2026-10-19",
@@ -1075,38 +1115,6 @@
       "done": false,
       "updatedAt": 1792044493812,
       "createdAt": 1792044493812,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_seed_it_carnival_20261027",
-      "title": "創新科技嘉年華（帶隊）",
-      "date": "2026-10-27",
-      "time": "13:00",
-      "work": "峯／帶隊；香港科學園；對象 P.5（每班約7人）；峯負責 D 組 5D。同行：謝曉紅、杜詩韻、李嘉瑩、李智康。12:50 禮堂放書包即出發；活動 14:00–15:30；約 16:30 A 區放學。統籌謝曉紅。創新科技嘉年華 2026。",
-      "kind": "school",
-      "done": false,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_seed_it_carnival_photos_20261030",
-      "title": "嘉年華相片上傳 N.photo 限期",
-      "date": "2026-10-30",
-      "time": "",
-      "work": "全體帶隊老師；27/10 創新科技嘉年華相片於 30/10 前上載 N.photo。",
-      "kind": "school",
-      "done": false,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_seed_steam_briefing_20261016",
-      "title": "「常識百搭」STEAM 展覽簡介會（Zoom）",
-      "date": "2026-10-16",
-      "time": "14:30",
-      "work": "教育局資優組 EI0020270016；16/10 14:30–17:30；等候室 14:15 開放。Zoom 會議 ID 853 4068 6501，密碼 737942。用英文全名登入；遲到／早退超 30 分鐘無 CPD。查詢 3698 3457。",
-      "kind": "school",
-      "done": true,
-      "updatedAt": 1792133764333,
-      "contentUpdatedAt": 1792133764333,
       "gcalEventId": ""
     },
     {
@@ -1359,21 +1367,21 @@
       "gcalUpdated": 1792076687067
     },
     {
-      "id": "e_seed_iepc_yeung_20261021",
-      "title": "IEPC（3A 楊鎧聰）",
-      "date": "2026-10-21",
-      "time": "15:40",
-      "work": "峯出席；教育心理學家到校（第三次）；15:40–16:10；地下雅樂坊；出席：EP、陳、倩、思、峯、家長。",
-      "kind": "school",
-      "done": false,
-      "gcalEventId": ""
-    },
-    {
       "id": "e_seed_pta_floor_feng_20261024",
       "title": "家長會樓層崗位（三／四樓・峯）",
       "date": "2026-10-24",
       "time": "11:30",
       "work": "分級家長會期間樓層崗位；三／四樓：譚／紅／峯。修訂版 14/10/2026。",
+      "kind": "school",
+      "done": false,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_seed_iepc_yeung_20261021",
+      "title": "IEPC（3A 楊鎧聰）",
+      "date": "2026-10-21",
+      "time": "15:40",
+      "work": "峯出席；教育心理學家到校（第三次）；15:40–16:10；地下雅樂坊；出席：EP、陳、倩、思、峯、家長。",
       "kind": "school",
       "done": false,
       "gcalEventId": ""
@@ -1399,17 +1407,6 @@
       "gcalEventId": ""
     },
     {
-      "id": "e_seed_exam_notice_055_20261015",
-      "title": "乙類通告第055號（上學期期考）",
-      "date": "2026-10-15",
-      "time": "",
-      "work": "期考 17–20/11/2026；16/11 半日（第1–8節，12:30 放學）；考試時段 8:15–12:30。校長馮燕儀。詳見當日考試／考前準備 seed。",
-      "kind": "school",
-      "done": false,
-      "updatedAt": 1728900001000,
-      "gcalEventId": ""
-    },
-    {
       "id": "e_hksh_eye_20261021",
       "title": "養和眼科覆診",
       "date": "2026-10-21",
@@ -1419,6 +1416,18 @@
       "done": false,
       "updatedAt": 1792242445156,
       "createdAt": 1792242445156,
+      "gcalEventId": "68mgdhs58cp76k8125tn8jskk8",
+      "gcalUpdated": 1792242909474
+    },
+    {
+      "id": "e_seed_exam_notice_055_20261015",
+      "title": "乙類通告第055號（上學期期考）",
+      "date": "2026-10-15",
+      "time": "",
+      "work": "期考 17–20/11/2026；16/11 半日（第1–8節，12:30 放學）；考試時段 8:15–12:30。校長馮燕儀。詳見當日考試／考前準備 seed。",
+      "kind": "school",
+      "done": false,
+      "updatedAt": 1728900001000,
       "gcalEventId": ""
     }
   ],
@@ -1542,58 +1551,6 @@
   ],
   "busStops": [
     {
-      "id": "bus_e36a_tc",
-      "route": "E36A",
-      "operator": "KMB",
-      "direction": "往東涌(逸東)",
-      "stopName": "迎東邨",
-      "stopId": "TC992",
-      "kmbStopId": "7F8BF075DDF6231A",
-      "ctbStopId": "",
-      "destKeywords": [
-        "東涌"
-      ],
-      "apiDir": "O",
-      "nearbyDistM": 84,
-      "nearbySeq": 15,
-      "serviceType": 1
-    },
-    {
-      "id": "bus_mv8155fp5h2mg",
-      "route": "E21D",
-      "operator": "CTB",
-      "direction": "往航天城 (經:東涌北)",
-      "stopName": "迎東邨, 迎東路",
-      "stopId": "003950",
-      "kmbStopId": "",
-      "ctbStopId": "003950",
-      "destKeywords": [
-        "航天城 (經:東涌北)",
-        "航天城"
-      ],
-      "apiDir": "O",
-      "nearbyDistM": 152,
-      "nearbySeq": 24,
-      "serviceType": 1
-    },
-    {
-      "id": "bus_e37_ap",
-      "route": "E37",
-      "operator": "KMB",
-      "direction": "往機場(地面運輸中心)",
-      "stopName": "東涌消防局",
-      "stopId": "TC195",
-      "kmbStopId": "AC0BDA78C106FF7A",
-      "ctbStopId": "",
-      "destKeywords": [
-        "機場"
-      ],
-      "apiDir": "O",
-      "nearbyDistM": 1657,
-      "nearbySeq": 17,
-      "serviceType": 1
-    },
-    {
       "id": "bus_e36a_yl",
       "route": "E36A",
       "operator": "KMB",
@@ -1606,7 +1563,25 @@
         "元朗"
       ],
       "apiDir": "I",
-      "nearbyDistM": 42,
+      "nearbyDistM": 186,
+      "nearbySeq": 11,
+      "serviceType": 1
+    },
+    {
+      "id": "bus_265b_mk",
+      "route": "265B",
+      "operator": "KMB",
+      "direction": "往旺角(柏景灣)",
+      "stopName": "大欖隧道轉車站",
+      "stopId": "YL794",
+      "kmbStopId": "447C1D79A10C83E2",
+      "ctbStopId": "",
+      "destKeywords": [
+        "旺角",
+        "柏景"
+      ],
+      "apiDir": "O",
+      "nearbyDistM": 17726,
       "nearbySeq": 11,
       "serviceType": 1
     },
@@ -1624,26 +1599,8 @@
         "西九"
       ],
       "apiDir": "O",
-      "nearbyDistM": 17734,
+      "nearbyDistM": 17650,
       "nearbySeq": 4,
-      "serviceType": 1
-    },
-    {
-      "id": "bus_265b_mk",
-      "route": "265B",
-      "operator": "KMB",
-      "direction": "往旺角(柏景灣)",
-      "stopName": "大欖隧道轉車站",
-      "stopId": "YL794",
-      "kmbStopId": "447C1D79A10C83E2",
-      "ctbStopId": "",
-      "destKeywords": [
-        "旺角",
-        "柏景"
-      ],
-      "apiDir": "O",
-      "nearbyDistM": 17886,
-      "nearbySeq": 11,
       "serviceType": 1
     },
     {
@@ -1660,8 +1617,60 @@
         "大角咀"
       ],
       "apiDir": "I",
-      "nearbyDistM": 22,
+      "nearbyDistM": 209,
       "nearbySeq": 15,
+      "serviceType": 1
+    },
+    {
+      "id": "bus_e36a_tc",
+      "route": "E36A",
+      "operator": "KMB",
+      "direction": "往東涌(逸東)",
+      "stopName": "迎東邨",
+      "stopId": "TC992",
+      "kmbStopId": "7F8BF075DDF6231A",
+      "ctbStopId": "",
+      "destKeywords": [
+        "東涌"
+      ],
+      "apiDir": "O",
+      "nearbyDistM": 153,
+      "nearbySeq": 15,
+      "serviceType": 1
+    },
+    {
+      "id": "bus_e37_ap",
+      "route": "E37",
+      "operator": "KMB",
+      "direction": "往機場(地面運輸中心)",
+      "stopName": "東涌消防局",
+      "stopId": "TC195",
+      "kmbStopId": "AC0BDA78C106FF7A",
+      "ctbStopId": "",
+      "destKeywords": [
+        "機場"
+      ],
+      "apiDir": "O",
+      "nearbyDistM": 1828,
+      "nearbySeq": 17,
+      "serviceType": 1
+    },
+    {
+      "id": "bus_mv8155fp5h2mg",
+      "route": "E21D",
+      "operator": "CTB",
+      "direction": "往航天城 (經:東涌北)",
+      "stopName": "迎東邨, 迎東路",
+      "stopId": "003950",
+      "kmbStopId": "",
+      "ctbStopId": "003950",
+      "destKeywords": [
+        "航天城 (經:東涌北)",
+        "航天城"
+      ],
+      "apiDir": "O",
+      "nearbyDistM": 83,
+      "nearbySeq": 24,
       "serviceType": 1
     }
   ],
@@ -1669,12 +1678,12 @@
   "todoTab": "today",
   "eventsFilter": "today",
   "eventsKind": "personal",
-  "syncUpdatedAt": 1792242460592,
+  "syncUpdatedAt": 1792264273759,
   "share": {
-    "enabled": true,
+    "enabled": false,
     "salt": "",
     "passwordHash": "",
-    "updatedAt": 1792238385666,
-    "expiresAt": 1792249185666
+    "updatedAt": 1792249347110,
+    "expiresAt": 0
   }
 }
