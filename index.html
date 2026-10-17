@@ -3040,11 +3040,11 @@
 
     <div class="feature-stack" id="featureStack">
 
-    <!-- 1. To-Do Lists -->
+    <!-- 1. To-Do List -->
     <section class="feature-block accent-lavender" id="todos" data-section="todos">
       <div class="block-header" id="hdr-todos">
         <span class="block-title-wrap">
-          <span class="block-label">To-Do Lists</span>
+          <span class="block-label">To-Do List</span>
           <span class="block-summary" id="summary-todos"><strong class="summary-num">0</strong></span>
         </span>
       </div>
@@ -3052,9 +3052,10 @@
         <div class="block-body-inner">
       <div class="card glass-card">
         <div class="section-toolbar">
-          <div class="subtabs" role="tablist" id="todosFilterTabs" aria-label="To-Do Lists 篩選">
+          <div class="subtabs" role="tablist" id="todosFilterTabs" aria-label="To-Do List 篩選">
             <button type="button" class="subtab active" data-todotab="today">今天</button>
             <button type="button" class="subtab" data-todotab="tomorrow">明天</button>
+            <button type="button" class="subtab" data-todotab="dayAfter">後日</button>
             <button type="button" class="subtab" data-todotab="week">七天內</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnAddTodo">＋ 新增</button>
@@ -4238,7 +4239,7 @@ function normalizeEventsFilter(raw) {
   return 'today';
 }
 
-const TODO_TABS = ['today', 'tomorrow', 'week'];
+const TODO_TABS = ['today', 'tomorrow', 'dayAfter', 'week'];
 
 function normalizeTodoTab(raw) {
   return TODO_TABS.includes(raw) ? raw : 'today';
@@ -5477,6 +5478,12 @@ function isTodoDueTomorrow(t) {
   return daysDiff(d) === 1;
 }
 
+function isTodoDueDayAfter(t) {
+  const d = parseDateOnly(t && t.due);
+  if (!d) return false;
+  return daysDiff(d) === 2;
+}
+
 function isTodoDueWithinWeek(t) {
   const d = parseDateOnly(t && t.due);
   if (!d) return false;
@@ -5496,6 +5503,11 @@ function matchesTodoTab(t) {
     if (noDue) return false;
     return isTodoDueTomorrow(t);
   }
+  if (todoTab === 'dayAfter') {
+    // 「後日」：只顯示到期日為後日的待辦（不含無到期日）
+    if (noDue) return false;
+    return isTodoDueDayAfter(t);
+  }
   // today (default) — completed stay visible when they belong (no due / due today)
   if (noDue) return true;
   return isTodoDueToday(t);
@@ -5503,6 +5515,7 @@ function matchesTodoTab(t) {
 
 function todosFilterHintText() {
   if (todoTab === 'week') return '顯示七天內的待辦';
+  if (todoTab === 'dayAfter') return '顯示後日的待辦';
   if (todoTab === 'tomorrow') return '顯示明天的待辦';
   return '顯示今天的待辦';
 }
@@ -5718,6 +5731,7 @@ function renderTodos() {
   if (!items.length) {
     let emptyMsg = '今天暫無待辦，輕鬆一下吧';
     if (todoTab === 'week') emptyMsg = '七天內暫無待辦';
+    else if (todoTab === 'dayAfter') emptyMsg = '後日暫無待辦';
     else if (todoTab === 'tomorrow') emptyMsg = '明天暫無待辦';
     list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
     return;
