@@ -88,6 +88,10 @@
       --row-bg: rgba(245, 248, 250, 0.65);
       --surface-2: #E8EEF2;
       --amber: #E8A838;
+      /* Held card while reordering — warm gold, clearly not the frosted row. */
+      --drag-active-bg: #F6C453;
+      --drag-active-border: #B86E12;
+      --drag-active-shadow: rgba(184, 110, 18, 0.5);
     }
 
     /* 天空 — default: soft daytime sky blue + clear blue accent */
@@ -177,6 +181,15 @@
       --header-bg: rgba(255, 255, 255, 0.92);
       --amber: #f59e0b;
       --border-soft: rgba(79, 111, 168, 0.16);
+    }
+    /* Blue themes: held card is a saturated sky fill, not the pale row. */
+    body.theme-sky,
+    body.theme-cloud,
+    body.theme-clear,
+    body.theme-dusk {
+      --drag-active-bg: #8EBEFF;
+      --drag-active-border: #1D4ED8;
+      --drag-active-shadow: rgba(29, 78, 216, 0.42);
     }
 
     /* 玩具 — Toy Story inspired (Woody/Buzz/Jessie/sky); optional, default stays sky */
@@ -1635,13 +1648,20 @@
       min-height: 72px;
       font-family: inherit;
     }
-    .sc-item:active, .sc-item.dragging {
+    body .sc-item:active:not(.reorder-idle):not(:has([data-edit]:active)),
+    body .sc-item.dragging {
       cursor: grabbing;
-      opacity: 0.75;
-      background: var(--accent-soft);
-      box-shadow: var(--shadow);
+      opacity: 1;
+      position: relative;
+      background: var(--drag-active-bg, #F6C453);
+      border-color: var(--drag-active-border, #B86E12);
+      box-shadow:
+        0 10px 22px -8px var(--drag-active-shadow, rgba(184, 110, 18, 0.5)),
+        inset 0 0 0 2px var(--drag-active-border, #B86E12);
       transform: scale(1.03);
       z-index: 5;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
     .sc-item.drag-over {
       outline: 2px dashed var(--accent-primary);
@@ -1972,15 +1992,24 @@
       -webkit-user-select: none;
       /* pan-y: allow vertical page scroll; drag handler preventDefault only while dragging */
       touch-action: pan-y;
-      transition: opacity .15s, box-shadow .15s, transform .15s;
+      transition: opacity .15s, box-shadow .15s, transform .15s, background .15s, border-color .15s;
     }
-    .todo-item.todo-draggable:active, .todo-item.todo-draggable.dragging {
+    /* Press / drag to reorder: theme frost must not cover this fill.
+       Checkbox, edit, and delete stay on the normal card color. */
+    body .todo-item.todo-draggable:active:not(.reorder-idle):not(:has(.todo-check:active, [data-edit]:active, [data-del]:active)),
+    body .todo-item.todo-draggable.dragging {
       cursor: grabbing;
-      opacity: 0.75;
-      box-shadow: var(--shadow);
+      opacity: 1;
+      position: relative;
+      box-shadow:
+        0 10px 22px -8px var(--drag-active-shadow, rgba(184, 110, 18, 0.5)),
+        inset 0 0 0 2px var(--drag-active-border, #B86E12);
       transform: scale(1.01);
       z-index: 5;
-      background: var(--surface-2, #334155);
+      background: var(--drag-active-bg, #F6C453);
+      border-color: var(--drag-active-border, #B86E12);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
     .todo-item.drag-over {
       outline: 2px dashed var(--accent-primary);
@@ -2154,7 +2183,7 @@
       border: 1px solid var(--border-soft);
       min-width: 0;
       cursor: pointer;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
       -webkit-user-select: none;
       user-select: none;
       /* pan-y: allow vertical page scroll; drag handler preventDefault only while dragging */
@@ -2188,12 +2217,19 @@
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
       outline: none;
     }
-    .bus-card.dragging {
-      opacity: 0.72;
+    body .bus-card.dragging {
+      opacity: 1;
+      position: relative;
       transform: scale(1.02);
-      box-shadow: 0 8px 20px -6px var(--card-shadow, rgba(59, 130, 246, 0.28));
+      background: var(--drag-active-bg, #F6C453);
+      border-color: var(--drag-active-border, #B86E12);
+      box-shadow:
+        0 10px 22px -8px var(--drag-active-shadow, rgba(184, 110, 18, 0.5)),
+        inset 0 0 0 2px var(--drag-active-border, #B86E12);
       z-index: 2;
       touch-action: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
     .bus-card.drag-over {
       border-color: var(--accent-primary, #3B82F6);
@@ -5191,6 +5227,14 @@ function renderShortcuts() {
       openShortcutModal(id);
     });
 
+    // Release clears a stuck :active so the card returns to its normal color.
+    item.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('[data-edit]')) return;
+      item.classList.remove('reorder-idle');
+    });
+    item.addEventListener('pointerup', () => item.classList.add('reorder-idle'));
+    item.addEventListener('pointercancel', () => item.classList.add('reorder-idle'));
+
     // Desktop drag
     item.addEventListener('dragstart', (e) => {
       dragId = id;
@@ -5200,6 +5244,7 @@ function renderShortcuts() {
     });
     item.addEventListener('dragend', () => {
       item.classList.remove('dragging');
+      item.classList.add('reorder-idle');
       grid.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
       dragId = null;
     });
@@ -5255,10 +5300,12 @@ function renderShortcuts() {
       } else {
         item.classList.remove('show-edit');
       }
+      item.classList.add('reorder-idle');
     });
     item.addEventListener('touchcancel', () => {
       clearTimeout(longPressTimer);
       item.classList.remove('dragging', 'show-edit');
+      item.classList.add('reorder-idle');
       dragId = null;
     });
   });
@@ -5515,6 +5562,13 @@ function bindTodoDnD(row, list) {
   const id = row.getAttribute('data-id');
   row.setAttribute('draggable', 'true');
 
+  row.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) return;
+    row.classList.remove('reorder-idle');
+  });
+  row.addEventListener('pointerup', () => row.classList.add('reorder-idle'));
+  row.addEventListener('pointercancel', () => row.classList.add('reorder-idle'));
+
   row.addEventListener('dragstart', (e) => {
     if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) {
       e.preventDefault();
@@ -5527,6 +5581,7 @@ function bindTodoDnD(row, list) {
   });
   row.addEventListener('dragend', () => {
     row.classList.remove('dragging');
+    row.classList.add('reorder-idle');
     list.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
     todoDragId = null;
   });
@@ -5580,10 +5635,12 @@ function bindTodoDnD(row, list) {
       list.querySelectorAll('.todo-item').forEach(x => x.classList.remove('dragging', 'drag-over'));
       todoDragId = null;
     }
+    row.classList.add('reorder-idle');
   });
   row.addEventListener('touchcancel', () => {
     clearTimeout(longPressTimer);
     row.classList.remove('dragging');
+    row.classList.add('reorder-idle');
     todoDragId = null;
   });
 }
