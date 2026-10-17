@@ -1315,6 +1315,35 @@
       #calendar { grid-row: 3; order: 3; }
       #shortcuts { grid-row: 4; order: 4; }
       #leftStack { grid-row: 5; order: 5; }
+      /* 捷徑冷啟動收起；點標題才展開。唔寫入本機狀態。 */
+      #shortcuts:not(.is-open) {
+        align-self: start;
+      }
+      #shortcuts:not(.is-open) .block-body {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+      }
+      #shortcuts:not(.is-open) .block-header {
+        border-bottom: none;
+      }
+      #shortcuts:not(.is-open) .block-chevron {
+        transform: rotate(-90deg);
+      }
+    }
+    /* Wider than a phone: 捷徑 stays open and is not a disclosure. */
+    @media (min-width: 640px) {
+      #shortcuts .block-chevron { display: none; }
+      #hdr-shortcuts {
+        cursor: default;
+        pointer-events: none;
+      }
+      button#hdr-shortcuts:hover { filter: none; }
     }
 
     /* Tablet: todos|events on top, calendar full-width below, then training+bus / shortcuts */
@@ -3131,14 +3160,15 @@
 
     </div>
 
-    <!-- 6. 捷徑 -->
+    <!-- 6. 捷徑（手機預設收起） -->
     <section class="feature-block accent-blue" id="shortcuts" data-section="shortcuts">
-      <div class="block-header" id="hdr-shortcuts">
+      <button type="button" class="block-header" id="hdr-shortcuts" aria-expanded="false" aria-controls="body-shortcuts">
         <span class="block-title-wrap">
           <span class="block-label">捷徑</span>
           <span class="block-summary" id="summary-shortcuts"><strong class="summary-num">0</strong></span>
         </span>
-      </div>
+        <span class="block-chevron" aria-hidden="true">▼</span>
+      </button>
       <div class="block-body" id="body-shortcuts">
         <div class="block-body-inner">
       <div class="card glass-card">
@@ -4867,9 +4897,35 @@ function applyExpandableSection(id, expanded) {
   }
 }
 
+/* Phone-only. Cold load is collapsed; not written to localStorage or sync. */
+let shortcutsPhoneOpen = false;
+
+function shortcutsIsPhone() {
+  return window.matchMedia('(max-width: 639px)').matches;
+}
+
+function syncShortcutsDisclosure() {
+  const sec = document.getElementById('shortcuts');
+  const hdr = document.getElementById('hdr-shortcuts');
+  const body = document.getElementById('body-shortcuts');
+  if (!sec || !hdr || !body) return;
+  const phone = shortcutsIsPhone();
+  const open = !phone || shortcutsPhoneOpen;
+  sec.classList.toggle('is-open', open);
+  body.hidden = !open;
+  if (phone) {
+    hdr.setAttribute('aria-expanded', open ? 'true' : 'false');
+    hdr.removeAttribute('tabindex');
+  } else {
+    hdr.setAttribute('aria-expanded', 'true');
+    hdr.setAttribute('tabindex', '-1');
+  }
+}
+
 function syncExpandableSections() {
   applyExpandableSection('training', !!state.trainingExpanded);
   applyExpandableSection('bus', !!state.busExpanded);
+  syncShortcutsDisclosure();
 }
 
 function toggleExpandableSection(id) {
@@ -4881,6 +4937,11 @@ function toggleExpandableSection(id) {
     applyExpandableSection('bus', state.busExpanded);
     if (state.busExpanded) startBusNearbyAndEta(true);
     else stopBusEtaAutoRefresh();
+  } else if (id === 'shortcuts') {
+    if (!shortcutsIsPhone()) return;
+    shortcutsPhoneOpen = !shortcutsPhoneOpen;
+    syncShortcutsDisclosure();
+    return;
   } else {
     return;
   }
@@ -4888,13 +4949,17 @@ function toggleExpandableSection(id) {
 }
 
 function bindExpandableHeaders() {
-  ['training', 'bus'].forEach(function (id) {
+  ['training', 'bus', 'shortcuts'].forEach(function (id) {
     const hdr = document.getElementById('hdr-' + id);
     if (!hdr) return;
     hdr.addEventListener('click', function () {
       toggleExpandableSection(id);
     });
   });
+  const shortcutsMq = window.matchMedia('(max-width: 639px)');
+  const onShortcutsMq = function () { syncShortcutsDisclosure(); };
+  if (shortcutsMq.addEventListener) shortcutsMq.addEventListener('change', onShortcutsMq);
+  else if (shortcutsMq.addListener) shortcutsMq.addListener(onShortcutsMq);
 }
 
 function scrollToSectionFromHash() {
@@ -4910,6 +4975,10 @@ function scrollToSectionFromHash() {
     applyExpandableSection('bus', true);
     saveState();
     startBusNearbyAndEta(true);
+  }
+  if (id === 'shortcuts' && shortcutsIsPhone()) {
+    shortcutsPhoneOpen = true;
+    syncShortcutsDisclosure();
   }
   const el = document.getElementById(id);
   if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
