@@ -3079,8 +3079,8 @@
         <div class="block-body-inner">
       <div class="card glass-card">
         <div class="subtabs events-kind-tabs" role="tablist" id="eventsKindTabs" aria-label="活動類型">
-          <button type="button" class="subtab" data-events-kind="personal" aria-selected="false">個人活動</button>
-          <button type="button" class="subtab active" data-events-kind="school" aria-selected="true">學校活動</button>
+          <button type="button" class="subtab active" data-events-kind="personal" aria-selected="true">個人活動</button>
+          <button type="button" class="subtab" data-events-kind="school" aria-selected="false">學校活動</button>
         </div>
         <div class="section-toolbar">
           <div class="subtabs events-view-tabs" role="tablist" id="eventsFilterTabs" aria-label="活動篩選">
@@ -3092,7 +3092,7 @@
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnAddEvent">＋ 新增</button>
         </div>
-        <p class="meta" id="eventsViewHint" style="margin-bottom:8px">顯示今天的活動</p>
+        <p class="meta" id="eventsViewHint" style="margin-bottom:8px">顯示今天的個人活動</p>
         <div class="event-list" id="eventList"></div>
       </div>
         </div>
@@ -4170,7 +4170,8 @@ function eventKindOf(e) {
 }
 
 function normalizeEventsKind(raw) {
-  return raw === 'personal' ? 'personal' : 'school';
+  // Only an explicit school choice is school. Missing or unknown stays 個人活動.
+  return raw === 'school' ? 'school' : 'personal';
 }
 
 function eventsKindLabel(kind) {
@@ -4641,7 +4642,7 @@ function normalizeState(data) {
     todos: [],
     events: SEED_EVENTS.map(e => normalizeEvent({ ...e })),
     eventsFilter: 'today',
-    eventsKind: 'school',
+    eventsKind: 'personal',
     busStops: cloneSeedBus(),
     expandedSection: null,
     trainingExpanded: false,
@@ -4761,7 +4762,8 @@ function normalizeState(data) {
   // Date filters always open on 今天. A saved eventsFilter / legacy eventsViewDays
   // (30/60/90/month normalize to 全部) must not move the tab on the next load.
   base.eventsFilter = 'today';
-  base.eventsKind = normalizeEventsKind(data.eventsKind);
+  // 活動 kind always opens on 個人活動. A saved eventsKind must not jump to 學校活動.
+  base.eventsKind = 'personal';
   base.busStops = migrateBusStops(data.busStops);
   const exp = data.expandedSection;
   base.expandedSection = (exp === null || exp === undefined || exp === '')
@@ -4820,11 +4822,11 @@ function buildExportPayload() {
     categories: Array.isArray(state.categories) ? state.categories : [],
     busStops: Array.isArray(state.busStops) ? state.busStops : [],
     theme: state.theme || 'sunny-beach',
-    // Always publish 今天. The in-memory tab can differ until reload; storing
-    // the session choice made the next load and the other device jump.
+    // Always publish 今天 / 個人活動. The in-memory tab can differ until reload;
+    // storing the session choice made the next load and the other device jump.
     todoTab: 'today',
     eventsFilter: 'today',
-    eventsKind: normalizeEventsKind(state.eventsKind),
+    eventsKind: 'personal',
     syncUpdatedAt: state.syncUpdatedAt || 0,
     share: normalizeShare(state.share)
   };
@@ -4851,7 +4853,7 @@ function saveState(opts) {
         todos: state.todos,
         events: state.events,
         eventsFilter: 'today',
-        eventsKind: normalizeEventsKind(state.eventsKind),
+        eventsKind: 'personal',
         busStops: state.busStops,
         trainingExpanded: !!state.trainingExpanded,
         busExpanded: !!state.busExpanded,
@@ -9012,15 +9014,9 @@ function applyRemoteSyncPayload(remote, opts) {
       // empty remote: keep local busStops (do not wipe)
     }
     // Theme is device-local. Drive and Pages sync must not overwrite it.
-    // todoTab / eventsFilter are session-only and always start on 今天.
-    // Applying the remote copy was the jump to 明天 / 全部 after Drive or Pages refresh.
-    if (remote.eventsKind != null) {
-      const nextKind = normalizeEventsKind(remote.eventsKind);
-      if (nextKind !== state.eventsKind) {
-        state.eventsKind = nextKind;
-        changed = true;
-      }
-    }
+    // todoTab / eventsFilter / eventsKind are session-only.
+    // Date filters always start on 今天; the kind tab always starts on 個人活動.
+    // Applying the remote copy was the jump to 明天 / 全部 / 學校活動 after Drive or Pages refresh.
     if (remote.share && typeof remote.share === 'object') {
       const next = normalizeShare(remote.share);
       const localTs = Number(state.share && state.share.updatedAt) || 0;
@@ -10323,10 +10319,11 @@ function lockShareView(mode) {
 
 function renderDashboardSurfaces() {
   applyTheme(state.theme || 'sunny-beach', false);
-  // Cold paint (and a share unlock, which reloads state) opens on 今天.
+  // Cold paint (and a share unlock, which reloads state) opens on 今天 / 個人活動.
   todoTab = 'today';
   state.todoTab = 'today';
   state.eventsFilter = 'today';
+  state.eventsKind = 'personal';
   syncTodoTabUI();
   syncExpandableSections();
   renderCatChips();
