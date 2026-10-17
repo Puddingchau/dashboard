@@ -46,6 +46,19 @@
       }
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB'));
+      /* Start the Pages snapshot during HTML parse so the first revealed paint can include it. */
+      window.__DASH_BOOT_SYNC = null;
+      window.__DASH_BOOT_SYNC_PROMISE = fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (data) {
+          window.__DASH_BOOT_SYNC = data;
+          return data;
+        })
+        .catch(function () { return null; });
+      /* If boot never finishes, do not leave the dashboard invisible. */
+      setTimeout(function () {
+        document.documentElement.classList.remove('dash-booting');
+      }, 8000);
     })();
   </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -511,6 +524,11 @@
     html.dash-booting,
     html.dash-booting body {
       transition: none !important;
+    }
+    /* Hide the app until the first full paint. Empty lists otherwise grow in public and shove the page. */
+    html.dash-booting .app {
+      opacity: 0;
+      pointer-events: none;
     }
     /* Match a saved expanded training/bus block before JS removes is-collapsed. */
     html.boot-training-open #training.is-collapsed .block-body,
@@ -1304,6 +1322,7 @@
         line-height: 1.25;
         min-width: 0;
         max-width: 100%;
+        min-height: 1.25em;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -9221,8 +9240,11 @@ function applyRemoteSyncPayload(remote, opts) {
       if (r.changed) { state.shortcuts = r.arr; changed = true; }
     }
     if (Array.isArray(remote.categories)) {
-      state.categories = migrateCategories(remote.categories.filter(c => c && c.id !== 'all'));
-      changed = true;
+      const nextCats = migrateCategories(remote.categories.filter(c => c && c.id !== 'all'));
+      if (JSON.stringify(nextCats) !== JSON.stringify(state.categories || [])) {
+        state.categories = nextCats;
+        changed = true;
+      }
     }
     if (Array.isArray(remote.busStops) && remote.busStops.length) {
       const migrated = migrateBusStops(remote.busStops);
@@ -9275,6 +9297,9 @@ async function autoImportFromCloud() {
     if (!res.ok) return;
     const remote = await res.json();
     if (!remote || remote.updatedAt == null) return;
+    // The boot paint already applied this exact snapshot. A second copy must not shove the lists.
+    if (window.__DASH_BOOT_SYNC_APPLIED_AT && Number(remote.updatedAt) === Number(window.__DASH_BOOT_SYNC_APPLIED_AT)) return;
+    markBootSyncApplied(remote);
     // Pages sync-data.json applies busStops/shortcuts/categories. Theme stays local.
     const changed = applyRemoteSyncPayload(remote, { applyExtras: true });
     if (changed) {
@@ -10573,10 +10598,61 @@ function renderDashboardSurfaces() {
   syncShareOwnerUI();
 }
 
-function bootDashboard(opts) {
+function waitForBootSync(ms) {
+  if (window.__DASH_BOOT_SYNC) return Promise.resolve(window.__DASH_BOOT_SYNC);
+  const pending = window.__DASH_BOOT_SYNC_PROMISE;
+  if (!pending) return Promise.resolve(null);
+  return new Promise(function (resolve) {
+    const timer = setTimeout(function () { resolve(window.__DASH_BOOT_SYNC || null); }, ms);
+    pending.then(function () {
+      clearTimeout(timer);
+      resolve(window.__DASH_BOOT_SYNC || null);
+    }, function () {
+      clearTimeout(timer);
+      resolve(null);
+    });
+  });
+}
+
+function waitForBootFonts(ms) {
+  if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+  return Promise.race([
+    document.fonts.ready.catch(function () {}),
+    new Promise(function (resolve) { setTimeout(resolve, ms); })
+  ]);
+}
+
+function markBootSyncApplied(remote) {
+  window.__DASH_BOOT_SYNC_APPLIED = true;
+  window.__DASH_BOOT_SYNC_APPLIED_AT = Number(remote && remote.updatedAt) || 0;
+}
+
+function applyPrefetchedBootSync() {
+  if (VIEW_ONLY && !shareViewUnlocked) return;
+  const remote = window.__DASH_BOOT_SYNC;
+  if (!remote || remote.updatedAt == null || window.__DASH_BOOT_SYNC_APPLIED) return;
+  markBootSyncApplied(remote);
+  try {
+    if (applyRemoteSyncPayload(remote, { applyExtras: true })) {
+      saveState({ scheduleSync: false });
+    }
+  } catch (e) {}
+}
+
+async function bootDashboard(opts) {
   opts = opts || {};
+  let importedBeforePaint = false;
   try {
     initViewOnlyChrome();
+    if (opts.importCloud) {
+      try { await waitForBootSync(2500); } catch (e) {}
+      applyPrefetchedBootSync();
+      // Prefetch missed the budget: pull once more before the first visible paint.
+      if (!window.__DASH_BOOT_SYNC_APPLIED) {
+        try { await autoImportFromCloud(); } catch (e) {}
+        importedBeforePaint = true;
+      }
+    }
     renderDashboardSurfaces();
     if (!dashboardBound) {
       dashboardBound = true;
@@ -10594,8 +10670,8 @@ function bootDashboard(opts) {
     }
     if (state.busExpanded) startBusNearbyAndEta(true);
     dashboardBooted = true;
-    if (opts.importCloud) return autoImportFromCloud();
-    return Promise.resolve();
+    try { await waitForBootFonts(700); } catch (e) {}
+    if (opts.importCloud && !importedBeforePaint) autoImportFromCloud();
   } finally {
     finishDashBootPaint();
   }
