@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant-HK">
+<html lang="zh-Hant-HK" class="dash-booting">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
@@ -20,6 +20,7 @@
       };
       var theme = 'sunny-beach';
       var viewOnly = false;
+      var bootData = null;
       try {
         viewOnly = new URLSearchParams(location.search).get('view') === '1';
       } catch (e) {}
@@ -30,14 +31,19 @@
         try {
           var raw = localStorage.getItem('dash-hub-v1');
           if (raw) {
-            var data = JSON.parse(raw);
-            if (data && THEMES.indexOf(data.theme) !== -1) theme = data.theme;
+            bootData = JSON.parse(raw);
+            if (bootData && THEMES.indexOf(bootData.theme) !== -1) theme = bootData.theme;
           }
         } catch (e2) {}
       }
       window.__DASH_BOOT_THEME = theme;
       document.documentElement.setAttribute('data-dash-theme', theme);
       document.documentElement.classList.add('theme-' + theme);
+      /* Saved expand flags before first paint, so training/bus do not pop open after JS. */
+      if (!viewOnly && bootData) {
+        if (bootData.trainingExpanded) document.documentElement.classList.add('boot-training-open');
+        if (bootData.busExpanded) document.documentElement.classList.add('boot-bus-open');
+      }
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB'));
     })();
@@ -501,6 +507,35 @@
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: auto;
     }
+    /* Cold open: head/body already painted the theme. Do not fade background while boot re-applies it. */
+    html.dash-booting,
+    html.dash-booting body {
+      transition: none !important;
+    }
+    /* Match a saved expanded training/bus block before JS removes is-collapsed. */
+    html.boot-training-open #training.is-collapsed .block-body,
+    html.boot-bus-open #bus.is-collapsed .block-body {
+      display: block !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      padding: initial !important;
+      margin: initial !important;
+      border: initial !important;
+    }
+    html.boot-training-open #body-training[hidden],
+    html.boot-bus-open #body-bus[hidden] {
+      display: block !important;
+    }
+    html.boot-training-open #training.is-collapsed .block-chevron,
+    html.boot-bus-open #bus.is-collapsed .block-chevron {
+      transform: none;
+    }
+    html.boot-training-open #training.is-collapsed .block-header,
+    html.boot-bus-open #bus.is-collapsed .block-header {
+      border-bottom: 1px solid var(--card-border, #334155);
+    }
     /* Head script sets these before <body> exists so the first paint matches the saved theme. */
     html.theme-sunny-beach { background: #87CEEB url('sunny-beach-bg.jpg') center / cover no-repeat; }
     html.theme-rain-cafe { background: #1E2C3A url('rain-cafe-bg.jpg') center / cover no-repeat; }
@@ -532,6 +567,22 @@
     /* iOS Safari: fixed background attachment often breaks scrolling/paint under sticky headers */
     @media (max-width: 1023px) {
       body { background-attachment: scroll; }
+    }
+    /* Phone: html is the only scroller. Both body axes stay visible — if only one
+       axis is visible, CSS computes the other to auto and the nested scroll returns.
+       100svh (not 100dvh) so the address bar does not resize a short page on open.
+       position:fixed theme photos stay on the viewport. */
+    @media (max-width: 639px) {
+      html {
+        overscroll-behavior-y: none;
+      }
+      body {
+        min-height: 100vh;
+        min-height: 100svh;
+        height: auto;
+        overflow: visible;
+        overscroll-behavior-y: none;
+      }
     }
     /* Mobile: never trap vertical scroll inside shortcuts (or other) inner panes */
     @media (max-width: 639px) {
@@ -1918,7 +1969,8 @@
     @media (max-width: 639px) {
       #events .event-list {
         position: relative;
-        max-height: var(--event-list-max, none);
+        /* About five dense cards before JS measures. none here let the list paint full height, then snap shut. */
+        max-height: var(--event-list-max, 22rem);
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-y: auto;
@@ -2620,6 +2672,8 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       gap: 3px;
+      /* Always 6 rows. 7/6 matches square cells once 3px gaps are included, before JS fills the days. */
+      aspect-ratio: 7 / 6;
     }
     .cal-day {
       aspect-ratio: 1;
@@ -4864,14 +4918,21 @@ function applyTheme(preset, persist) {
   const t = THEME_PRESETS.includes(preset) ? preset : 'sunny-beach';
   state.theme = t;
   const body = document.getElementById('appBody') || document.body;
-  THEME_PRESETS.forEach(p => {
-    body.classList.remove('theme-' + p);
-    document.documentElement.classList.remove('theme-' + p);
-  });
-  body.classList.remove('theme-rain-window');
-  document.documentElement.classList.remove('theme-rain-window');
-  body.classList.add('theme-' + t);
-  document.documentElement.classList.add('theme-' + t);
+  const already =
+    body.classList.contains('theme-' + t) &&
+    document.documentElement.classList.contains('theme-' + t) &&
+    !body.classList.contains('theme-rain-window') &&
+    !document.documentElement.classList.contains('theme-rain-window');
+  if (!already) {
+    THEME_PRESETS.forEach(p => {
+      body.classList.remove('theme-' + p);
+      document.documentElement.classList.remove('theme-' + p);
+    });
+    body.classList.remove('theme-rain-window');
+    document.documentElement.classList.remove('theme-rain-window');
+    body.classList.add('theme-' + t);
+    document.documentElement.classList.add('theme-' + t);
+  }
   document.querySelectorAll('.theme-chips .theme-chip').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === t);
   });
@@ -6049,15 +6110,21 @@ function fitEventListToFiveCards() {
     list.style.removeProperty('--event-list-max');
     return;
   }
-  list.style.removeProperty('--event-list-max');
   const cards = list.querySelectorAll('.event-item');
-  if (cards.length <= 5) return;
+  if (cards.length <= 5) {
+    // Fallback 22rem is only for the first paint. Five or fewer stay fully visible.
+    list.style.setProperty('--event-list-max', 'none');
+    return;
+  }
   const apply = function () {
     const first = cards[0];
     const fifth = cards[4];
-    let height = fifth.offsetTop + fifth.offsetHeight;
-    if (!(height > first.offsetHeight)) {
-      height = (5 * first.offsetHeight) + (4 * 6);
+    if (!first || !fifth) return;
+    // Do not clear --event-list-max first. Uncapping laid the list out at full height, then snapped it back.
+    let height = (5 * first.offsetHeight) + (4 * 6);
+    if (first.offsetParent) {
+      const viaOffset = fifth.offsetTop + fifth.offsetHeight;
+      if (viaOffset > first.offsetHeight) height = viaOffset;
     }
     // A short peek of the next card shows that the list itself scrolls.
     list.style.setProperty('--event-list-max', Math.ceil(height + 14) + 'px');
@@ -10085,6 +10152,21 @@ function lockShareView(mode) {
   setShareLock(mode || 'closed');
 }
 
+let dashBootPaintFinished = false;
+function finishDashBootPaint() {
+  if (dashBootPaintFinished) return;
+  dashBootPaintFinished = true;
+  const root = document.documentElement;
+  const clear = function () {
+    root.classList.remove('dash-booting', 'boot-training-open', 'boot-bus-open');
+  };
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(function () { requestAnimationFrame(clear); });
+  } else {
+    setTimeout(clear, 50);
+  }
+}
+
 function renderDashboardSurfaces() {
   applyTheme(state.theme || 'sunny-beach', false);
   // First paint of this document opens on 今天 / 個人活動.
@@ -10106,26 +10188,30 @@ function renderDashboardSurfaces() {
 
 function bootDashboard(opts) {
   opts = opts || {};
-  initViewOnlyChrome();
-  renderDashboardSurfaces();
-  if (!dashboardBound) {
-    dashboardBound = true;
-    bindExpandableHeaders();
-    bindCalendarControls();
-    bindBusEtaControls();
-    bindSyncUi();
-    bindGdriveUi();
-    bindPushPagesUi();
-    bindShareOwnerUi();
-    bindHdrCatJump();
-    startHeaderInfo();
-    if (!VIEW_ONLY) tryGdriveSilentRestore();
-    scrollToSectionFromHash();
+  try {
+    initViewOnlyChrome();
+    renderDashboardSurfaces();
+    if (!dashboardBound) {
+      dashboardBound = true;
+      bindExpandableHeaders();
+      bindCalendarControls();
+      bindBusEtaControls();
+      bindSyncUi();
+      bindGdriveUi();
+      bindPushPagesUi();
+      bindShareOwnerUi();
+      bindHdrCatJump();
+      startHeaderInfo();
+      if (!VIEW_ONLY) tryGdriveSilentRestore();
+      scrollToSectionFromHash();
+    }
+    if (state.busExpanded) startBusNearbyAndEta(true);
+    dashboardBooted = true;
+    if (opts.importCloud) return autoImportFromCloud();
+    return Promise.resolve();
+  } finally {
+    finishDashBootPaint();
   }
-  if (state.busExpanded) startBusNearbyAndEta(true);
-  dashboardBooted = true;
-  if (opts.importCloud) return autoImportFromCloud();
-  return Promise.resolve();
 }
 
 async function unlockShareView() {
