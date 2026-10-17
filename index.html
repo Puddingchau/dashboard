@@ -9297,6 +9297,9 @@ async function autoImportFromCloud() {
     if (!res.ok) return;
     const remote = await res.json();
     if (!remote || remote.updatedAt == null) return;
+    // The boot paint already applied this exact snapshot. A second copy must not shove the lists.
+    if (window.__DASH_BOOT_SYNC_APPLIED_AT && Number(remote.updatedAt) === Number(window.__DASH_BOOT_SYNC_APPLIED_AT)) return;
+    markBootSyncApplied(remote);
     // Pages sync-data.json applies busStops/shortcuts/categories. Theme stays local.
     const changed = applyRemoteSyncPayload(remote, { applyExtras: true });
     if (changed) {
@@ -10600,22 +10603,35 @@ function waitForBootSync(ms) {
   const pending = window.__DASH_BOOT_SYNC_PROMISE;
   if (!pending) return Promise.resolve(null);
   return new Promise(function (resolve) {
-    let done = false;
-    const finish = function () {
-      if (done) return;
-      done = true;
+    const timer = setTimeout(function () { resolve(window.__DASH_BOOT_SYNC || null); }, ms);
+    pending.then(function () {
+      clearTimeout(timer);
       resolve(window.__DASH_BOOT_SYNC || null);
-    };
-    pending.then(finish, finish);
-    setTimeout(finish, ms);
+    }, function () {
+      clearTimeout(timer);
+      resolve(null);
+    });
   });
+}
+
+function waitForBootFonts(ms) {
+  if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+  return Promise.race([
+    document.fonts.ready.catch(function () {}),
+    new Promise(function (resolve) { setTimeout(resolve, ms); })
+  ]);
+}
+
+function markBootSyncApplied(remote) {
+  window.__DASH_BOOT_SYNC_APPLIED = true;
+  window.__DASH_BOOT_SYNC_APPLIED_AT = Number(remote && remote.updatedAt) || 0;
 }
 
 function applyPrefetchedBootSync() {
   if (VIEW_ONLY && !shareViewUnlocked) return;
   const remote = window.__DASH_BOOT_SYNC;
   if (!remote || remote.updatedAt == null || window.__DASH_BOOT_SYNC_APPLIED) return;
-  window.__DASH_BOOT_SYNC_APPLIED = true;
+  markBootSyncApplied(remote);
   try {
     if (applyRemoteSyncPayload(remote, { applyExtras: true })) {
       saveState({ scheduleSync: false });
@@ -10625,11 +10641,17 @@ function applyPrefetchedBootSync() {
 
 async function bootDashboard(opts) {
   opts = opts || {};
+  let importedBeforePaint = false;
   try {
     initViewOnlyChrome();
     if (opts.importCloud) {
-      try { await waitForBootSync(1200); } catch (e) {}
+      try { await waitForBootSync(2500); } catch (e) {}
       applyPrefetchedBootSync();
+      // Prefetch missed the budget: pull once more before the first visible paint.
+      if (!window.__DASH_BOOT_SYNC_APPLIED) {
+        try { await autoImportFromCloud(); } catch (e) {}
+        importedBeforePaint = true;
+      }
     }
     renderDashboardSurfaces();
     if (!dashboardBound) {
@@ -10648,7 +10670,8 @@ async function bootDashboard(opts) {
     }
     if (state.busExpanded) startBusNearbyAndEta(true);
     dashboardBooted = true;
-    if (opts.importCloud) autoImportFromCloud();
+    try { await waitForBootFonts(700); } catch (e) {}
+    if (opts.importCloud && !importedBeforePaint) autoImportFromCloud();
   } finally {
     finishDashBootPaint();
   }
