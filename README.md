@@ -14,6 +14,8 @@
 
 頁底冇 GitHub token 欄，亦冇「記住並更新」。擁有者的 Google Drive 同步照舊，唔使喺頁面貼上 `ghp_` token。如果這部裝置之前已經記低 `dash-hub-pages-token`，分享同停止仍然會靜靜更新 `share-config.json`；開啟分享時亦會更新 `sync-data.json`。冇 token 都一樣複製到連結，朋友睇到而家 Pages 上的 `sync-data.json`。
 
+頁頂右側「推上線」同同步按鈕同一樣式。一按就用已記住的 `dash-hub-pages-token`，把而家畫面的待辦、活動等同步快照寫入 `sync-data.json`，朋友唔使等每小時的 Drive→Pages。成功顯示「已推上線」；冇 token 顯示「未有 token，無法推」，唔會彈出 token 表單。
+
 冇 `exp` 的舊連結 `?view=1`：閘門如果仲有 salt 同密碼雜湊，仍然要輸入密碼。雜湊係 `SHA-256(salt + 換行 + 密碼)`，明文唔會寫入閘門或同步檔。新的「分享」唔再產生密碼。
 
 ### 點樣撤銷
