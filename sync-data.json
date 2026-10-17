@@ -1,5 +1,5 @@
 {
-  "updatedAt": 1792242609827,
+  "updatedAt": 1792242705892,
   "schemaVersion": 11,
   "todos": [
     {
@@ -1268,18 +1268,6 @@
       "gcalUpdated": 1792076679336
     },
     {
-      "id": "e_hksh_eye_20261021",
-      "title": "養和眼科覆診",
-      "date": "2026-10-21",
-      "time": "14:00",
-      "work": "養和眼科中心(跑馬地)；李樹培院四樓眼科部；請帶身分證明文件；查詢 2835 8890。預約人：Mr. CHAU, HANG FUNG FREDDY。來源：HKSH 預約確認電郵。",
-      "kind": "personal",
-      "done": false,
-      "updatedAt": 1792242445156,
-      "createdAt": 1792242445156,
-      "gcalEventId": ""
-    },
-    {
       "id": "e_mv9o6oild29l5",
       "title": "Gov Dr 營養",
       "date": "2026-11-17",
@@ -1419,6 +1407,18 @@
       "kind": "school",
       "done": false,
       "updatedAt": 1728900001000,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_hksh_eye_20261021",
+      "title": "養和眼科覆診",
+      "date": "2026-10-21",
+      "time": "14:00",
+      "work": "養和眼科中心(跑馬地)；李樹培院四樓眼科部；請帶身分證明文件；查詢 2835 8890。預約人：Mr. CHAU, HANG FUNG FREDDY。來源：HKSH 預約確認電郵。",
+      "kind": "personal",
+      "done": false,
+      "updatedAt": 1792242445156,
+      "createdAt": 1792242445156,
       "gcalEventId": ""
     }
   ],
@@ -1669,7 +1669,7 @@
   "todoTab": "today",
   "eventsFilter": "today",
   "eventsKind": "personal",
-  "syncUpdatedAt": 1792241429217,
+  "syncUpdatedAt": 1792242460592,
   "share": {
     "enabled": true,
     "salt": "",
