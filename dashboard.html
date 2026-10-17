@@ -590,7 +590,7 @@
     .page-header > .sync-actions {
       margin: 0 0 6px;
       padding: 0;
-      justify-content: center;
+      justify-content: flex-end;
     }
     .page-header-inner {
       display: grid;
@@ -1737,7 +1737,7 @@
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-end;
       gap: 6px;
       margin: 0 0 6px;
       padding: 0;
@@ -2897,6 +2897,7 @@
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveSyncNowBtn" hidden>立即同步</button>
         <span class="glass-card hdr-glass sync-pill sync-status" id="gdriveSyncStatus">未連接</span>
         <p class="glass-card hdr-glass sync-pill gcal-hint" id="gcalHint" hidden>Calendar 未授權</p>
+        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="btnPushPages">推上線</button>
       </div>
       <div class="page-header-inner">
         <div class="header-brand">
@@ -9729,6 +9730,8 @@ function applyShareEntryTheme() {
  * 停止分享 turns the local session off. If dash-hub-pages-token is already
  * stored, the existing Pages push updates share-config.json (and, when the
  * session is on, sync-data.json) with no token field and no prompt.
+ * 推上線, at the top-right beside sync, commits the current todos/events
+ * snapshot to sync-data.json with that same stored token. No token form.
  * A disabled gate whose updatedAt is at or after this link's t closes it.
  * updatedAt 0 is not a stop, so a closed file does not block a newer link.
  * Legacy ?view=1 with no exp still asks for the password when the gate has a hash.
@@ -9962,6 +9965,7 @@ function bootDashboard(opts) {
     bindBusEtaControls();
     bindSyncUi();
     bindGdriveUi();
+    bindPushPagesUi();
     bindShareOwnerUi();
     bindHdrCatJump();
     startHeaderInfo();
@@ -10231,9 +10235,9 @@ function pagesSyncPayload() {
 }
 
 /** Commit sync-data.json on main so ?view=1 guests see this snapshot. */
-async function pushPagesSyncData() {
+async function pushPagesSyncData(message) {
   const body = JSON.stringify(pagesSyncPayload(), null, 2) + '\n';
-  return pushPagesFile(PAGES_SYNC_PATH, body, 'Publish read-only share snapshot');
+  return pushPagesFile(PAGES_SYNC_PATH, body, message || 'Publish read-only share snapshot');
 }
 
 async function publishShareNow() {
@@ -10257,6 +10261,68 @@ function publishShareQuietly() {
   if (VIEW_ONLY || !pagesGateToken()) return;
   const job = sharePublishChain.then(function () { return publishShareNow(); });
   sharePublishChain = job.then(function () {}, function () {});
+}
+
+let pagesPushBusy = false;
+
+function pagesPushFailureToast(result) {
+  const reason = result && result.reason;
+  if (reason === 'notoken' || reason === 'auth') {
+    showShareToast('未有 token，無法推');
+    return;
+  }
+  showShareToast('推上線失敗');
+}
+
+/** One tap: current in-memory sync snapshot (local + Drive already on screen) → Pages. */
+async function pushPagesSnapshotNow() {
+  const btn = document.getElementById('btnPushPages');
+  try {
+    if (VIEW_ONLY) return;
+    if (!pagesGateToken()) {
+      showShareToast('未有 token，無法推');
+      return;
+    }
+    let result = null;
+    try {
+      result = await pushPagesSyncData('Publish dashboard snapshot');
+    } catch (e) {
+      result = { ok: false, reason: 'network' };
+    }
+    if (result && result.reason === 'http' && (result.status === 409 || result.status === 422)) {
+      try { result = await pushPagesSyncData('Publish dashboard snapshot'); } catch (e2) {
+        result = { ok: false, reason: 'network' };
+      }
+    }
+    if (result && result.ok) showShareToast('已推上線');
+    else pagesPushFailureToast(result);
+  } finally {
+    pagesPushBusy = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '推上線';
+      btn.removeAttribute('aria-busy');
+    }
+  }
+}
+
+function bindPushPagesUi() {
+  const btn = document.getElementById('btnPushPages');
+  if (!btn || btn._pushBound) return;
+  btn._pushBound = true;
+  btn.addEventListener('click', function () {
+    if (VIEW_ONLY || pagesPushBusy) return;
+    if (!pagesGateToken()) {
+      showShareToast('未有 token，無法推');
+      return;
+    }
+    pagesPushBusy = true;
+    btn.disabled = true;
+    btn.textContent = '推送中…';
+    btn.setAttribute('aria-busy', 'true');
+    const job = sharePublishChain.then(function () { return pushPagesSnapshotNow(); });
+    sharePublishChain = job.then(function () {}, function () {});
+  });
 }
 
 async function startShareSession() {
