@@ -1668,7 +1668,8 @@
       min-height: 72px;
       font-family: inherit;
     }
-    body .sc-item:active, body .sc-item.dragging {
+    body .sc-item:active:not(.reorder-idle):not(:has([data-edit]:active)),
+    body .sc-item.dragging {
       cursor: grabbing;
       opacity: 1;
       position: relative;
@@ -2015,7 +2016,7 @@
     }
     /* Press / drag to reorder: theme frost must not cover this fill.
        Checkbox, edit, and delete stay on the normal card color. */
-    body .todo-item.todo-draggable:active:not(:has(.todo-check:active, [data-edit]:active, [data-del]:active)),
+    body .todo-item.todo-draggable:active:not(.reorder-idle):not(:has(.todo-check:active, [data-edit]:active, [data-del]:active)),
     body .todo-item.todo-draggable.dragging {
       cursor: grabbing;
       opacity: 1;
@@ -5301,6 +5302,14 @@ function renderShortcuts() {
       openShortcutModal(id);
     });
 
+    // Release clears a stuck :active so the card returns to its normal color.
+    item.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('[data-edit]')) return;
+      item.classList.remove('reorder-idle');
+    });
+    item.addEventListener('pointerup', () => item.classList.add('reorder-idle'));
+    item.addEventListener('pointercancel', () => item.classList.add('reorder-idle'));
+
     // Desktop drag
     item.addEventListener('dragstart', (e) => {
       dragId = id;
@@ -5310,6 +5319,7 @@ function renderShortcuts() {
     });
     item.addEventListener('dragend', () => {
       item.classList.remove('dragging');
+      item.classList.add('reorder-idle');
       grid.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
       dragId = null;
     });
@@ -5365,10 +5375,12 @@ function renderShortcuts() {
       } else {
         item.classList.remove('show-edit');
       }
+      item.classList.add('reorder-idle');
     });
     item.addEventListener('touchcancel', () => {
       clearTimeout(longPressTimer);
       item.classList.remove('dragging', 'show-edit');
+      item.classList.add('reorder-idle');
       dragId = null;
     });
   });
@@ -5637,6 +5649,13 @@ function bindTodoDnD(row, list) {
   const id = row.getAttribute('data-id');
   row.setAttribute('draggable', 'true');
 
+  row.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) return;
+    row.classList.remove('reorder-idle');
+  });
+  row.addEventListener('pointerup', () => row.classList.add('reorder-idle'));
+  row.addEventListener('pointercancel', () => row.classList.add('reorder-idle'));
+
   row.addEventListener('dragstart', (e) => {
     if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) {
       e.preventDefault();
@@ -5649,6 +5668,7 @@ function bindTodoDnD(row, list) {
   });
   row.addEventListener('dragend', () => {
     row.classList.remove('dragging');
+    row.classList.add('reorder-idle');
     list.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
     todoDragId = null;
   });
@@ -5702,10 +5722,12 @@ function bindTodoDnD(row, list) {
       list.querySelectorAll('.todo-item').forEach(x => x.classList.remove('dragging', 'drag-over'));
       todoDragId = null;
     }
+    row.classList.add('reorder-idle');
   });
   row.addEventListener('touchcancel', () => {
     clearTimeout(longPressTimer);
     row.classList.remove('dragging');
+    row.classList.add('reorder-idle');
     todoDragId = null;
   });
 }
