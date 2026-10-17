@@ -1,5 +1,5 @@
 {
-  "updatedAt": 1792241438839,
+  "updatedAt": 1792242609827,
   "schemaVersion": 11,
   "todos": [
     {
@@ -1268,18 +1268,16 @@
       "gcalUpdated": 1792076679336
     },
     {
-      "id": "e_mv9o6npwck4o0",
-      "title": "跑馬地養和",
+      "id": "e_hksh_eye_20261021",
+      "title": "養和眼科覆診",
       "date": "2026-10-21",
       "time": "14:00",
-      "work": "",
+      "work": "養和眼科中心(跑馬地)；李樹培院四樓眼科部；請帶身分證明文件；查詢 2835 8890。預約人：Mr. CHAU, HANG FUNG FREDDY。來源：HKSH 預約確認電郵。",
       "kind": "personal",
       "done": false,
-      "updatedAt": 1792239343029,
-      "createdAt": 1792061510961,
-      "contentUpdatedAt": 1792061510961,
-      "gcalEventId": "71ijgcpj6tgjgb9nc9im8b9k65h30bb160qmcbb3ccom4p336soj0phic4",
-      "gcalUpdated": 1792076680409
+      "updatedAt": 1792242445156,
+      "createdAt": 1792242445156,
+      "gcalEventId": ""
     },
     {
       "id": "e_mv9o6oild29l5",
