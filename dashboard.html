@@ -1879,8 +1879,7 @@
       white-space: nowrap;
     }
     .sync-actions .gcal-hint,
-    .sync-actions #gdriveSyncStatus,
-    .sync-actions #drivePausedHint {
+    .sync-actions #gdriveSyncStatus {
       flex: 0 1 auto;
       margin: 0;
       text-align: center;
@@ -3044,10 +3043,9 @@
   <div class="app">
     <header class="page-header">
       <div class="sync-actions">
-        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveConnectBtn">連接 Google</button>
+        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveConnectBtn">連接 Calendar</button>
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveSyncNowBtn" hidden>立即同步</button>
-        <span class="glass-card hdr-glass sync-pill sync-status" id="gdriveSyncStatus">未連接</span>
-        <span class="glass-card hdr-glass sync-pill sync-status" id="drivePausedHint" hidden>Drive 已暫停</span>
+        <span class="glass-card hdr-glass sync-pill sync-status" id="gdriveSyncStatus" hidden></span>
         <p class="glass-card hdr-glass sync-pill gcal-hint" id="gcalHint" hidden>Calendar 未授權</p>
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill firebase-hint" id="firebaseAuthBtn" title="用 Google 登入 Firebase">Firebase 未登入</button>
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="btnPushPages">推上線</button>
@@ -3317,7 +3315,7 @@
         <p id="shareOwnerStatus" aria-live="polite"></p>
         <div id="shareToast" class="share-toast" role="status"></div>
       </div>
-      <p class="footer-note">本機儲存；要更新列表請按「立即同步」 · 布丁仔</p>
+      <p class="footer-note">本機儲存；列表經 Firebase 同步。要更新列表請按「立即同步」 · 布丁仔</p>
     </footer>
   </div>
 
@@ -3465,8 +3463,8 @@ const TCS_DATA = {
 
 const STORAGE_KEY = 'dash-hub-v1';
 const SCHEMA_VERSION = 11; // 11: drop retired seed todos t_seed_p3_math, t_seed_ai_score, t_seed_dash_tidy
-// Drive 檔「布丁仔-sync.json」暫時暫停：唔讀、唔寫、亦唔會為同步彈 Drive 權限。
-// 改返 true 再 push，就會恢復之前嘅 Drive 讀寫同合併。Calendar 個人活動唔受影響。
+// Drive 檔「布丁仔-sync.json」永久停用：唔讀、唔寫、亦唔會為同步彈 drive.file。
+// 列表只經 Firebase；公開頁只經「推上線」寫 sync-data.json。個人活動仍用 calendar.events。
 const ENABLE_DRIVE_SYNC = false;
 const GDRIVE_SYNC_FILENAME = '布丁仔-sync.json';
 const GDRIVE_OAUTH_CLIENT_ID = '508206831418-cmm0ra1v21lajj6ned33l33d8ohdtll8.apps.googleusercontent.com';
@@ -5930,7 +5928,7 @@ function eventKindPickerHtml(selected) {
   const kind = selected === 'school' ? 'school' : 'personal';
   const hint = kind === 'personal'
     ? '個人活動會同步到 Google Calendar（' + GCAL_ACCOUNT_EMAIL + '）。'
-    : '學校活動只留喺本機同 Drive，唔會推去 Google Calendar。';
+    : '學校活動只留喺本機同 Firebase，唔會推去 Google Calendar。';
   return (
     '<div><label class="field-label">類型</label>' +
     '<div class="subtabs event-kind-picker" id="eventKindPicker" role="radiogroup" aria-label="活動類型">' +
@@ -5957,7 +5955,7 @@ function bindEventKindPicker() {
       if (hint) {
         hint.textContent = k === 'personal'
           ? '個人活動會同步到 Google Calendar（' + GCAL_ACCOUNT_EMAIL + '）。'
-          : '學校活動只留喺本機同 Drive，唔會推去 Google Calendar。';
+          : '學校活動只留喺本機同 Firebase，唔會推去 Google Calendar。';
       }
     });
   });
@@ -9334,7 +9332,7 @@ function bindFirebaseUi() {
       return;
     }
     if (firebaseAuthUser) {
-      if (window.confirm('要登出 Firebase 嗎？本機同 Drive 同步會保留。')) firebaseSignOut();
+      if (window.confirm('要登出 Firebase 嗎？本機列表會保留。')) firebaseSignOut();
       return;
     }
     firebaseSignIn();
@@ -9393,7 +9391,8 @@ function gdriveIsConnected() {
 
 function setGdriveStatus(text, detail) {
   const el = document.getElementById('gdriveSyncStatus');
-  if (!el) return;
+  if (!el || !ENABLE_DRIVE_SYNC) return;
+  el.hidden = false;
   el.textContent = text || '';
   const tip = detail || '';
   if (tip && tip !== text) el.title = tip;
@@ -9415,11 +9414,11 @@ function syncGcalHint() {
   } else if (gcalAccessState === 'api-off') {
     hint.hidden = false;
     hint.textContent = 'Calendar 未啟用';
-    hint.title = 'Calendar API 未啟用。個人活動仍留喺本機同 Drive。';
+    hint.title = 'Calendar API 未啟用。個人活動仍留喺本機同 Firebase。';
   } else if (gcalAccessState === 'error') {
     hint.hidden = false;
     hint.textContent = 'Calendar 未同步';
-    hint.title = 'Calendar 暫未能同步。個人活動仍留喺本機同 Drive。';
+    hint.title = 'Calendar 暫未能同步。個人活動仍留喺本機同 Firebase。';
   } else {
     hint.hidden = true;
   }
@@ -9428,11 +9427,13 @@ function syncGcalHint() {
 function updateGdriveUiConnected(connected) {
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   const connectBtn = document.getElementById('gdriveConnectBtn');
+  const status = document.getElementById('gdriveSyncStatus');
+  if (status && !ENABLE_DRIVE_SYNC) status.hidden = true;
   if (syncBtn) syncBtn.hidden = ENABLE_DRIVE_SYNC ? !connected : false;
   if (!connectBtn) return;
-  if (!connected) connectBtn.textContent = '連接 Google';
+  if (!connected) connectBtn.textContent = '連接 Calendar';
   else if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') connectBtn.textContent = '授權 Calendar';
-  else connectBtn.textContent = '已連接';
+  else connectBtn.textContent = 'Calendar 已連';
   syncGcalHint();
 }
 
@@ -9618,10 +9619,18 @@ function noteFirebaseSignInNeeded() {
   const label = btn ? String(btn.textContent || '') : '';
   if (!btn || label.indexOf('未登入') === -1) setFirebaseHint('out', '列表同步要用 Firebase 登入，再按「立即同步」');
   try { showShareToast('請先登入 Firebase，再按「立即同步」'); } catch (e) {}
-  setGdriveStatus('Firebase 未登入', '列表同步要用 Firebase 登入，再按「立即同步」');
 }
 
-/** List sync while Drive file sync is paused: pull Firestore, then push local rows and tombstones. */
+function setListSyncBusy(busy) {
+  const btn = document.getElementById('gdriveSyncNowBtn');
+  if (!btn) return;
+  btn.disabled = !!busy;
+  btn.textContent = busy ? '同步中…' : '立即同步';
+  if (busy) btn.setAttribute('aria-busy', 'true');
+  else btn.removeAttribute('aria-busy');
+}
+
+/** Firestore list sync. Drive file sync stays off. */
 async function runFirebaseListSync() {
   if (VIEW_ONLY) return { driveOk: false, pulled: false, skipped: 'view-only' };
   if (gdriveSyncInFlight || firebaseSyncInFlight) return { driveOk: false, pulled: false, skipped: 'inflight' };
@@ -9632,7 +9641,7 @@ async function runFirebaseListSync() {
   }
   gdriveSyncInFlight = true;
   if (canFirebase) firebaseSyncInFlight = true;
-  setGdriveStatus('同步中…');
+  setListSyncBusy(true);
   let firebaseOk = false;
   let gcalResult = { ok: false, reason: 'skip' };
   try {
@@ -9663,17 +9672,16 @@ async function runFirebaseListSync() {
   } finally {
     gdriveSyncInFlight = false;
     firebaseSyncInFlight = false;
+    setListSyncBusy(false);
     if (!canFirebase) noteFirebaseSignInNeeded();
     else if (firebaseOk) {
       const time = formatGdriveSyncTime();
-      let detail = 'Firebase 已同步 ' + time + ' · Drive 已暫停';
-      const fbEmail = firebaseAuthUser && firebaseAuthUser.email ? String(firebaseAuthUser.email) : '';
-      if (fbEmail) detail += ' · ' + fbEmail;
-      if (gcalResult && gcalResult.ok) detail += ' · Calendar 已連';
-      else if ((gcalResult && gcalResult.reason === 'no-scope') || gcalAccessState === 'no-scope') detail += ' · Calendar 未授權';
-      setGdriveStatus('已同步 ' + time, detail);
+      let msg = '已同步 ' + time;
+      if (gcalResult && gcalResult.ok) msg += ' · Calendar 已連';
+      else if ((gcalResult && gcalResult.reason === 'no-scope') || gcalAccessState === 'no-scope') msg += ' · Calendar 未授權';
+      try { showShareToast(msg); } catch (e) {}
     } else {
-      setGdriveStatus('同步失敗', 'Firebase 同步失敗 · Drive 已暫停');
+      try { showShareToast('同步失敗'); } catch (e) {}
     }
     updateGdriveUiConnected(!!gdriveAccessToken);
     if (firebasePushAgain) {
@@ -10276,7 +10284,7 @@ function ensureGdriveTokenClient() {
   gdriveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GDRIVE_OAUTH_CLIENT_ID,
     scope: GOOGLE_OAUTH_SCOPES,
-    include_granted_scopes: true,
+    include_granted_scopes: !!ENABLE_DRIVE_SYNC,
     enable_granular_consent: true,
     login_hint: GCAL_ACCOUNT_EMAIL,
     callback: function (resp) {
@@ -10284,16 +10292,23 @@ function ensureGdriveTokenClient() {
         storeGdriveToken(resp.access_token);
         noteGcalAccessFromToken(resp);
         updateGdriveUiConnected(true);
-        setGdriveStatus('已連接', '按「立即同步」先更新列表');
+        if (ENABLE_DRIVE_SYNC) setGdriveStatus('已連接', '按「立即同步」先更新列表');
       } else if (resp && resp.error) {
-        setGdriveStatus('授權失敗');
+        if (ENABLE_DRIVE_SYNC) setGdriveStatus('授權失敗');
+        else { try { showShareToast('Calendar 授權失敗'); } catch (e) {} }
         console.warn('Google auth error', resp);
       }
     },
     error_callback: function (err) {
       const t = (err && (err.type || err.message)) || '';
-      if (String(t).indexOf('popup_closed') !== -1) setGdriveStatus('已取消授權');
-      else setGdriveStatus('請重新授權', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
+      if (String(t).indexOf('popup_closed') !== -1) {
+        if (ENABLE_DRIVE_SYNC) setGdriveStatus('已取消授權');
+        else { try { showShareToast('已取消 Calendar 授權'); } catch (e) {} }
+      } else if (ENABLE_DRIVE_SYNC) {
+        setGdriveStatus('請重新授權', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
+      } else {
+        try { showShareToast('請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar'); } catch (e) {}
+      }
       console.warn('Google auth error', err);
     }
   });
@@ -10308,8 +10323,8 @@ function requestGdriveToken(opts) {
   const req = { login_hint: GCAL_ACCOUNT_EMAIL };
   if (opts.prompt !== undefined) req.prompt = opts.prompt;
   if (opts.scope) {
-    req.scope = opts.scope;
-    req.include_granted_scopes = true;
+    req.scope = ENABLE_DRIVE_SYNC ? opts.scope : GCAL_SCOPE;
+    req.include_granted_scopes = !!ENABLE_DRIVE_SYNC;
   }
   client.requestAccessToken(req);
   return true;
@@ -10321,16 +10336,18 @@ async function gdriveSyncNow() {
 
 function applyDrivePauseChrome() {
   const hint = document.getElementById('drivePausedHint');
-  if (hint) {
-    const show = !ENABLE_DRIVE_SYNC && !VIEW_ONLY;
-    hint.hidden = !show;
-    if (show) hint.title = 'Google Drive 檔同步已暫停。列表改經 Firebase。ENABLE_DRIVE_SYNC 改返 true 再 push 就會恢復。';
+  if (hint) hint.hidden = true;
+  const status = document.getElementById('gdriveSyncStatus');
+  if (status && !ENABLE_DRIVE_SYNC) {
+    status.hidden = true;
+    status.textContent = '';
+    status.removeAttribute('title');
   }
   if (ENABLE_DRIVE_SYNC || VIEW_ONLY) return;
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   if (syncBtn) syncBtn.hidden = false;
   const note = document.querySelector('.footer-note');
-  if (note) note.textContent = '本機儲存；列表經 Firebase 同步（Drive 已暫停）。要更新列表請按「立即同步」 · 布丁仔';
+  if (note) note.textContent = '本機儲存；列表經 Firebase 同步。要更新列表請按「立即同步」 · 布丁仔';
 }
 
 function bindGdriveUi() {
@@ -10352,8 +10369,8 @@ function bindGdriveUi() {
       const calendarIncremental = gcalWantsCalendarOnlyReauth();
       if (!calendarIncremental) gcalAccessState = 'unknown';
       gdriveTokenClient = null;
-      // Drive file sync paused, or Calendar still missing: ask for calendar.events only.
-      // Flag true keeps the previous Drive+Calendar consent. include_granted_scopes keeps scopes already granted.
+      // Drive file sync is off: ask only for calendar.events.
+      // Do not re-attach a previously granted drive.file scope.
       requestGdriveToken((!ENABLE_DRIVE_SYNC || calendarIncremental)
         ? { prompt: 'consent', scope: GCAL_SCOPE }
         : { prompt: 'consent' });
