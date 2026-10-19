@@ -8807,6 +8807,87 @@ function pruneAbsentFromAuthoritativeRemote(localArr, remoteArr, remoteUpdatedAt
   return { arr: arr, changed: dropped.length > 0, dropped: dropped };
 }
 
+/** True when a blocking tombstone is at least as new as the row. */
+function deletionRecordsBlockItem(records, item, kind) {
+  let at = 0;
+  (records || []).forEach(function (rec) {
+    if (!rec || rec.blockSync === false) return;
+    if (deletionRecordMatchesItem(rec, item, kind)) at = Math.max(at, Number(rec.at) || 0);
+  });
+  return !!(at && itemSyncTs(item) <= at);
+}
+
+function dropItemsBlockedByDeletions(arr, kind) {
+  const records = loadDeletionRecords();
+  const kept = [];
+  let changed = false;
+  (arr || []).forEach(function (item) {
+    if (!item || !item.id) { kept.push(item); return; }
+    if (deletionRecordsBlockItem(records, item, kind)) { changed = true; return; }
+    kept.push(item);
+  });
+  return { arr: kept, changed: changed };
+}
+
+/** Newer tombstone wins. Used when a Firestore write must not drop the other device's deletes. */
+function mergeDeletionRecordLists(a, b) {
+  const items = [];
+  function add(entry) {
+    if (!entry || !entry.id) return;
+    const kind = entry.kind === 'todo' ? 'todo' : (entry.kind === 'event' ? 'event' : '');
+    if (!kind) return;
+    const id = String(entry.id);
+    const at = Number(entry.at) || 0;
+    if (!at) return;
+    let found = null;
+    items.forEach(function (x) {
+      if (x.kind === kind && x.id === id) found = x;
+    });
+    if (found) {
+      if (at > (Number(found.at) || 0)) {
+        found.at = at;
+        found.blockSync = entry.blockSync !== false;
+      } else if (at === (Number(found.at) || 0) && entry.blockSync !== false) {
+        found.blockSync = true;
+      }
+      if (entry.gcalEventId) found.gcalEventId = String(entry.gcalEventId);
+      if (entry.contentKey) found.contentKey = String(entry.contentKey);
+      return;
+    }
+    const row = { kind: kind, id: id, at: at, blockSync: entry.blockSync !== false };
+    if (entry.gcalEventId) row.gcalEventId = String(entry.gcalEventId);
+    if (entry.contentKey) row.contentKey = String(entry.contentKey);
+    items.push(row);
+  }
+  (a || []).forEach(add);
+  (b || []).forEach(add);
+  return items.length > DELETED_SYNC_CAP ? items.slice(-DELETED_SYNC_CAP) : items;
+}
+
+function unionSyncItems(localArr, remoteArr, records, kind) {
+  const merged = mergeByIdPreferNewer(localArr || [], remoteArr || [], { allowAdds: true }).arr;
+  return merged.filter(function (item) {
+    return item && item.id && !deletionRecordsBlockItem(records, item, kind);
+  });
+}
+
+/**
+ * Firestore write body. Todos, events, and deletedIds are the union of both
+ * devices. This device's other fields stay. Does not read or write the UI.
+ */
+function combineFirebaseSyncDocs(localDoc, remoteDoc) {
+  const local = localDoc && typeof localDoc === 'object' ? localDoc : {};
+  const remote = remoteDoc && typeof remoteDoc === 'object' ? remoteDoc : {};
+  const deletedIds = mergeDeletionRecordLists(local.deletedIds, remote.deletedIds || remote.tombstones);
+  const out = Object.assign({}, local);
+  out.todos = unionSyncItems(local.todos, remote.todos, deletedIds, 'todo');
+  out.events = unionSyncItems(local.events, remote.events, deletedIds, 'event');
+  out.deletedIds = deletedIds;
+  out.updatedAt = Date.now();
+  out.schemaVersion = SCHEMA_VERSION;
+  return plainJson(out);
+}
+
 function applyRemoteSyncPayload(remote, opts) {
   opts = opts || {};
   if (!remote || typeof remote !== 'object') return false;
@@ -8816,7 +8897,11 @@ function applyRemoteSyncPayload(remote, opts) {
   // >= so the same Drive/Pages updatedAt, already stored in syncUpdatedAt by
   // the old merge, still drops ids that file does not contain. An older file
   // (updatedAt < syncUpdatedAt) must not delete newer local work.
+  // unionLists (Firestore) does not use that watermark: a row on either device
+  // stays unless a tombstone is newer than the row.
   const authoritative = remoteUpdated > 0 && remoteUpdated >= localSync;
+  const unionLists = opts.unionLists === true;
+  const allowAdds = authoritative || unionLists;
   if (Array.isArray(remote.todos)) {
     // Retired seed ids are dropped on every merge so Pages or Drive cannot put them back.
     const remoteTodos = filterRemoteItemsByDeletions(withoutRetiredSeedTodos(remote.todos.map(t => {
@@ -8831,29 +8916,40 @@ function applyRemoteSyncPayload(remote, opts) {
       if (t.updatedAt != null) out.updatedAt = t.updatedAt;
       return out;
     })), 'todo');
-    if (authoritative) clearDeletionRecordsForItems(remoteTodos, 'todo');
-    const r = mergeByIdPreferNewer(state.todos, remoteTodos, { allowAdds: authoritative });
+    if (authoritative || unionLists) clearDeletionRecordsForItems(remoteTodos, 'todo');
+    const r = mergeByIdPreferNewer(state.todos, remoteTodos, { allowAdds: allowAdds });
     let nextTodos = r.arr;
     let prunedTodos = false;
-    if (authoritative) {
+    if (unionLists) {
+      const d = dropItemsBlockedByDeletions(nextTodos, 'todo');
+      nextTodos = d.arr;
+      prunedTodos = d.changed;
+    } else if (authoritative) {
       const p = pruneAbsentFromAuthoritativeRemote(nextTodos, remoteTodos, remoteUpdated);
       nextTodos = p.arr;
       prunedTodos = p.changed;
     }
     if (r.changed || prunedTodos) { state.todos = nextTodos; changed = true; }
+  } else if (unionLists) {
+    const d = dropItemsBlockedByDeletions(state.todos, 'todo');
+    if (d.changed) { state.todos = d.arr; changed = true; }
   }
   if (Array.isArray(remote.events)) {
     const remoteEvents = filterRemoteItemsByDeletions(remote.events.map(normalizeEvent), 'event');
-    if (authoritative) clearDeletionRecordsForItems(remoteEvents, 'event');
+    if (authoritative || unionLists) clearDeletionRecordsForItems(remoteEvents, 'event');
     let next = Array.isArray(state.events) ? state.events : [];
     let upsertChanged = false;
     if (remoteEvents.length) {
-      const r = mergeByIdPreferNewer(next, remoteEvents, { allowAdds: authoritative });
+      const r = mergeByIdPreferNewer(next, remoteEvents, { allowAdds: allowAdds });
       next = r.arr;
       upsertChanged = r.changed;
     }
     let prunedEvents = false;
-    if (authoritative) {
+    if (unionLists) {
+      const d = dropItemsBlockedByDeletions(next, 'event');
+      next = d.arr;
+      prunedEvents = d.changed;
+    } else if (authoritative) {
       const p = pruneAbsentFromAuthoritativeRemote(next, remoteEvents, remoteUpdated, { preserveSeedEvents: true });
       next = p.arr;
       prunedEvents = p.changed;
@@ -8866,6 +8962,12 @@ function applyRemoteSyncPayload(remote, opts) {
         state.events = deduped;
         changed = true;
       }
+    }
+  } else if (unionLists) {
+    const d = dropItemsBlockedByDeletions(state.events, 'event');
+    if (d.changed) {
+      state.events = dedupeEventsByTitleDate(d.arr);
+      changed = true;
     }
   }
   if (remoteUpdated && remoteUpdated > localSync) {
@@ -9121,9 +9223,10 @@ function noteFirebaseSyncIssue(err) {
 }
 
 /**
- * Pull users/{uid}/dashboard/sync and soft-merge.
- * Newer document updatedAt may prune; tombstones still block stale restores.
- * Theme and the in-document 今天 / 個人活動 choice are left to applyRemoteSyncPayload.
+ * Pull users/{uid}/dashboard/sync into the lists on screen.
+ * Rows union by id; the newer row wins. Tombstones remove a row on both devices.
+ * A newer local syncUpdatedAt must not hide rows that exist only in Firestore.
+ * Theme and the in-document 今天 / 個人活動 choice stay on this device.
  */
 async function mergeFirebaseSnapshot() {
   if (!firebaseCanWrite()) return { ok: false, skipped: true, exists: false, remoteUpdated: 0 };
@@ -9132,7 +9235,7 @@ async function mergeFirebaseSnapshot() {
   const remote = snap.data() || {};
   adoptRemoteDeletionRecords(remote.deletedIds || remote.tombstones);
   const remoteUpdated = Number(remote.updatedAt) || 0;
-  const changed = applyRemoteSyncPayload(remote, { applyExtras: true });
+  const changed = applyRemoteSyncPayload(remote, { applyExtras: true, unionLists: true });
   if (changed) {
     saveState({ scheduleSync: false });
     reRenderAfterSync(true);
@@ -9143,8 +9246,16 @@ async function mergeFirebaseSnapshot() {
 async function pushFirebaseSnapshot() {
   if (!firebaseCanWrite()) return false;
   const dirtyAt = firebaseDirtyAt();
-  const payload = plainJson(buildFirebaseSyncDoc());
-  await firebaseSyncRef().set(payload);
+  const localPayload = plainJson(buildFirebaseSyncDoc());
+  const ref = firebaseSyncRef();
+  // Union with the document already stored so this write cannot erase the other device.
+  await firebase.firestore().runTransaction(function (tx) {
+    return tx.get(ref).then(function (snap) {
+      const remote = snap && snap.exists ? (snap.data() || null) : null;
+      const payload = remote ? combineFirebaseSyncDocs(localPayload, remote) : localPayload;
+      tx.set(ref, payload);
+    });
+  });
   // A save that landed while this write was in flight keeps its dirty mark.
   const cur = firebaseDirtyAt();
   if (cur && cur !== dirtyAt) firebasePushAgain = true;
@@ -9155,8 +9266,8 @@ async function pushFirebaseSnapshot() {
 
 function queueFirebasePush() {
   if (VIEW_ONLY || !firebaseCanWrite()) return;
-  // Writes this device's snapshot only. Does not pull Firestore or Drive,
-  // so an edit cannot replace the list with a remote copy.
+  // Does not pull Firestore into the on-screen list. The write still unions
+  // todos, events, and deletedIds so an edit cannot erase the other device.
   if (firebasePushTimer) clearTimeout(firebasePushTimer);
   firebasePushTimer = setTimeout(function () {
     firebasePushTimer = null;
@@ -9556,6 +9667,8 @@ async function runFirebaseListSync() {
     else if (firebaseOk) {
       const time = formatGdriveSyncTime();
       let detail = 'Firebase 已同步 ' + time + ' · Drive 已暫停';
+      const fbEmail = firebaseAuthUser && firebaseAuthUser.email ? String(firebaseAuthUser.email) : '';
+      if (fbEmail) detail += ' · ' + fbEmail;
       if (gcalResult && gcalResult.ok) detail += ' · Calendar 已連';
       else if ((gcalResult && gcalResult.reason === 'no-scope') || gcalAccessState === 'no-scope') detail += ' · Calendar 未授權';
       setGdriveStatus('已同步 ' + time, detail);
