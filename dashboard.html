@@ -10743,7 +10743,9 @@ function bindSyncUi() {
 }
 
 /** Owner control: copy origin + pathname + ?view=1&exp=&t=#s= (no password in the URL).
- *  #s= is the tap-time snapshot. Friends do not need the Pages file to match. */
+ *  #s= is the tap-time snapshot. Friends do not need the Pages file to match.
+ *  iOS Safari keeps only the first 4096 characters when a URL is copied or pasted,
+ *  so the token has to leave the whole link inside that limit. */
 function viewOnlyShareUrl(expiresAt, issuedAt, snapshotToken) {
   const base = location.origin + location.pathname + '?view=1';
   const exp = Number(expiresAt) || 0;
@@ -10796,19 +10798,222 @@ function shareLinkSnapshotToken() {
   try { return decodeURIComponent(raw); } catch (e3) { return raw; }
 }
 
-async function encodeShareSnapshot(payload) {
-  const json = JSON.stringify(payload);
-  const bytes = new TextEncoder().encode(json);
-  try {
-    if (typeof CompressionStream === 'function') {
-      const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
-      const buf = new Uint8Array(await new Response(stream).arrayBuffer());
-      const token = 'z' + bytesToBase64Url(buf);
-      if (token.length > 20 && token.length < 120000) return token;
+/* iOS Safari drops everything past 4096 characters when a URL is copied or pasted
+ * into the address bar. A full sync payload does not fit, so #s= carries todos
+ * plus events that differ from the built-in seeds, compressed in plain JS. */
+const SHARE_URL_MAX = 4096;
+let shareSeedById = null;
+
+function shareSeedEvent(id) {
+  if (!shareSeedById) {
+    shareSeedById = new Map();
+    SEED_EVENTS.forEach(function (e) {
+      const n = normalizeEvent(e);
+      shareSeedById.set(n.id, n);
+    });
+  }
+  return shareSeedById.get(id) || null;
+}
+
+function shareEventUnchanged(event) {
+  const n = normalizeEvent(event);
+  const seed = shareSeedEvent(n.id);
+  if (!seed) return false;
+  return n.title === seed.title && n.date === seed.date && n.time === seed.time &&
+    n.work === seed.work && n.kind === seed.kind && !n.done;
+}
+
+/** Wire form: {u, t:[[id,title,due,done]], e:[[id,title,date,time,done,kind,work?]]}. */
+function buildShareWire(payload, opts) {
+  opts = opts || {};
+  const includeWork = opts.includeWork !== false;
+  const updatedAt = Number(payload && payload.updatedAt) || 0;
+  const todos = [];
+  (payload && payload.todos || []).forEach(function (t) {
+    if (!t || !t.id) return;
+    todos.push([String(t.id), String(t.title || ''), String(t.due || ''), t.done ? 1 : 0]);
+  });
+  const events = [];
+  (payload && payload.events || []).forEach(function (raw) {
+    if (!raw || !raw.id || shareEventUnchanged(raw)) return;
+    const n = normalizeEvent(raw);
+    const seed = shareSeedEvent(n.id);
+    const row = [n.id, n.title, n.date, n.time || '', n.done ? 1 : 0, n.kind];
+    if (includeWork && n.work && (!seed || n.work !== seed.work)) row.push(n.work);
+    events.push(row);
+  });
+  return { u: updatedAt, t: todos, e: events };
+}
+
+function expandShareWire(data) {
+  if (!data || typeof data !== 'object') return null;
+  if (Array.isArray(data.todos)) return data;
+  if (!Array.isArray(data.t)) return null;
+  const updatedAt = Number(data.u) || 0;
+  const todos = data.t.map(function (row) {
+    if (!row || !Array.isArray(row)) return null;
+    const out = {
+      id: String(row[0] || ''),
+      title: String(row[1] || ''),
+      due: String(row[2] || ''),
+      done: !!row[3],
+      createdAt: updatedAt || 1
+    };
+    if (!out.id) return null;
+    if (updatedAt) out.updatedAt = updatedAt;
+    return out;
+  }).filter(Boolean);
+  const events = (Array.isArray(data.e) ? data.e : []).map(function (row) {
+    if (!row || !Array.isArray(row)) return null;
+    const id = String(row[0] || '');
+    if (!id) return null;
+    const seed = shareSeedEvent(id);
+    const out = {
+      id: id,
+      title: String(row[1] || ''),
+      date: String(row[2] || ''),
+      time: String(row[3] || ''),
+      done: !!row[4],
+      kind: row[5] === 'school' || row[5] === 'personal' ? row[5] : eventKindOf({ id: id }),
+      work: row.length >= 7 ? String(row[6] || '') : (seed ? seed.work : '')
+    };
+    if (updatedAt) out.updatedAt = updatedAt;
+    return out;
+  }).filter(Boolean);
+  return {
+    updatedAt: updatedAt,
+    schemaVersion: SCHEMA_VERSION,
+    todos: todos,
+    events: events,
+    share: {
+      enabled: true,
+      salt: '',
+      passwordHash: '',
+      updatedAt: updatedAt,
+      expiresAt: updatedAt ? updatedAt + SHARE_TTL_MS : 0
     }
-  } catch (e) {}
-  const raw = 'j' + bytesToBase64Url(bytes);
-  if (raw.length > 20 && raw.length < 120000) return raw;
+  };
+}
+
+/** LZSS, 4095-byte window, matches of 3–18 bytes. No CompressionStream required. */
+function lzssCompress(bytes) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const n = data.length;
+  if (!n || n > 80000) return null;
+  const out = [];
+  const heads = new Map();
+  let i = 0;
+  function note(p) {
+    if (p + 2 >= n) return;
+    const key = (data[p] << 16) | (data[p + 1] << 8) | data[p + 2];
+    let list = heads.get(key);
+    if (!list) { list = []; heads.set(key, list); }
+    list.push(p);
+    if (list.length > 80) list.splice(0, list.length - 64);
+  }
+  while (i < n) {
+    const flagAt = out.length;
+    out.push(0);
+    let flags = 0;
+    for (let bit = 0; bit < 8 && i < n; bit++) {
+      let bestLen = 0;
+      let bestDist = 0;
+      const maxLen = Math.min(18, n - i);
+      if (maxLen >= 3) {
+        const key = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
+        const cands = heads.get(key);
+        if (cands) {
+          const windowStart = i - 4095;
+          let from = 0;
+          while (from < cands.length && cands[from] < windowStart) from++;
+          if (from) cands.splice(0, from);
+          const start = Math.max(0, cands.length - 64);
+          for (let c = start; c < cands.length; c++) {
+            const j = cands[c];
+            let len = 0;
+            while (len < maxLen && data[j + len] === data[i + len]) len++;
+            if (len > bestLen) {
+              bestLen = len;
+              bestDist = i - j;
+              if (bestLen === maxLen) break;
+            }
+          }
+        }
+      }
+      if (bestLen >= 3 && bestDist >= 1 && bestDist <= 4095) {
+        flags |= 1 << bit;
+        out.push(bestDist & 255);
+        out.push(((bestDist >> 8) << 4) | (bestLen - 3));
+        for (let k = 0; k < bestLen; k++) note(i + k);
+        i += bestLen;
+      } else {
+        out.push(data[i]);
+        note(i);
+        i++;
+      }
+    }
+    out[flagAt] = flags;
+  }
+  return new Uint8Array(out);
+}
+
+function lzssDecompress(bytes) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+  const out = [];
+  let i = 0;
+  const n = data.length;
+  while (i < n) {
+    const flags = data[i++];
+    for (let bit = 0; bit < 8 && i < n; bit++) {
+      if (flags & (1 << bit)) {
+        if (i + 1 >= n) return null;
+        const b0 = data[i++];
+        const b1 = data[i++];
+        const dist = b0 | ((b1 >> 4) << 8);
+        const len = (b1 & 15) + 3;
+        if (dist < 1 || dist > out.length || out.length + len > 2000000) return null;
+        for (let k = 0; k < len; k++) out.push(out[out.length - dist]);
+      } else {
+        if (out.length + 1 > 2000000) return null;
+        out.push(data[i++]);
+      }
+    }
+  }
+  return new Uint8Array(out);
+}
+
+function shareSnapshotTokenFits(token) {
+  const wide = 10000000000000;
+  return viewOnlyShareUrl(wide, wide, token).length <= SHARE_URL_MAX;
+}
+
+async function deflateShareBytes(bytes) {
+  if (typeof CompressionStream !== 'function') return null;
+  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+  return buf.length ? buf : null;
+}
+
+async function encodeShareSnapshot(payload) {
+  const variants = [
+    buildShareWire(payload, { includeWork: true }),
+    buildShareWire(payload, { includeWork: false })
+  ];
+  for (let v = 0; v < variants.length; v++) {
+    const bytes = new TextEncoder().encode(JSON.stringify(variants[v]));
+    const tokens = [];
+    const lz = lzssCompress(bytes);
+    if (lz && lz.length && lz.length < bytes.length) tokens.push('l' + bytesToBase64Url(lz));
+    try {
+      const z = await deflateShareBytes(bytes);
+      if (z) tokens.push('z' + bytesToBase64Url(z));
+    } catch (e) {}
+    tokens.push('j' + bytesToBase64Url(bytes));
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token.length > 20 && shareSnapshotTokenFits(token)) return token;
+    }
+  }
   return '';
 }
 
@@ -10819,7 +11024,11 @@ async function decodeShareSnapshot(token) {
   const bytes = base64UrlToBytes(text.slice(1));
   if (!bytes || !bytes.length || bytes.length > 120000) return null;
   let json = '';
-  if (kind === 'z') {
+  if (kind === 'l') {
+    const buf = lzssDecompress(bytes);
+    if (!buf || !buf.length || buf.length > 2000000) return null;
+    json = new TextDecoder().decode(buf);
+  } else if (kind === 'z') {
     if (typeof DecompressionStream !== 'function') return null;
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
     const buf = new Uint8Array(await new Response(stream).arrayBuffer());
@@ -10829,8 +11038,9 @@ async function decodeShareSnapshot(token) {
     json = new TextDecoder().decode(bytes);
   } else return null;
   const data = JSON.parse(json);
-  if (!data || typeof data !== 'object' || !Array.isArray(data.todos)) return null;
-  return data;
+  const expanded = expandShareWire(data);
+  if (!expanded || !Array.isArray(expanded.todos)) return null;
+  return expanded;
 }
 
 async function loadEmbeddedShareSnapshot() {
@@ -10917,8 +11127,10 @@ function applyShareEntryTheme() {
 
 /* ===== Share gate =====
  * 分享 copies a read-only link at once: ?view=1&exp=<ms>&t=<ms>#s=<snapshot>.
- * #s= is the owner's on-screen list at the tap (Firebase pull first, when signed in).
+ * #s= is the owner's todos and changed events at the tap (Firebase pull first, when signed in).
+ * The whole URL stays within 4096 characters so iPhone Safari paste keeps #s=.
  * Friends read that snapshot. They do not paint an older sync-data.json.
+ * If the snapshot cannot be attached, nothing is copied and the owner is told at once.
  * If a GitHub token is already stored, the same snapshot is also pushed to Pages.
  * Friends can view until exp (3 hours after t). That link has no password.
  * 停止分享 turns the local session off. If dash-hub-pages-token is already
@@ -11417,7 +11629,7 @@ function setShareOwnerStatus(text) {
   if (el) el.textContent = text || '';
 }
 
-function showShareToast(text) {
+function showShareToast(text, ms) {
   const el = document.getElementById('shareToast');
   if (!el) return;
   el.textContent = text || '';
@@ -11425,7 +11637,7 @@ function showShareToast(text) {
   if (shareToastTimer) clearTimeout(shareToastTimer);
   shareToastTimer = setTimeout(function () {
     el.classList.remove('show');
-  }, 2200);
+  }, ms || 2200);
 }
 
 function syncShareOwnerUI() {
@@ -11664,10 +11876,41 @@ async function refreshLiveStateForShare() {
   await waitIdle(4000);
 }
 
+function shareSnapshotMatchesPayload(decoded, payload, now) {
+  if (!decoded || Number(decoded.updatedAt) !== now) return false;
+  if (!Array.isArray(decoded.todos) || !Array.isArray(decoded.events)) return false;
+  const todos = payload.todos || [];
+  const byTodo = {};
+  decoded.todos.forEach(function (t) { if (t && t.id) byTodo[t.id] = t; });
+  let todoCount = 0;
+  for (let i = 0; i < todos.length; i++) {
+    const t = todos[i];
+    if (!t || !t.id) continue;
+    todoCount++;
+    const got = byTodo[t.id];
+    if (!got || got.title !== String(t.title || '') || !!got.done !== !!t.done) return false;
+    if (String(got.due || '') !== String(t.due || '')) return false;
+  }
+  if (decoded.todos.length !== todoCount) return false;
+  const byEvent = {};
+  decoded.events.forEach(function (e) { if (e && e.id) byEvent[e.id] = e; });
+  const events = payload.events || [];
+  for (let j = 0; j < events.length; j++) {
+    const raw = events[j];
+    if (!raw || !raw.id || shareEventUnchanged(raw)) continue;
+    const n = normalizeEvent(raw);
+    const got = byEvent[n.id];
+    if (!got || got.title !== n.title || got.date !== n.date || !!got.done !== !!n.done) return false;
+  }
+  return true;
+}
+
+/** Build a paste-safe read-only URL. Does not copy. Leaves share off when #s= cannot fit. */
 async function startShareSession() {
-  if (VIEW_ONLY) return;
+  if (VIEW_ONLY) return { ok: false, url: '' };
   const btn = document.getElementById('btnShareToggle');
   if (btn) btn.textContent = '分享中…';
+  const prev = normalizeShare(state.share);
   await refreshLiveStateForShare();
   const now = Date.now();
   state.share = {
@@ -11677,24 +11920,75 @@ async function startShareSession() {
     updatedAt: now,
     expiresAt: now + SHARE_TTL_MS
   };
-  saveState();
-  const payload = pagesSyncPayload();
-  payload.updatedAt = now;
-  payload.share = normalizeShare(state.share);
+  let payload = null;
+  let token = '';
+  try {
+    payload = pagesSyncPayload();
+    payload.updatedAt = now;
+    payload.share = normalizeShare(state.share);
+    token = await encodeShareSnapshot(payload);
+  } catch (e) {
+    token = '';
+  }
+  const url = token ? viewOnlyShareUrl(state.share.expiresAt, now, token) : '';
+  let decoded = null;
+  if (url && url.length <= SHARE_URL_MAX && url.indexOf('#s=') > 0) {
+    try { decoded = await decodeShareSnapshot(token); } catch (e2) { decoded = null; }
+  }
+  if (!payload || !url || url.length > SHARE_URL_MAX || !shareSnapshotMatchesPayload(decoded, payload, now)) {
+    state.share = prev;
+    if (btn) btn.textContent = shareSessionActive(prev) ? '停止分享' : '分享';
+    return { ok: false, url: '' };
+  }
   pendingSharePublish = {
     issuedAt: now,
     body: JSON.stringify(payload, null, 2) + '\n'
   };
-  let token = '';
-  try { token = await encodeShareSnapshot(payload); } catch (e) { token = ''; }
+  saveState();
   syncShareOwnerUI();
-  const url = viewOnlyShareUrl(state.share.expiresAt, state.share.updatedAt, token);
-  const copied = await copyPlainText(url);
-  let toast = copied ? '已複製連結' : '未能複製連結';
-  if (!token && !pagesGateToken()) toast = copied ? '已複製連結，但內容未能帶上' : '未能複製連結';
-  showShareToast(toast);
-  setShareOwnerStatus(copied ? '' : url);
   publishShareQuietly();
+  return { ok: true, url: url };
+}
+
+/** Clipboard write starts inside the tap, before the snapshot promise settles. */
+function copyShareLinkDuringGesture(linkPromise) {
+  const urlPromise = Promise.resolve(linkPromise).then(function (built) {
+    return built && built.url ? String(built.url) : '';
+  }, function () { return ''; });
+  function fallback() {
+    return urlPromise.then(function (url) {
+      if (!url || url.indexOf('#s=') < 0 || url.length > SHARE_URL_MAX) return { ok: false, url: '' };
+      return copyPlainText(url).then(function (ok) { return { ok: !!ok, url: url }; });
+    });
+  }
+  if (!navigator.clipboard || typeof ClipboardItem !== 'function' || !navigator.clipboard.write) return fallback();
+  let url = '';
+  const blobPromise = urlPromise.then(function (value) {
+    url = value || '';
+    if (!url || url.indexOf('#s=') < 0 || url.length > SHARE_URL_MAX) return Promise.reject(new Error('empty-share-url'));
+    return new Blob([url], { type: 'text/plain' });
+  });
+  let item = null;
+  try { item = new ClipboardItem({ 'text/plain': blobPromise }); } catch (e) { return fallback(); }
+  return navigator.clipboard.write([item]).then(function () {
+    return { ok: true, url: url };
+  }, function () { return fallback(); });
+}
+
+function finishShareCopy(result) {
+  result = result || {};
+  if (!result.url) {
+    showShareToast('未能帶上待辦，未有複製連結', 5000);
+    setShareOwnerStatus('分享內容放唔入連結，所以冇複製。請再試一次。');
+    return;
+  }
+  if (result.ok) {
+    showShareToast('已複製連結');
+    setShareOwnerStatus('');
+    return;
+  }
+  showShareToast('未能自動複製，請長按下面的連結', 5000);
+  setShareOwnerStatus(result.url);
 }
 
 async function stopShareSession(opts) {
@@ -11732,18 +12026,25 @@ function bindShareOwnerUi() {
   const btn = document.getElementById('btnShareToggle');
   if (btn && !btn._shareBound) {
     btn._shareBound = true;
-    btn.addEventListener('click', async function () {
+    btn.addEventListener('click', function () {
       if (shareActionBusy) return;
       shareActionBusy = true;
       btn.disabled = true;
-      try {
-        if (shareSessionActive(state.share)) await stopShareSession({});
-        else await startShareSession();
-      } finally {
+      const stopping = shareSessionActive(state.share);
+      const job = stopping
+        ? stopShareSession({})
+        : Promise.resolve(copyShareLinkDuringGesture(startShareSession())).then(finishShareCopy, function () {
+          finishShareCopy({ ok: false, url: '' });
+        });
+      Promise.resolve(job).then(function () {
         shareActionBusy = false;
         btn.disabled = false;
         syncShareOwnerUI();
-      }
+      }, function () {
+        shareActionBusy = false;
+        btn.disabled = false;
+        syncShareOwnerUI();
+      });
     });
   }
   syncShareOwnerUI();
