@@ -3221,6 +3221,7 @@
             <button type="button" class="subtab" data-todotab="tomorrow">明天</button>
             <button type="button" class="subtab" data-todotab="dayAfter">後日</button>
             <button type="button" class="subtab" data-todotab="week">七天內</button>
+            <button type="button" class="subtab" data-todotab="overdue">未完成</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnAddTodo">＋ 新增</button>
         </div>
@@ -4411,7 +4412,7 @@ function normalizeEventsFilter(raw) {
   return 'today';
 }
 
-const TODO_TABS = ['today', 'tomorrow', 'dayAfter', 'week'];
+const TODO_TABS = ['today', 'tomorrow', 'dayAfter', 'week', 'overdue'];
 
 function normalizeTodoTab(raw) {
   return TODO_TABS.includes(raw) ? raw : 'today';
@@ -4959,7 +4960,7 @@ function normalizeState(data) {
     : (['shortcuts', 'todos', 'events', 'training', 'bus', 'calendar'].includes(exp) ? exp : null);
   base.trainingExpanded = !!data.trainingExpanded;
   base.busExpanded = !!data.busExpanded;
-  // Same rule as eventsFilter: do not restore 明天 / 後日 / 七天內 from storage.
+  // Same rule as eventsFilter: do not restore 明天 / 後日 / 七天內 / 未完成 from storage.
   base.todoTab = 'today';
   const THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
   const THEME_MIGRATE = {
@@ -5722,33 +5723,73 @@ document.getElementById('btnManageCats').addEventListener('click', () => {
 });
 
 /* ===== Todos ===== */
+/** Hong Kong calendar day (YYYY-MM-DD), same day the header clock shows. */
+function hkTodayYMD() {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Hong_Kong',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const parts = {};
+    fmt.formatToParts(new Date()).forEach(function (p) {
+      if (p.type !== 'literal') parts[p.type] = p.value;
+    });
+    const y = parts.year;
+    const m = String(parts.month || '').padStart(2, '0');
+    const d = String(parts.day || '').padStart(2, '0');
+    if (/^\d{4}$/.test(y) && /^\d{2}$/.test(m) && /^\d{2}$/.test(d)) return y + '-' + m + '-' + d;
+  } catch (e) {}
+  const local = todayLocal();
+  return local.getFullYear() + '-' + pad2(local.getMonth() + 1) + '-' + pad2(local.getDate());
+}
+
+function todoDueYMD(t) {
+  const m = String(t && t.due || '').match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (!m) return '';
+  return m[1] + '-' + pad2(+m[2]) + '-' + pad2(+m[3]);
+}
+
+/** Days from the Hong Kong calendar today. Negative means overdue. */
+function todoDayOffset(t) {
+  const due = todoDueYMD(t);
+  if (!due) return null;
+  const today = hkTodayYMD();
+  const dueUtc = Date.UTC(+due.slice(0, 4), +due.slice(5, 7) - 1, +due.slice(8, 10));
+  const todayUtc = Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10));
+  return Math.round((dueUtc - todayUtc) / 86400000);
+}
+
 function isTodoDueToday(t) {
-  const d = parseDateOnly(t && t.due);
-  if (!d) return false;
-  return daysDiff(d) === 0;
+  return todoDayOffset(t) === 0;
 }
 
 function isTodoDueTomorrow(t) {
-  const d = parseDateOnly(t && t.due);
-  if (!d) return false;
-  return daysDiff(d) === 1;
+  return todoDayOffset(t) === 1;
 }
 
 function isTodoDueDayAfter(t) {
-  const d = parseDateOnly(t && t.due);
-  if (!d) return false;
-  return daysDiff(d) === 2;
+  return todoDayOffset(t) === 2;
 }
 
 function isTodoDueWithinWeek(t) {
-  const d = parseDateOnly(t && t.due);
-  if (!d) return false;
-  const n = daysDiff(d);
-  return n >= 0 && n <= 6;
+  const n = todoDayOffset(t);
+  return n != null && n >= 0 && n <= 6;
+}
+
+function isTodoOverdueIncomplete(t) {
+  if (!t || t.done) return false;
+  const n = todoDayOffset(t);
+  return n != null && n < 0;
 }
 
 function matchesTodoTab(t) {
   const noDue = !(t && t.due);
+  if (todoTab === 'overdue') {
+    // 「未完成」：到期日早於今天（香港曆日）而且未完成。今天到期留在「今天」。
+    return isTodoOverdueIncomplete(t);
+  }
   if (todoTab === 'week') {
     // No-due items belong on 今日/七天; keep completed visible (strikethrough at bottom)
     if (noDue) return true;
@@ -5770,6 +5811,7 @@ function matchesTodoTab(t) {
 }
 
 function todosFilterHintText() {
+  if (todoTab === 'overdue') return '顯示過期未完成的待辦';
   if (todoTab === 'week') return '顯示七天內的待辦';
   if (todoTab === 'dayAfter') return '顯示後日的待辦';
   if (todoTab === 'tomorrow') return '顯示明天的待辦';
@@ -5826,7 +5868,7 @@ function openTodoAddModal() {
     state.todos.unshift({ id: uid('t'), title, due, done: false, createdAt: _nowAdd, updatedAt: _nowAdd });
     saveState();
     closeModal();
-    // Stay on the tab the user was filling in (明天 / 後日 / 七天內).
+    // Stay on the tab the user was filling in (明天 / 後日 / 七天內 / 未完成).
     applySessionViewFilters();
     syncTodoTabUI();
     renderTodos();
@@ -6000,7 +6042,8 @@ function renderTodos() {
 
   if (!items.length) {
     let emptyMsg = '今天暫無待辦，輕鬆一下吧';
-    if (todoTab === 'week') emptyMsg = '七天內暫無待辦';
+    if (todoTab === 'overdue') emptyMsg = '沒有過期未完成，輕鬆一下吧';
+    else if (todoTab === 'week') emptyMsg = '七天內暫無待辦';
     else if (todoTab === 'dayAfter') emptyMsg = '後日暫無待辦';
     else if (todoTab === 'tomorrow') emptyMsg = '明天暫無待辦';
     list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
@@ -6008,8 +6051,7 @@ function renderTodos() {
   }
   let openOrd = 0;
   list.innerHTML = items.map(t => {
-    const d = parseDateOnly(t.due);
-    const dd = daysDiff(d);
+    const dd = todoDayOffset(t);
     const dragCls = (VIEW_ONLY || t.done) ? '' : ' todo-draggable';
     const ord = t.done ? 0 : (++openOrd);
     const numHtml = t.done
