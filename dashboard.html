@@ -1879,7 +1879,8 @@
       white-space: nowrap;
     }
     .sync-actions .gcal-hint,
-    .sync-actions #gdriveSyncStatus {
+    .sync-actions #gdriveSyncStatus,
+    .sync-actions #drivePausedHint {
       flex: 0 1 auto;
       margin: 0;
       text-align: center;
@@ -3046,6 +3047,7 @@
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveConnectBtn">連接 Google</button>
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveSyncNowBtn" hidden>立即同步</button>
         <span class="glass-card hdr-glass sync-pill sync-status" id="gdriveSyncStatus">未連接</span>
+        <span class="glass-card hdr-glass sync-pill sync-status" id="drivePausedHint" hidden>Drive 已暫停</span>
         <p class="glass-card hdr-glass sync-pill gcal-hint" id="gcalHint" hidden>Calendar 未授權</p>
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill firebase-hint" id="firebaseAuthBtn" title="用 Google 登入 Firebase">Firebase 未登入</button>
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="btnPushPages">推上線</button>
@@ -3463,11 +3465,14 @@ const TCS_DATA = {
 
 const STORAGE_KEY = 'dash-hub-v1';
 const SCHEMA_VERSION = 11; // 11: drop retired seed todos t_seed_p3_math, t_seed_ai_score, t_seed_dash_tidy
+// Drive 檔「布丁仔-sync.json」暫時暫停：唔讀、唔寫、亦唔會為同步彈 Drive 權限。
+// 改返 true 再 push，就會恢復之前嘅 Drive 讀寫同合併。Calendar 個人活動唔受影響。
+const ENABLE_DRIVE_SYNC = false;
 const GDRIVE_SYNC_FILENAME = '布丁仔-sync.json';
 const GDRIVE_OAUTH_CLIENT_ID = '508206831418-cmm0ra1v21lajj6ned33l33d8ohdtll8.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
-const GOOGLE_OAUTH_SCOPES = GDRIVE_SCOPE + ' ' + GCAL_SCOPE;
+const GOOGLE_OAUTH_SCOPES = (ENABLE_DRIVE_SYNC ? GDRIVE_SCOPE + ' ' : '') + GCAL_SCOPE;
 const GCAL_ACCOUNT_EMAIL = 'freddychow82@gmail.com';
 const GCAL_CALENDAR_ID = 'primary';
 const GDRIVE_FILE_ID_KEY = 'dash-hub-gdrive-file-id';
@@ -9312,7 +9317,7 @@ function syncGcalHint() {
 function updateGdriveUiConnected(connected) {
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   const connectBtn = document.getElementById('gdriveConnectBtn');
-  if (syncBtn) syncBtn.hidden = !connected;
+  if (syncBtn) syncBtn.hidden = ENABLE_DRIVE_SYNC ? !connected : false;
   if (!connectBtn) return;
   if (!connected) connectBtn.textContent = '連接 Google';
   else if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') connectBtn.textContent = '授權 Calendar';
@@ -9350,6 +9355,11 @@ function gdriveAuthHeaders() {
 
 async function gdriveApi(url, opts) {
   opts = opts || {};
+  if (!ENABLE_DRIVE_SYNC) {
+    const err = new Error('Drive sync is paused');
+    err.status = 0;
+    throw err;
+  }
   if (VIEW_ONLY) {
     const method = String(opts.method || 'GET').toUpperCase();
     if (method !== 'GET' && method !== 'HEAD') {
@@ -9368,7 +9378,7 @@ async function gdriveApi(url, opts) {
 }
 
 async function gdriveVerifyOrFindFileId() {
-  if (VIEW_ONLY) return null;
+  if (VIEW_ONLY || !ENABLE_DRIVE_SYNC) return null;
   const stored = localStorage.getItem(GDRIVE_FILE_ID_KEY) || gdriveFileId;
   if (stored) {
     try {
@@ -9397,7 +9407,7 @@ async function gdriveVerifyOrFindFileId() {
 }
 
 async function gdriveCreateSyncFile() {
-  if (VIEW_ONLY) return null;
+  if (VIEW_ONLY || !ENABLE_DRIVE_SYNC) return null;
   const payload = buildSyncPayload();
   // Sync covers todos + events + busStops + shortcuts (+ categories/theme in payload)
   if (!Array.isArray(payload.todos)) payload.todos = state.todos || [];
@@ -9430,7 +9440,7 @@ async function gdriveCreateSyncFile() {
 }
 
 async function gdrivePull() {
-  if (VIEW_ONLY) return false;
+  if (VIEW_ONLY || !ENABLE_DRIVE_SYNC) return false;
   const fileId = await gdriveVerifyOrFindFileId();
   const res = await gdriveApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media');
   const remote = await res.json();
@@ -9445,7 +9455,7 @@ async function gdrivePull() {
 }
 
 async function gdrivePush() {
-  if (VIEW_ONLY) return false;
+  if (VIEW_ONLY || !ENABLE_DRIVE_SYNC) return false;
   const fileId = await gdriveVerifyOrFindFileId();
   const payload = buildSyncPayload();
   // Sync covers todos + events + busStops + shortcuts (+ categories/theme)
@@ -9492,8 +9502,78 @@ function cloudStatusDetail(driveOk, gcalResult) {
   return 'Drive 已同步 ' + time + ' · Calendar 暫未能同步（個人活動仍留本機同 Drive）';
 }
 
+function noteFirebaseSignInNeeded() {
+  const btn = document.getElementById('firebaseAuthBtn');
+  const label = btn ? String(btn.textContent || '') : '';
+  if (!btn || label.indexOf('未登入') === -1) setFirebaseHint('out', '列表同步要用 Firebase 登入，再按「立即同步」');
+  try { showShareToast('請先登入 Firebase，再按「立即同步」'); } catch (e) {}
+  setGdriveStatus('Firebase 未登入', '列表同步要用 Firebase 登入，再按「立即同步」');
+}
+
+/** List sync while Drive file sync is paused: pull Firestore, then push local rows and tombstones. */
+async function runFirebaseListSync() {
+  if (VIEW_ONLY) return { driveOk: false, pulled: false, skipped: 'view-only' };
+  if (gdriveSyncInFlight || firebaseSyncInFlight) return { driveOk: false, pulled: false, skipped: 'inflight' };
+  const canFirebase = firebaseCanWrite();
+  if (!canFirebase && !gdriveAccessToken) {
+    noteFirebaseSignInNeeded();
+    return { driveOk: false, pulled: false, skipped: 'nofirebase' };
+  }
+  gdriveSyncInFlight = true;
+  if (canFirebase) firebaseSyncInFlight = true;
+  setGdriveStatus('同步中…');
+  let firebaseOk = false;
+  let gcalResult = { ok: false, reason: 'skip' };
+  try {
+    if (canFirebase) {
+      const merged = await mergeFirebaseSnapshot();
+      if (!merged || !merged.ok) throw new Error('firebase merge skipped');
+    }
+    if (gdriveAccessToken) {
+      try {
+        gcalResult = await gcalSync();
+      } catch (e) {
+        console.warn('GCal sync failed', e);
+        const reason = (e && e.gcalReason) || 'error';
+        if (reason === 'api-off' || reason === 'no-scope') gcalAccessState = reason;
+        else if (gcalAccessState === 'ok') gcalAccessState = 'error';
+        gcalResult = { ok: false, reason: reason };
+      }
+    }
+    if (canFirebase) {
+      const pushed = await pushFirebaseSnapshot();
+      if (!pushed) throw new Error('firebase push skipped');
+      firebaseOk = true;
+    }
+  } catch (e) {
+    console.warn('Firebase list sync failed', e);
+    if (canFirebase) noteFirebaseSyncIssue(e);
+    firebaseOk = false;
+  } finally {
+    gdriveSyncInFlight = false;
+    firebaseSyncInFlight = false;
+    if (!canFirebase) noteFirebaseSignInNeeded();
+    else if (firebaseOk) {
+      const time = formatGdriveSyncTime();
+      let detail = 'Firebase 已同步 ' + time + ' · Drive 已暫停';
+      if (gcalResult && gcalResult.ok) detail += ' · Calendar 已連';
+      else if ((gcalResult && gcalResult.reason === 'no-scope') || gcalAccessState === 'no-scope') detail += ' · Calendar 未授權';
+      setGdriveStatus('已同步 ' + time, detail);
+    } else {
+      setGdriveStatus('同步失敗', 'Firebase 同步失敗 · Drive 已暫停');
+    }
+    updateGdriveUiConnected(!!gdriveAccessToken);
+    if (firebasePushAgain) {
+      firebasePushAgain = false;
+      if (firebaseDirtyAt()) queueFirebasePush();
+    }
+  }
+  return { driveOk: firebaseOk, pulled: firebaseOk };
+}
+
 async function runCloudSync(opts) {
   opts = opts || {};
+  if (!ENABLE_DRIVE_SYNC) return runFirebaseListSync();
   if (VIEW_ONLY) return;
   if (!gdriveAccessToken) {
     setGdriveStatus('請先連接');
@@ -10126,7 +10206,22 @@ async function gdriveSyncNow() {
   return runCloudSync({ pull: true });
 }
 
+function applyDrivePauseChrome() {
+  const hint = document.getElementById('drivePausedHint');
+  if (hint) {
+    const show = !ENABLE_DRIVE_SYNC && !VIEW_ONLY;
+    hint.hidden = !show;
+    if (show) hint.title = 'Google Drive 檔同步已暫停。列表改經 Firebase。ENABLE_DRIVE_SYNC 改返 true 再 push 就會恢復。';
+  }
+  if (ENABLE_DRIVE_SYNC || VIEW_ONLY) return;
+  const syncBtn = document.getElementById('gdriveSyncNowBtn');
+  if (syncBtn) syncBtn.hidden = false;
+  const note = document.querySelector('.footer-note');
+  if (note) note.textContent = '本機儲存；列表經 Firebase 同步（Drive 已暫停）。要更新列表請按「立即同步」 · 布丁仔';
+}
+
 function bindGdriveUi() {
+  applyDrivePauseChrome();
   const connectBtn = document.getElementById('gdriveConnectBtn');
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   if (connectBtn) {
@@ -10144,8 +10239,9 @@ function bindGdriveUi() {
       const calendarIncremental = gcalWantsCalendarOnlyReauth();
       if (!calendarIncremental) gcalAccessState = 'unknown';
       gdriveTokenClient = null;
-      // Drive-only grant: ask for calendar.events only. include_granted_scopes keeps Drive.
-      requestGdriveToken(calendarIncremental
+      // Drive file sync paused, or Calendar still missing: ask for calendar.events only.
+      // Flag true keeps the previous Drive+Calendar consent. include_granted_scopes keeps scopes already granted.
+      requestGdriveToken((!ENABLE_DRIVE_SYNC || calendarIncremental)
         ? { prompt: 'consent', scope: GCAL_SCOPE }
         : { prompt: 'consent' });
     });
