@@ -46,7 +46,8 @@
       }
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB'));
-      /* Owner opens from this device. Pages sync-data.json is prefetched only for ?view=1. */
+      /* Owner opens from this device. Pages sync-data.json is prefetched only for ?view=1.
+         Signed-in owner list sync is a Firestore pull after auth, not this file. */
       window.__DASH_BOOT_SYNC = null;
       if (viewOnly) {
         window.__DASH_BOOT_SYNC_PROMISE = fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' })
@@ -3317,7 +3318,7 @@
         <p id="shareOwnerStatus" aria-live="polite"></p>
         <div id="shareToast" class="share-toast" role="status"></div>
       </div>
-      <p class="footer-note">本機儲存；要更新列表請按「立即同步」 · 布丁仔</p>
+      <p class="footer-note">本機儲存；列表經 Firebase 自動同步 · 布丁仔</p>
     </footer>
   </div>
 
@@ -9070,8 +9071,11 @@ function downloadSyncJson(obj, filename) {
    Document: users/{uid}/dashboard/sync
    Same fields as the Drive / Pages payload, plus deletedIds (tombstones).
    View-only (?view=1) never reads or writes Firebase.
-   Opening the page does not pull Firestore, Drive, or Pages into the list.
-   Local edits still write Firestore. 立即同步 merges; 推上線 publishes Pages.
+   Owner mode, once Firebase is signed in, pulls and merges Firestore after
+   auth is ready and when this tab returns to the foreground. That pull does
+   not read Drive or Pages. Owner mode does not auto-import sync-data.json.
+   Local edits still write Firestore. 立即同步 is a manual force sync.
+   推上線 publishes Pages.
    Theme stays on this device. Open still lands on 今天 / 個人活動;
    a tab picked in this document is kept across merges. */
 const FIREBASE_WEB_CONFIG = {
@@ -9084,11 +9088,20 @@ const FIREBASE_WEB_CONFIG = {
   measurementId: 'G-5FNPG7D0GH'
 };
 const FIREBASE_DIRTY_KEY = 'dash-hub-firebase-dirty-at';
+// Collapse visibility and focus into one pull, then ignore further foreground
+// events until this gap has passed so a noisy browser cannot hammer Firestore.
+const FIREBASE_FOCUS_SYNC_MS = 10000;
+const FIREBASE_FOCUS_DEBOUNCE_MS = 700;
 let firebaseAuthUser = null;
 let firebaseStarted = false;
 let firebasePushTimer = null;
 let firebaseSyncInFlight = false;
 let firebasePushAgain = false;
+let firebasePullAgain = false;
+let firebaseForceSyncPending = false;
+let firebaseAutoPullAt = 0;
+let firebaseAutoPullUid = '';
+let firebaseForegroundTimer = null;
 
 function firebaseSdkReady() {
   return !!(window.firebase && firebase.auth && firebase.firestore && typeof firebase.initializeApp === 'function');
@@ -9266,8 +9279,9 @@ async function pushFirebaseSnapshot() {
 
 function queueFirebasePush() {
   if (VIEW_ONLY || !firebaseCanWrite()) return;
-  // Does not pull Firestore into the on-screen list. The write still unions
-  // todos, events, and deletedIds so an edit cannot erase the other device.
+  // Does not pull Firestore into the on-screen list. A pull on this path would
+  // bounce against the foreground auto-pull. The write still unions todos,
+  // events, and deletedIds so an edit cannot erase the other device.
   if (firebasePushTimer) clearTimeout(firebasePushTimer);
   firebasePushTimer = setTimeout(function () {
     firebasePushTimer = null;
@@ -9292,9 +9306,7 @@ async function pushFirebaseOnly() {
     noteFirebaseSyncIssue(e);
   } finally {
     firebaseSyncInFlight = false;
-    if (!firebasePushAgain) return;
-    firebasePushAgain = false;
-    if (firebaseDirtyAt()) queueFirebasePush();
+    flushFirebaseFollowUps();
   }
 }
 
@@ -9302,6 +9314,87 @@ function scheduleFirebasePush() {
   if (VIEW_ONLY) return;
   markFirebaseDirty();
   queueFirebasePush();
+}
+
+/**
+ * Pull users/{uid}/dashboard/sync and merge it into the lists on screen.
+ * Does not read Drive or Pages, and does not write Firestore.
+ * Local edits still push through scheduleFirebasePush.
+ */
+async function pullFirebaseList() {
+  if (VIEW_ONLY || !firebaseCanWrite()) return;
+  if (firebaseSyncInFlight || gdriveSyncInFlight) {
+    firebasePullAgain = true;
+    return;
+  }
+  firebaseSyncInFlight = true;
+  firebaseAutoPullAt = Date.now();
+  try {
+    const merged = await mergeFirebaseSnapshot();
+    if (merged && merged.ok) {
+      setFirebaseHint('in');
+      noteFirebaseAutoPullStatus();
+    }
+  } catch (e) {
+    noteFirebaseSyncIssue(e);
+  } finally {
+    firebaseSyncInFlight = false;
+    flushFirebaseFollowUps();
+  }
+}
+
+function noteFirebaseAutoPullStatus() {
+  const time = formatGdriveSyncTime();
+  let detail = 'Firebase 已自動同步 ' + time;
+  if (!ENABLE_DRIVE_SYNC) detail += ' · Drive 已暫停';
+  const email = firebaseAuthUser && firebaseAuthUser.email ? String(firebaseAuthUser.email) : '';
+  if (email) detail += ' · ' + email;
+  setGdriveStatus('已同步 ' + time, detail);
+}
+
+function flushFirebaseFollowUps() {
+  if (firebaseSyncInFlight || gdriveSyncInFlight) return;
+  if (firebaseForceSyncPending) {
+    firebaseForceSyncPending = false;
+    firebasePullAgain = false;
+    runFirebaseListSync();
+    return;
+  }
+  if (firebasePushAgain) {
+    firebasePushAgain = false;
+    if (firebaseDirtyAt()) {
+      queueFirebasePush();
+      return;
+    }
+  }
+  if (firebasePullAgain) {
+    firebasePullAgain = false;
+    pullFirebaseList();
+  }
+}
+
+function scheduleFirebaseForegroundPull() {
+  if (VIEW_ONLY) return;
+  if (firebaseForegroundTimer) clearTimeout(firebaseForegroundTimer);
+  firebaseForegroundTimer = setTimeout(function () {
+    firebaseForegroundTimer = null;
+    if (document.visibilityState === 'hidden') return;
+    if (!firebaseCanWrite()) return;
+    if (Date.now() - firebaseAutoPullAt < FIREBASE_FOCUS_SYNC_MS) return;
+    pullFirebaseList();
+  }, FIREBASE_FOCUS_DEBOUNCE_MS);
+}
+
+function bindFirebaseForegroundSync() {
+  if (window.__dashFirebaseForegroundBound) return;
+  window.__dashFirebaseForegroundBound = true;
+  window.addEventListener('focus', scheduleFirebaseForegroundPull);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') scheduleFirebaseForegroundPull();
+  });
+  window.addEventListener('pageshow', function (event) {
+    if (event && event.persisted) scheduleFirebaseForegroundPull();
+  });
 }
 
 function firebaseSignIn() {
@@ -9345,6 +9438,7 @@ function startFirebaseSync() {
   if (VIEW_ONLY || firebaseStarted) return;
   firebaseStarted = true;
   bindFirebaseUi();
+  bindFirebaseForegroundSync();
   setFirebaseHint('out');
   if (!firebaseSdkReady()) {
     setFirebaseHint('out', 'Firebase 元件尚未載入');
@@ -9360,10 +9454,17 @@ function startFirebaseSync() {
     firebase.auth().onAuthStateChanged(function (user) {
       firebaseAuthUser = user || null;
       if (!user) {
+        firebaseAutoPullUid = '';
         setFirebaseHint('out');
         return;
       }
       setFirebaseHint('in');
+      // Page open and a later sign-in. Token refresh does not change uid, so
+      // it does not pull again.
+      if (firebaseAutoPullUid !== user.uid) {
+        firebaseAutoPullUid = user.uid;
+        pullFirebaseList();
+      }
       if (firebaseDirtyAt()) queueFirebasePush();
     });
   } catch (e) {
@@ -9588,8 +9689,9 @@ async function gdrivePush() {
 
 function scheduleCloudSync() {
   if (VIEW_ONLY) return;
-  // Local edits still dual-write to Firestore. Drive and Pages do not pull
-  // or push until 立即同步 or 推上線.
+  // Local edits write Firestore. They do not pull Firestore, Drive, or Pages.
+  // Firestore is pulled on sign-in and when the tab returns to the foreground.
+  // 立即同步 is the manual force sync. 推上線 publishes Pages.
   scheduleFirebasePush();
 }
 
@@ -9624,7 +9726,10 @@ function noteFirebaseSignInNeeded() {
 /** List sync while Drive file sync is paused: pull Firestore, then push local rows and tombstones. */
 async function runFirebaseListSync() {
   if (VIEW_ONLY) return { driveOk: false, pulled: false, skipped: 'view-only' };
-  if (gdriveSyncInFlight || firebaseSyncInFlight) return { driveOk: false, pulled: false, skipped: 'inflight' };
+  if (gdriveSyncInFlight || firebaseSyncInFlight) {
+    firebaseForceSyncPending = true;
+    return { driveOk: false, pulled: false, skipped: 'inflight' };
+  }
   const canFirebase = firebaseCanWrite();
   if (!canFirebase && !gdriveAccessToken) {
     noteFirebaseSignInNeeded();
@@ -9632,6 +9737,7 @@ async function runFirebaseListSync() {
   }
   gdriveSyncInFlight = true;
   if (canFirebase) firebaseSyncInFlight = true;
+  firebaseAutoPullAt = Date.now();
   setGdriveStatus('同步中…');
   let firebaseOk = false;
   let gcalResult = { ok: false, reason: 'skip' };
@@ -9676,10 +9782,7 @@ async function runFirebaseListSync() {
       setGdriveStatus('同步失敗', 'Firebase 同步失敗 · Drive 已暫停');
     }
     updateGdriveUiConnected(!!gdriveAccessToken);
-    if (firebasePushAgain) {
-      firebasePushAgain = false;
-      if (firebaseDirtyAt()) queueFirebasePush();
-    }
+    flushFirebaseFollowUps();
   }
   return { driveOk: firebaseOk, pulled: firebaseOk };
 }
@@ -9692,8 +9795,12 @@ async function runCloudSync(opts) {
     setGdriveStatus('請先連接');
     return;
   }
-  if (gdriveSyncInFlight) return;
+  if (gdriveSyncInFlight) {
+    firebaseForceSyncPending = true;
+    return;
+  }
   gdriveSyncInFlight = true;
+  firebaseAutoPullAt = Date.now();
   setGdriveStatus('同步中…');
   let driveOk = false;
   let gcalResult = { ok: false, reason: '' };
@@ -9729,6 +9836,7 @@ async function runCloudSync(opts) {
     gdriveSyncInFlight = false;
     setGdriveStatus(cloudStatusText(driveOk, gcalResult), cloudStatusDetail(driveOk, gcalResult));
     updateGdriveUiConnected(!!gdriveAccessToken);
+    flushFirebaseFollowUps();
   }
 }
 
@@ -10284,7 +10392,7 @@ function ensureGdriveTokenClient() {
         storeGdriveToken(resp.access_token);
         noteGcalAccessFromToken(resp);
         updateGdriveUiConnected(true);
-        setGdriveStatus('已連接', '按「立即同步」先更新列表');
+        setGdriveStatus('已連接', '列表由 Firebase 自動同步 · Calendar 要按「立即同步」');
       } else if (resp && resp.error) {
         setGdriveStatus('授權失敗');
         console.warn('Google auth error', resp);
@@ -10330,7 +10438,7 @@ function applyDrivePauseChrome() {
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   if (syncBtn) syncBtn.hidden = false;
   const note = document.querySelector('.footer-note');
-  if (note) note.textContent = '本機儲存；列表經 Firebase 同步（Drive 已暫停）。要更新列表請按「立即同步」 · 布丁仔';
+  if (note) note.textContent = '本機儲存；列表經 Firebase 自動同步（Drive 已暫停） · 布丁仔';
 }
 
 function bindGdriveUi() {
@@ -10393,7 +10501,7 @@ function tryGdriveSilentRestore() {
           storeGdriveToken(resp.access_token);
           noteGcalAccessFromToken(resp);
           updateGdriveUiConnected(true);
-          setGdriveStatus('已連接', '按「立即同步」先更新列表');
+          setGdriveStatus('已連接', '列表由 Firebase 自動同步 · Calendar 要按「立即同步」');
         } else if (gdriveAccessToken) {
           updateGdriveUiConnected(true);
           setGdriveStatus('已連接', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
