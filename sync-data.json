@@ -1,5 +1,5 @@
 {
-  "updatedAt": 1792384496956,
+  "updatedAt": 1792407026909,
   "schemaVersion": 11,
   "todos": [
     {
@@ -1258,12 +1258,12 @@
       "title": "伊利沙伯耳鼻喉",
       "date": "2026-10-20",
       "time": "09:00",
-      "work": "",
+      "work": "伊利沙伯醫院耳鼻喉頭頸外科專科診所（C4）；日間醫療中心新翼6樓（6/F Block T）；查詢 35064232；預約通 MB369519(4)。來源：HA Go。",
       "kind": "personal",
       "done": false,
-      "updatedAt": 1792078811822,
+      "updatedAt": 1792407026909,
       "createdAt": 1792074726692,
-      "contentUpdatedAt": 1792074726692,
+      "contentUpdatedAt": 1792407026909,
       "gcalEventId": "cgom2cr16cpm6bb2c9hm4b9kccojcb9p75ijgb9l74pm6e1h6ph6ccr1ck",
       "gcalUpdated": 1792076679336
     },
@@ -1670,7 +1670,7 @@
   "todoTab": "today",
   "eventsFilter": "today",
   "eventsKind": "personal",
-  "syncUpdatedAt": 1792383178333,
+  "syncUpdatedAt": 1792407026909,
   "share": {
     "enabled": false,
     "salt": "",
