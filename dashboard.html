@@ -3045,7 +3045,6 @@
     <header class="page-header">
       <div class="sync-actions">
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveConnectBtn">連接 Calendar</button>
-        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveSyncNowBtn" hidden>立即同步</button>
         <span class="glass-card hdr-glass sync-pill sync-status" id="gdriveSyncStatus" hidden></span>
         <p class="glass-card hdr-glass sync-pill gcal-hint" id="gcalHint" hidden>Calendar 未授權</p>
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill firebase-hint" id="firebaseAuthBtn" title="用 Google 登入 Firebase">Firebase 未登入</button>
@@ -9072,8 +9071,8 @@ function downloadSyncJson(obj, filename) {
    Owner mode, once Firebase is signed in, pulls and merges Firestore after
    auth is ready and when this tab returns to the foreground. That pull does
    not read Drive or Pages. Owner mode does not auto-import sync-data.json.
-   Local edits still write Firestore. 立即同步 is a manual force sync.
-   推上線 publishes Pages.
+   Local edits still write Firestore. gdriveSyncNow() can still force a sync;
+   the owner UI has no 立即同步 button. 推上線 publishes Pages.
    Theme stays on this device. Open still lands on 今天 / 個人活動;
    a tab picked in this document is kept across merges. */
 const FIREBASE_WEB_CONFIG = {
@@ -9530,7 +9529,7 @@ function updateGdriveUiConnected(connected) {
   const connectBtn = document.getElementById('gdriveConnectBtn');
   const status = document.getElementById('gdriveSyncStatus');
   if (status && !ENABLE_DRIVE_SYNC) status.hidden = true;
-  if (syncBtn) syncBtn.hidden = ENABLE_DRIVE_SYNC ? !connected : false;
+  if (syncBtn) syncBtn.hidden = true;
   if (!connectBtn) return;
   if (!connected) connectBtn.textContent = '連接 Calendar';
   else if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') connectBtn.textContent = '授權 Calendar';
@@ -9692,7 +9691,8 @@ function scheduleCloudSync() {
   if (VIEW_ONLY) return;
   // Local edits write Firestore. They do not pull Firestore, Drive, or Pages.
   // Firestore is pulled on sign-in and when the tab returns to the foreground.
-  // 立即同步 is the manual force sync. 推上線 publishes Pages.
+  // gdriveSyncNow() is the manual force sync. The owner UI does not show it.
+  // 推上線 publishes Pages.
   scheduleFirebasePush();
 }
 
@@ -9719,8 +9719,8 @@ function cloudStatusDetail(driveOk, gcalResult) {
 function noteFirebaseSignInNeeded() {
   const btn = document.getElementById('firebaseAuthBtn');
   const label = btn ? String(btn.textContent || '') : '';
-  if (!btn || label.indexOf('未登入') === -1) setFirebaseHint('out', '列表同步要用 Firebase 登入，再按「立即同步」');
-  try { showShareToast('請先登入 Firebase，再按「立即同步」'); } catch (e) {}
+  if (!btn || label.indexOf('未登入') === -1) setFirebaseHint('out', '列表同步要用 Firebase 登入，登入後會自動同步');
+  try { showShareToast('請先登入 Firebase，登入後會自動同步'); } catch (e) {}
 }
 
 function setListSyncBusy(busy) {
@@ -10400,7 +10400,7 @@ function ensureGdriveTokenClient() {
         storeGdriveToken(resp.access_token);
         noteGcalAccessFromToken(resp);
         updateGdriveUiConnected(true);
-        if (ENABLE_DRIVE_SYNC) setGdriveStatus('已連接', '按「立即同步」先更新列表');
+        if (ENABLE_DRIVE_SYNC) setGdriveStatus('已連接', '列表由 Firebase 自動同步');
       } else if (resp && resp.error) {
         if (ENABLE_DRIVE_SYNC) setGdriveStatus('授權失敗');
         else { try { showShareToast('Calendar 授權失敗'); } catch (e) {} }
@@ -10453,7 +10453,7 @@ function applyDrivePauseChrome() {
   }
   if (ENABLE_DRIVE_SYNC || VIEW_ONLY) return;
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
-  if (syncBtn) syncBtn.hidden = false;
+  if (syncBtn) syncBtn.hidden = true;
   const note = document.querySelector('.footer-note');
   if (note) note.textContent = '本機儲存；列表經 Firebase 自動同步 · 布丁仔';
 }
@@ -10518,7 +10518,7 @@ function tryGdriveSilentRestore() {
           storeGdriveToken(resp.access_token);
           noteGcalAccessFromToken(resp);
           updateGdriveUiConnected(true);
-          setGdriveStatus('已連接', '按「立即同步」先更新列表');
+          setGdriveStatus('已連接', '列表由 Firebase 自動同步');
         } else if (gdriveAccessToken) {
           updateGdriveUiConnected(true);
           setGdriveStatus('已連接', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
