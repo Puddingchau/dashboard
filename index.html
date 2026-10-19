@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#87CEEB" />
   <script>
     /* Theme is device-local (dash-hub-v1). Apply it before paint.
-       ?view=1 always paints sunny-beach (the owner dashboard look) and does not write localStorage. */
+       ?view=1 always paints rain-cafe / 雨窗咖啡 (theme-rain-window) and does not write localStorage. */
     (function () {
       var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
       var COLORS = {
@@ -25,10 +25,9 @@
         viewOnly = new URLSearchParams(location.search).get('view') === '1';
       } catch (e) {}
       if (viewOnly) {
-        /* Friend share stays on sunny-beach forever. Do not follow rain-cafe or localStorage. */
-        document.documentElement.classList.add('view-only');
-        document.documentElement.classList.remove('theme-rain-window');
-        theme = 'sunny-beach';
+        /* Friend share stays on rain-cafe / 雨窗咖啡 forever. Do not follow sunny-beach or localStorage. */
+        document.documentElement.classList.add('view-only', 'theme-rain-window');
+        theme = 'rain-cafe';
       } else {
         try {
           var raw = localStorage.getItem('dash-hub-v1');
@@ -47,15 +46,25 @@
         if (bootData.busExpanded) document.documentElement.classList.add('boot-bus-open');
       }
       var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', COLORS[theme] || '#87CEEB');
-      /* Owner opens from this device. Pages sync-data.json is prefetched only for ?view=1.
+      if (meta) meta.setAttribute('content', viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB'));
+      /* Owner opens from this device. A ?view=1 link carries its own snapshot in #s=.
+         Pages sync-data.json is prefetched only when that snapshot is absent.
          Signed-in owner list sync is a Firestore pull after auth, not this file. */
       window.__DASH_BOOT_SYNC = null;
+      var shareHasSnapshot = false;
       if (viewOnly) {
+        try {
+          shareHasSnapshot = location.hash.indexOf('#s=') === 0 ||
+            !!new URLSearchParams(location.search).get('s');
+        } catch (e3) {}
+      }
+      if (viewOnly && !shareHasSnapshot) {
         window.__DASH_BOOT_SYNC_PROMISE = fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' })
           .then(function (res) { return res.ok ? res.json() : null; })
           .then(function (data) {
-            window.__DASH_BOOT_SYNC = data;
+            if (!window.__DASH_BOOT_SYNC_LOCKED && !window.__DASH_SHARE_SNAPSHOT) {
+              window.__DASH_BOOT_SYNC = data;
+            }
             return data;
           })
           .catch(function () { return null; });
@@ -2964,24 +2973,24 @@
       align-items: center;
       justify-content: center;
       padding: 24px 16px;
-      background-color: #87CEEB;
-      background-image: url('sunny-beach-bg.jpg');
+      background-color: #1E2C3A;
+      background-image: url('rain-cafe-bg.jpg');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
     }
-    html.view-only .share-lock-card {
-      background: rgba(255, 255, 255, 0.52);
+    html.view-only.theme-rain-window .share-lock-card {
+      background: rgba(255, 252, 248, 0.48);
       backdrop-filter: blur(26px) saturate(1.35);
       -webkit-backdrop-filter: blur(26px) saturate(1.35);
-      border: 1px solid rgba(255, 255, 255, 0.42);
+      border: 1px solid rgba(255, 255, 255, 0.3);
       box-shadow:
-        0 24px 48px -12px rgba(14, 116, 144, 0.35),
-        inset 0 1px 0 rgba(255, 255, 255, 0.6);
-      color: #1E3A4C;
+        0 24px 48px -12px rgba(10, 20, 35, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+      color: #1E262E;
     }
-    html.view-only .share-lock-msg {
-      color: #92400E;
+    html.view-only.theme-rain-window .share-lock-msg {
+      color: #7A5420;
     }
     .share-lock-card {
       width: min(420px, 100%);
@@ -3073,11 +3082,12 @@
   (function () {
     var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
     var viewOnly = document.documentElement.classList.contains('view-only');
-    var theme = viewOnly ? 'sunny-beach' : (window.__DASH_BOOT_THEME || 'sunny-beach');
-    if (THEMES.indexOf(theme) === -1) theme = 'sunny-beach';
+    var theme = viewOnly ? 'rain-cafe' : (window.__DASH_BOOT_THEME || 'sunny-beach');
+    if (THEMES.indexOf(theme) === -1) theme = viewOnly ? 'rain-cafe' : 'sunny-beach';
     THEMES.forEach(function (p) { document.body.classList.remove('theme-' + p); });
     document.body.classList.remove('theme-rain-window');
     document.body.classList.add('theme-' + theme);
+    if (viewOnly) document.body.classList.add('theme-rain-window');
   })();
 </script>
   <div class="share-lock" id="shareLock" role="dialog" aria-modal="true" aria-labelledby="shareLockTitle">
@@ -5062,19 +5072,21 @@ function saveState(opts) {
 const THEME_PRESETS = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
 
 function applyTheme(preset, persist) {
-  /* ?view=1 always shows sunny-beach. Do not persist that onto the viewer's device. */
+  /* ?view=1 always shows rain-cafe / 雨窗咖啡. Do not persist that onto the viewer's device.
+     Owner theme (no ?view=1) still follows the argument and localStorage. */
   if (VIEW_ONLY) {
-    preset = 'sunny-beach';
+    preset = 'rain-cafe';
     persist = false;
   }
   const t = THEME_PRESETS.includes(preset) ? preset : 'sunny-beach';
-  state.theme = t;
+  if (!VIEW_ONLY) state.theme = t;
   const body = document.getElementById('appBody') || document.body;
+  const wantRain = !!VIEW_ONLY;
   const already =
     body.classList.contains('theme-' + t) &&
     document.documentElement.classList.contains('theme-' + t) &&
-    !body.classList.contains('theme-rain-window') &&
-    !document.documentElement.classList.contains('theme-rain-window');
+    body.classList.contains('theme-rain-window') === wantRain &&
+    document.documentElement.classList.contains('theme-rain-window') === wantRain;
   if (!already) {
     THEME_PRESETS.forEach(p => {
       body.classList.remove('theme-' + p);
@@ -5084,13 +5096,17 @@ function applyTheme(preset, persist) {
     document.documentElement.classList.remove('theme-rain-window');
     body.classList.add('theme-' + t);
     document.documentElement.classList.add('theme-' + t);
+    if (wantRain) {
+      body.classList.add('theme-rain-window');
+      document.documentElement.classList.add('theme-rain-window');
+    }
   }
   document.querySelectorAll('.theme-chips .theme-chip').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === t);
   });
   const meta = document.querySelector('meta[name="theme-color"]');
   const colors = { 'sunny-beach': '#87CEEB', 'rain-cafe': '#C5D4E0', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
-  if (meta) meta.setAttribute('content', colors[t] || '#87CEEB');
+  if (meta) meta.setAttribute('content', VIEW_ONLY ? '#1E2C3A' : (colors[t] || '#87CEEB'));
   if (persist !== false) saveState();
 }
 
@@ -9118,8 +9134,10 @@ function clearDeletionRecordsForItems(items, kind) {
   gcalCancel.forEach(function (gid) { cancelQueuedGcalDelete(gid); });
 }
 
-/** Drop remote rows the user already deleted here, unless that row is newer than the delete. */
+/** Drop remote rows the user already deleted here, unless that row is newer than the delete.
+ *  A read-only share shows the snapshot as published. This device's tombstones stay untouched. */
 function filterRemoteItemsByDeletions(remoteArr, kind) {
+  if (VIEW_ONLY) return (remoteArr || []).filter(function (item) { return item && item.id; });
   const out = [];
   (remoteArr || []).forEach(function (item) {
     if (!item || !item.id) return;
@@ -9308,7 +9326,7 @@ function applyRemoteSyncPayload(remote, opts) {
       if (t.updatedAt != null) out.updatedAt = t.updatedAt;
       return out;
     })), 'todo');
-    if (authoritative || unionLists) clearDeletionRecordsForItems(remoteTodos, 'todo');
+    if ((authoritative || unionLists) && !VIEW_ONLY) clearDeletionRecordsForItems(remoteTodos, 'todo');
     const r = mergeByIdPreferNewer(state.todos, remoteTodos, { allowAdds: allowAdds });
     let nextTodos = r.arr;
     let prunedTodos = false;
@@ -9328,7 +9346,7 @@ function applyRemoteSyncPayload(remote, opts) {
   }
   if (Array.isArray(remote.events)) {
     const remoteEvents = filterRemoteItemsByDeletions(remote.events.map(normalizeEvent), 'event');
-    if (authoritative || unionLists) clearDeletionRecordsForItems(remoteEvents, 'event');
+    if ((authoritative || unionLists) && !VIEW_ONLY) clearDeletionRecordsForItems(remoteEvents, 'event');
     let next = Array.isArray(state.events) ? state.events : [];
     let upsertChanged = false;
     if (remoteEvents.length) {
@@ -9426,10 +9444,14 @@ function reRenderAfterSync(extras) {
 
 async function autoImportFromCloud() {
   try {
+    // A share link with #s= already has the owner's tap-time list. Do not replace it
+    // with whatever sync-data.json Pages is still serving.
+    if (VIEW_ONLY && window.__DASH_SHARE_SNAPSHOT) return;
     const res = await fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) return;
     const remote = await res.json();
     if (!remote || remote.updatedAt == null) return;
+    if (VIEW_ONLY && !pagesSnapshotMatchesLink(remote)) return;
     // The boot paint already applied this exact snapshot. A second copy must not shove the lists.
     if (window.__DASH_BOOT_SYNC_APPLIED_AT && Number(remote.updatedAt) === Number(window.__DASH_BOOT_SYNC_APPLIED_AT)) return;
     markBootSyncApplied(remote);
@@ -11107,15 +11129,121 @@ function bindSyncUi() {
   /* Export/import buttons removed; Drive sync uses buildExportPayload / applyRemoteSyncPayload. */
 }
 
-/** Owner control: copy origin + pathname + ?view=1&exp=&t= (no password in the URL). */
-function viewOnlyShareUrl(expiresAt, issuedAt) {
+/** Owner control: copy origin + pathname + ?view=1&exp=&t=#s= (no password in the URL).
+ *  #s= is the tap-time snapshot. Friends do not need the Pages file to match. */
+function viewOnlyShareUrl(expiresAt, issuedAt, snapshotToken) {
   const base = location.origin + location.pathname + '?view=1';
   const exp = Number(expiresAt) || 0;
   if (!exp) return base;
   let url = base + '&exp=' + exp;
   const t = Number(issuedAt) || 0;
   if (t) url += '&t=' + t;
+  const snap = String(snapshotToken || '');
+  if (snap) url += '#s=' + snap;
   return url;
+}
+
+function bytesToBase64Url(bytes) {
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < arr.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, arr.subarray(i, i + chunk));
+  }
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlToBytes(text) {
+  let s = String(text || '').replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** True when this Pages file belongs to this link. t and updatedAt are both owner clocks. */
+function pagesSnapshotMatchesLink(remote) {
+  if (!VIEW_ONLY) return true;
+  const issued = shareLinkIssuedAt();
+  if (!issued) return true;
+  return Number(remote && remote.updatedAt) >= issued;
+}
+
+function shareLinkSnapshotToken() {
+  let raw = '';
+  try {
+    const hash = String(location.hash || '');
+    if (hash.indexOf('#s=') === 0) raw = hash.slice(3);
+  } catch (e) {}
+  if (!raw) {
+    try { raw = new URLSearchParams(location.search).get('s') || ''; } catch (e2) {}
+  }
+  if (!raw) return '';
+  try { return decodeURIComponent(raw); } catch (e3) { return raw; }
+}
+
+async function encodeShareSnapshot(payload) {
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  try {
+    if (typeof CompressionStream === 'function') {
+      const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+      const token = 'z' + bytesToBase64Url(buf);
+      if (token.length > 20 && token.length < 120000) return token;
+    }
+  } catch (e) {}
+  const raw = 'j' + bytesToBase64Url(bytes);
+  if (raw.length > 20 && raw.length < 120000) return raw;
+  return '';
+}
+
+async function decodeShareSnapshot(token) {
+  const text = String(token || '');
+  if (!text || text.length > 150000) return null;
+  const kind = text.charAt(0);
+  const bytes = base64UrlToBytes(text.slice(1));
+  if (!bytes || !bytes.length || bytes.length > 120000) return null;
+  let json = '';
+  if (kind === 'z') {
+    if (typeof DecompressionStream !== 'function') return null;
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+    if (!buf.length || buf.length > 2000000) return null;
+    json = new TextDecoder().decode(buf);
+  } else if (kind === 'j') {
+    json = new TextDecoder().decode(bytes);
+  } else return null;
+  const data = JSON.parse(json);
+  if (!data || typeof data !== 'object' || !Array.isArray(data.todos)) return null;
+  return data;
+}
+
+async function loadEmbeddedShareSnapshot() {
+  const token = shareLinkSnapshotToken();
+  if (!token) return null;
+  let data = null;
+  try { data = await decodeShareSnapshot(token); } catch (e) { data = null; }
+  if (!data || !pagesSnapshotMatchesLink(data)) return null;
+  return data;
+}
+
+async function fetchPagesSnapshotForLink() {
+  const attempts = shareLinkIssuedAt() ? 6 : 1;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const remote = await res.json();
+        if (remote && remote.updatedAt != null && pagesSnapshotMatchesLink(remote)) return remote;
+      }
+    } catch (e) {}
+    if (i + 1 < attempts) {
+      await new Promise(function (resolve) { setTimeout(resolve, 1500); });
+    }
+  }
+  return null;
 }
 
 function copyPlainText(text) {
@@ -11153,12 +11281,12 @@ function initViewOnlyChrome() {
   if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 布丁仔';
 }
 
-/** Share / ?view=1, lock screen and dashboard. Always sunny-beach. Does not write localStorage. */
+/** Share / ?view=1, lock screen and unlocked dashboard. Always rain-cafe / 雨窗咖啡.
+ *  Does not write localStorage or the owner's theme. */
 function applyShareEntryTheme() {
   if (!VIEW_ONLY) return;
-  const t = 'sunny-beach';
-  document.documentElement.classList.add('view-only');
-  document.documentElement.classList.remove('theme-rain-window');
+  const t = 'rain-cafe';
+  document.documentElement.classList.add('view-only', 'theme-rain-window');
   THEME_PRESETS.forEach(function (p) {
     document.documentElement.classList.remove('theme-' + p);
   });
@@ -11168,20 +11296,21 @@ function applyShareEntryTheme() {
   if (body) {
     THEME_PRESETS.forEach(function (p) { body.classList.remove('theme-' + p); });
     body.classList.remove('theme-rain-window');
-    body.classList.add('theme-' + t);
+    body.classList.add('theme-' + t, 'theme-rain-window');
   }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', '#87CEEB');
+  if (meta) meta.setAttribute('content', '#1E2C3A');
 }
 
 /* ===== Share gate =====
- * 分享 copies a read-only link at once: ?view=1&exp=<ms>&t=<ms>.
+ * 分享 copies a read-only link at once: ?view=1&exp=<ms>&t=<ms>#s=<snapshot>.
+ * #s= is the owner's on-screen list at the tap (Firebase pull first, when signed in).
+ * Friends read that snapshot. They do not paint an older sync-data.json.
+ * If a GitHub token is already stored, the same snapshot is also pushed to Pages.
  * Friends can view until exp (3 hours after t). That link has no password.
  * 停止分享 turns the local session off. If dash-hub-pages-token is already
- * stored, the existing Pages push updates share-config.json (and, when the
- * session is on, sync-data.json) with no token field and no prompt.
- * 推上線, at the top-right beside sync, commits the current todos/events
- * snapshot to sync-data.json with that same stored token. No token form.
+ * stored, the existing Pages push updates share-config.json. No token form.
+ * 推上線 commits the current todos/events snapshot to sync-data.json.
  * A disabled gate whose updatedAt is at or after this link's t closes it.
  * updatedAt 0 is not a stop, so a closed file does not block a newer link.
  * Legacy ?view=1 with no exp still asks for the password when the gate has a hash.
@@ -11202,6 +11331,7 @@ let shareStopTimer = null;
 let shareActionBusy = false;
 let shareToastTimer = null;
 let sharePublishChain = Promise.resolve();
+let pendingSharePublish = null;
 
 function hashesEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || !a || a.length !== b.length) return false;
@@ -11358,7 +11488,8 @@ function setShareLock(mode) {
     changed: '分享密碼已更改，請再輸入',
     error: '暫時未能確認分享設定',
     noconfig: '分享未設定密碼',
-    opening: '正在開啟…'
+    opening: '正在開啟…',
+    stale: '分享內容尚未更新，請稍後再試'
   };
   if (msg) msg.textContent = text[mode] || text.error;
   const showForm = mode === 'prompt' || mode === 'wrong' || mode === 'changed';
@@ -11448,8 +11579,10 @@ function markBootSyncApplied(remote) {
 
 function applyPrefetchedBootSync() {
   if (VIEW_ONLY && !shareViewUnlocked) return;
-  const remote = window.__DASH_BOOT_SYNC;
+  const embedded = VIEW_ONLY ? window.__DASH_SHARE_SNAPSHOT : null;
+  const remote = embedded || window.__DASH_BOOT_SYNC;
   if (!remote || remote.updatedAt == null || window.__DASH_BOOT_SYNC_APPLIED) return;
+  if (VIEW_ONLY && !embedded && !pagesSnapshotMatchesLink(remote)) return;
   markBootSyncApplied(remote);
   try {
     if (applyRemoteSyncPayload(remote, { applyExtras: true })) {
@@ -11464,7 +11597,9 @@ async function bootDashboard(opts) {
   try {
     initViewOnlyChrome();
     if (opts.importCloud) {
-      try { await waitForBootSync(2500); } catch (e) {}
+      if (!(VIEW_ONLY && window.__DASH_SHARE_SNAPSHOT)) {
+        try { await waitForBootSync(2500); } catch (e) {}
+      }
       applyPrefetchedBootSync();
       // Prefetch missed the budget: pull once more before the first visible paint.
       if (!window.__DASH_BOOT_SYNC_APPLIED) {
@@ -11502,10 +11637,29 @@ async function bootDashboard(opts) {
   }
 }
 
-async function unlockShareView() {
+async function unlockShareViewNow() {
+  setShareLock('opening');
+  let embedded = null;
+  try { embedded = await loadEmbeddedShareSnapshot(); } catch (e) { embedded = null; }
+  if (embedded) {
+    window.__DASH_SHARE_SNAPSHOT = embedded;
+    window.__DASH_BOOT_SYNC_LOCKED = true;
+  } else if (shareLinkIssuedAt()) {
+    window.__DASH_SHARE_SNAPSHOT = null;
+    const remote = await fetchPagesSnapshotForLink();
+    if (!remote) {
+      shareViewUnlocked = false;
+      window.__DASH_BOOT_SYNC_LOCKED = true;
+      setShareLock('stale');
+      applyShareEntryTheme();
+      return;
+    }
+    window.__DASH_BOOT_SYNC_LOCKED = true;
+    window.__DASH_BOOT_SYNC = remote;
+    window.__DASH_BOOT_SYNC_APPLIED = false;
+  }
   shareViewUnlocked = true;
   state = loadState();
-  setShareLock('opening');
   try {
     await bootDashboard({ importCloud: true });
   } catch (e) {}
@@ -11513,6 +11667,22 @@ async function unlockShareView() {
   applyShareEntryTheme();
   const pw = document.getElementById('shareLockPassword');
   if (pw) pw.value = '';
+}
+
+let shareUnlockPromise = null;
+function unlockShareView() {
+  if (shareViewUnlocked && dashboardBooted) {
+    applyShareEntryTheme();
+    return Promise.resolve();
+  }
+  if (shareUnlockPromise) return shareUnlockPromise;
+  shareUnlockPromise = Promise.resolve().then(unlockShareViewNow).then(function () {
+    if (!shareViewUnlocked) shareUnlockPromise = null;
+  }, function (err) {
+    shareUnlockPromise = null;
+    throw err;
+  });
+  return shareUnlockPromise;
 }
 
 function applyShareLinkGate(gate, fetched) {
@@ -11756,25 +11926,35 @@ function pagesSyncPayload() {
   return payload;
 }
 
-/** Commit sync-data.json on main so ?view=1 guests see this snapshot. */
-async function pushPagesSyncData(message) {
-  const body = JSON.stringify(pagesSyncPayload(), null, 2) + '\n';
-  return pushPagesFile(PAGES_SYNC_PATH, body, message || 'Publish read-only share snapshot');
+/** Commit sync-data.json on main so a link without #s= can still see this snapshot.
+ *  body, when set, is the snapshot captured at the share tap. It is not rebuilt
+ *  from the file already on Pages. */
+async function pushPagesSyncData(message, body) {
+  const text = body || (JSON.stringify(pagesSyncPayload(), null, 2) + '\n');
+  return pushPagesFile(PAGES_SYNC_PATH, text, message || 'Publish read-only share snapshot');
 }
 
 async function publishShareNow() {
   if (VIEW_ONLY || !pagesGateToken()) return;
   const latest = shareConfigFromState(state.share);
-  const wantSnapshot = !!latest.shareEnabled;
+  const issuedAt = Number(latest.updatedAt) || 0;
+  const wantSnapshot = !!latest.shareEnabled && shareSessionActive(latest);
+  const frozen = (wantSnapshot && pendingSharePublish && pendingSharePublish.issuedAt === issuedAt)
+    ? pendingSharePublish.body
+    : '';
   let pushed = null;
   try { pushed = await pushPagesShareGate(latest); } catch (e) { return; }
   if (!pushed || !pushed.ok) {
     if (pushed && pushed.reason === 'auth') rememberPagesGateToken('');
     return;
   }
-  if (!wantSnapshot || !shareSessionActive(state.share) || !pagesGateToken()) return;
+  // Stop, or a newer 分享, may have landed while the gate file was uploading.
+  if (!frozen || !shareSessionActive(state.share) || Number(state.share.updatedAt) !== issuedAt || !pagesGateToken()) return;
   let snap = null;
-  try { snap = await pushPagesSyncData(); } catch (e) { return; }
+  try { snap = await pushPagesSyncData('Publish read-only share snapshot', frozen); } catch (e) { return; }
+  if (snap && !snap.ok && snap.reason === 'http' && (snap.status === 409 || snap.status === 422)) {
+    try { snap = await pushPagesSyncData('Publish read-only share snapshot', frozen); } catch (e2) { return; }
+  }
   if (snap && snap.reason === 'auth') rememberPagesGateToken('');
 }
 
@@ -11847,8 +12027,35 @@ function bindPushPagesUi() {
   });
 }
 
+/** Wait until the list on screen has caught a Firestore pull, then read that list.
+ *  Does not read sync-data.json. */
+async function refreshLiveStateForShare() {
+  function syncBusy() {
+    return !!(firebaseSyncInFlight || gdriveSyncInFlight || gcalSyncInFlight || gcalSyncPromise);
+  }
+  async function waitIdle(ms) {
+    const deadline = Date.now() + ms;
+    while (syncBusy() && Date.now() < deadline) {
+      await new Promise(function (resolve) { setTimeout(resolve, 40); });
+    }
+  }
+  await waitIdle(8000);
+  // A Firestore pull queues Calendar at the end. Let that start before we snapshot.
+  await new Promise(function (resolve) { setTimeout(resolve, 80); });
+  await waitIdle(8000);
+  if (syncBusy()) return;
+  if (firebaseAutoPullAt && Date.now() - firebaseAutoPullAt < 20000) return;
+  if (!firebaseCanWrite()) return;
+  try { await mergeFirebaseSnapshot(); } catch (e) {}
+  await new Promise(function (resolve) { setTimeout(resolve, 80); });
+  await waitIdle(4000);
+}
+
 async function startShareSession() {
   if (VIEW_ONLY) return;
+  const btn = document.getElementById('btnShareToggle');
+  if (btn) btn.textContent = '分享中…';
+  await refreshLiveStateForShare();
   const now = Date.now();
   state.share = {
     enabled: true,
@@ -11858,10 +12065,21 @@ async function startShareSession() {
     expiresAt: now + SHARE_TTL_MS
   };
   saveState();
+  const payload = pagesSyncPayload();
+  payload.updatedAt = now;
+  payload.share = normalizeShare(state.share);
+  pendingSharePublish = {
+    issuedAt: now,
+    body: JSON.stringify(payload, null, 2) + '\n'
+  };
+  let token = '';
+  try { token = await encodeShareSnapshot(payload); } catch (e) { token = ''; }
   syncShareOwnerUI();
-  const url = viewOnlyShareUrl(state.share.expiresAt, state.share.updatedAt);
+  const url = viewOnlyShareUrl(state.share.expiresAt, state.share.updatedAt, token);
   const copied = await copyPlainText(url);
-  showShareToast(copied ? '已複製連結' : '未能複製連結');
+  let toast = copied ? '已複製連結' : '未能複製連結';
+  if (!token && !pagesGateToken()) toast = copied ? '已複製連結，但內容未能帶上' : '未能複製連結';
+  showShareToast(toast);
   setShareOwnerStatus(copied ? '' : url);
   publishShareQuietly();
 }
@@ -11882,6 +12100,7 @@ async function stopShareSession(opts) {
     updatedAt: now > prev.updatedAt ? now : prev.updatedAt + 1,
     expiresAt: 0
   };
+  pendingSharePublish = null;
   saveState();
   syncShareOwnerUI();
   showShareToast(opts.reason === 'expired' ? '分享已自動停止' : '已停止分享');
