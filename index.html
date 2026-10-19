@@ -4490,6 +4490,212 @@ const VIEW_ONLY = new URLSearchParams(location.search).get('view') === '1';
 if (VIEW_ONLY) document.documentElement.classList.add('view-only');
 let shareViewUnlocked = false;
 
+/* TODO_ORDER_SYNC_START
+   Todo order rule (phone, web, Pages, Firebase):
+   - Each todo carries sortOrder (lower first) and orderUpdatedAt.
+   - A drag or a new top item sets orderUpdatedAt to that moment.
+   - On id-union, the greater orderUpdatedAt supplies sortOrder for that id.
+     Content (title, due, done, updatedAt) still follows itemSyncTs, so a
+     title edit does not wipe a newer order and a reorder does not wipe a
+     newer title.
+   - When orderUpdatedAt ties, including legacy rows with no stamp, the remote
+     array wins if this merge is allowed to adopt it (Firestore pull/push, or
+     a Pages/Drive snapshot at least as new as the last sync). A push passes
+     the document already stored as remote, so a tie does not reshuffle it.
+     An older snapshot keeps this device's order.
+   - Rows missing sortOrder are backfilled from their current array index
+     ((index + 1) * 1024) with no orderUpdatedAt. That backfill never beats
+     an explicit reorder. deletedIds tombstones are unchanged and still drop
+     a row when the tombstone is newer than the row's content time.
+*/
+const TODO_ORDER_STEP = 1024;
+
+function todoSortOrderValue(item) {
+  if (!item || item.sortOrder == null || item.sortOrder === '') return null;
+  const n = Number(item.sortOrder);
+  return Number.isFinite(n) ? n : null;
+}
+
+function todoOrderUpdatedAt(item) {
+  const n = Number(item && item.orderUpdatedAt);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function compareTodosByOrder(a, b) {
+  if (a === b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  const ao = todoSortOrderValue(a);
+  const bo = todoSortOrderValue(b);
+  if (ao != null && bo != null && ao !== bo) return ao - bo;
+  if (ao != null && bo == null) return -1;
+  if (ao == null && bo != null) return 1;
+  const ac = Number(a.createdAt) || 0;
+  const bc = Number(b.createdAt) || 0;
+  if (ac !== bc) return bc - ac;
+  const ai = String(a.id || '');
+  const bi = String(b.id || '');
+  if (ai < bi) return -1;
+  if (ai > bi) return 1;
+  return 0;
+}
+
+function sortTodosByOrder(arr) {
+  return (Array.isArray(arr) ? arr.slice() : []).sort(compareTodosByOrder);
+}
+
+function backfillTodoSortOrders(arr) {
+  const list = Array.isArray(arr) ? arr.slice() : [];
+  let max = 0;
+  let any = false;
+  list.forEach(function (item) {
+    const n = todoSortOrderValue(item);
+    if (n == null) return;
+    any = true;
+    if (n > max) max = n;
+  });
+  let cursor = any ? max : 0;
+  list.forEach(function (item) {
+    if (!item || typeof item !== 'object') return;
+    if (todoSortOrderValue(item) != null) return;
+    cursor += TODO_ORDER_STEP;
+    item.sortOrder = cursor;
+  });
+  return list;
+}
+
+function nextTopTodoSortOrder(list) {
+  let min = null;
+  (list || []).forEach(function (item) {
+    const n = todoSortOrderValue(item);
+    if (n == null) return;
+    if (min == null || n < min) min = n;
+  });
+  return min == null ? TODO_ORDER_STEP : min - TODO_ORDER_STEP;
+}
+
+function normalizeTodoRecord(t) {
+  const src = t && typeof t === 'object' ? t : {};
+  const createdAt = src.createdAt || Date.now();
+  const out = {
+    id: src.id || uid('t'),
+    title: String(src.title || ''),
+    due: src.due || '',
+    done: !!src.done,
+    createdAt: createdAt
+  };
+  if (src.updatedAt != null) out.updatedAt = src.updatedAt;
+  const sortOrder = todoSortOrderValue(src);
+  if (sortOrder != null) out.sortOrder = sortOrder;
+  const orderUpdatedAt = todoOrderUpdatedAt(src);
+  if (orderUpdatedAt) out.orderUpdatedAt = orderUpdatedAt;
+  return out;
+}
+
+function normalizeTodoList(arr) {
+  const list = (Array.isArray(arr) ? arr : []).map(normalizeTodoRecord);
+  backfillTodoSortOrders(list);
+  return sortTodosByOrder(list);
+}
+
+/**
+ * Newer orderUpdatedAt wins. On a tie, remote wins when preferRemoteOrder is
+ * set (Firestore pull/push and a newer Pages snapshot). An older snapshot
+ * leaves the local order in place.
+ */
+function pickTodoOrderFields(localItem, remoteItem, preferRemoteOrder) {
+  const lAt = todoOrderUpdatedAt(localItem);
+  const rAt = todoOrderUpdatedAt(remoteItem);
+  const lOrd = todoSortOrderValue(localItem);
+  const rOrd = todoSortOrderValue(remoteItem);
+  if (lOrd == null && rOrd == null) return null;
+  if (rAt > lAt && rOrd != null) return { sortOrder: rOrd, orderUpdatedAt: rAt };
+  if (lAt > rAt && lOrd != null) return { sortOrder: lOrd, orderUpdatedAt: lAt };
+  if (preferRemoteOrder && rOrd != null) return { sortOrder: rOrd, orderUpdatedAt: rAt };
+  if (lOrd != null) return { sortOrder: lOrd, orderUpdatedAt: lAt };
+  if (rOrd != null) return { sortOrder: rOrd, orderUpdatedAt: rAt };
+  return null;
+}
+
+function applyPickedTodoOrder(item, picked) {
+  if (!item || !picked) return item;
+  const sameOrder = todoSortOrderValue(item) === picked.sortOrder;
+  const sameAt = todoOrderUpdatedAt(item) === (picked.orderUpdatedAt || 0);
+  if (sameOrder && sameAt) return item;
+  const out = Object.assign({}, item);
+  out.sortOrder = picked.sortOrder;
+  if (picked.orderUpdatedAt) out.orderUpdatedAt = picked.orderUpdatedAt;
+  else delete out.orderUpdatedAt;
+  return out;
+}
+
+/**
+ * Same splice the drag used: move fromId to toId's index, incomplete rows
+ * only. Then stamp sortOrder from the resulting array and orderUpdatedAt on
+ * every row so this order wins over an older stamp on the other device.
+ */
+function moveTodoInOrder(todos, fromId, toId, at) {
+  const list = sortTodosByOrder(backfillTodoSortOrders(todos));
+  const fromIdx = list.findIndex(function (s) { return s && s.id === fromId; });
+  const toIdx = list.findIndex(function (s) { return s && s.id === toId; });
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return { arr: list, changed: false };
+  const fromItem = list[fromIdx];
+  const toItem = list[toIdx];
+  if (!fromItem || !toItem || fromItem.done || toItem.done) return { arr: list, changed: false };
+  const item = list.splice(fromIdx, 1)[0];
+  list.splice(toIdx, 0, item);
+  const atMs = Number(at) || Date.now();
+  list.forEach(function (row, i) {
+    if (!row || typeof row !== 'object') return;
+    row.sortOrder = (i + 1) * TODO_ORDER_STEP;
+    row.orderUpdatedAt = atMs;
+  });
+  return { arr: list, changed: true };
+}
+
+/**
+ * Id-union for todos. Content uses mergeByIdPreferNewer. sortOrder is applied
+ * afterwards from pickTodoOrderFields so a newer title cannot drop the order.
+ * The returned array is sorted by sortOrder. Does not read deletedIds.
+ */
+function mergeTodosPreferNewer(localArr, remoteArr, opts) {
+  opts = opts || {};
+  const localFilled = backfillTodoSortOrders(localArr);
+  const remoteFilled = backfillTodoSortOrders(remoteArr);
+  let remoteHasId = false;
+  remoteFilled.forEach(function (item) {
+    if (item && item.id) remoteHasId = true;
+  });
+  const content = remoteHasId
+    ? mergeByIdPreferNewer(localFilled, remoteFilled, opts)
+    : { arr: localFilled.slice(), changed: false };
+  const localById = new Map();
+  localFilled.forEach(function (item) {
+    if (item && item.id) localById.set(item.id, item);
+  });
+  const remoteById = new Map();
+  remoteFilled.forEach(function (item) {
+    if (item && item.id) remoteById.set(item.id, item);
+  });
+  let changed = !!content.changed;
+  const merged = (content.arr || []).map(function (item) {
+    if (!item || !item.id) return item;
+    const picked = pickTodoOrderFields(localById.get(item.id), remoteById.get(item.id), opts.preferRemoteOrder !== false);
+    const next = applyPickedTodoOrder(item, picked);
+    if (next !== item) changed = true;
+    return next;
+  });
+  const sorted = sortTodosByOrder(merged);
+  let orderChanged = sorted.length !== merged.length;
+  if (!orderChanged) {
+    for (let i = 0; i < sorted.length; i++) {
+      if (sorted[i] !== merged[i]) { orderChanged = true; break; }
+    }
+  }
+  return { arr: sorted, changed: changed || orderChanged };
+}
+/* TODO_ORDER_SYNC_END */
+
 let state = loadState();
 let activeCat = 'all';
 let todoTab = 'today';
@@ -4842,18 +5048,8 @@ function normalizeState(data) {
   }
 
   if (Array.isArray(data.todos)) {
-    base.todos = data.todos.map(t => {
-      const createdAt = t.createdAt || Date.now();
-      const out = {
-        id: t.id || uid('t'),
-        title: String(t.title || ''),
-        due: t.due || '',
-        done: !!t.done,
-        createdAt
-      };
-      if (t.updatedAt != null) out.updatedAt = t.updatedAt;
-      return out;
-    });
+    // Keep sortOrder / orderUpdatedAt. Array index alone is not synced.
+    base.todos = normalizeTodoList(data.todos);
   }
   // Ensure seeded todos exist (stable id); do not wipe user todos.
   // SEED_TODOS is empty, so this no longer resurrects deleted items.
@@ -5791,9 +5987,20 @@ function openTodoAddModal() {
     const title = String(fd.get('title') || '').trim();
     const due = String(fd.get('due') || '');
     if (!title) return;
-    // Newest input on top
+    // Newest input on top. Its sortOrder is what the other device keeps after id-union.
     const _nowAdd = Date.now();
-    state.todos.unshift({ id: uid('t'), title, due, done: false, createdAt: _nowAdd, updatedAt: _nowAdd });
+    backfillTodoSortOrders(state.todos);
+    state.todos.unshift({
+      id: uid('t'),
+      title: title,
+      due: due,
+      done: false,
+      createdAt: _nowAdd,
+      updatedAt: _nowAdd,
+      sortOrder: nextTopTodoSortOrder(state.todos),
+      orderUpdatedAt: _nowAdd
+    });
+    state.todos = sortTodosByOrder(state.todos);
     saveState();
     closeModal();
     // Stay on the tab the user was filling in (明天 / 後日 / 七天內).
@@ -5807,16 +6014,13 @@ function openTodoAddModal() {
 document.getElementById('btnAddTodo').addEventListener('click', openTodoAddModal);
 
 function reorderTodos(fromId, toId) {
-  if (VIEW_ONLY) return;
-  const fromIdx = state.todos.findIndex(s => s.id === fromId);
-  const toIdx = state.todos.findIndex(s => s.id === toId);
-  if (fromIdx < 0 || toIdx < 0) return;
-  const fromItem = state.todos[fromIdx];
-  const toItem = state.todos[toIdx];
-  // Only reorder among incomplete items
-  if (fromItem.done || toItem.done) return;
-  const [item] = state.todos.splice(fromIdx, 1);
-  state.todos.splice(toIdx, 0, item);
+  if (VIEW_ONLY || !state || !Array.isArray(state.todos)) return;
+  // Legacy rows have no sortOrder. Stamp the on-screen array before sorting
+  // so this drag starts from the order the owner already sees.
+  backfillTodoSortOrders(state.todos);
+  const moved = moveTodoInOrder(state.todos, fromId, toId, Date.now());
+  if (!moved.changed) return;
+  state.todos = moved.arr;
   saveState();
   renderTodos();
 }
@@ -5962,8 +6166,8 @@ function openTodoEditModal(editId) {
 function renderTodos() {
   applySessionViewFilters();
   const list = document.getElementById('todoList');
-  // Preserve state.todos order; incompletes first, completed at bottom
-  const filtered = state.todos.filter(matchesTodoTab);
+  // sortOrder is the shared order. Incomplete stays above completed.
+  const filtered = sortTodosByOrder((state.todos || []).filter(matchesTodoTab));
   const openItems = filtered.filter(t => !t.done);
   const doneItems = filtered.filter(t => t.done);
   const items = openItems.concat(doneItems);
@@ -9245,7 +9449,11 @@ function mergeDeletionRecordLists(a, b) {
 }
 
 function unionSyncItems(localArr, remoteArr, records, kind) {
-  const merged = mergeByIdPreferNewer(localArr || [], remoteArr || [], { allowAdds: true }).arr;
+  // Todos carry sortOrder through the union. Events stay id-and-newer-content.
+  const merged = (kind === 'todo'
+    ? mergeTodosPreferNewer(localArr || [], remoteArr || [], { allowAdds: true })
+    : mergeByIdPreferNewer(localArr || [], remoteArr || [], { allowAdds: true })
+  ).arr;
   return merged.filter(function (item) {
     return item && item.id && !deletionRecordsBlockItem(records, item, kind);
   });
@@ -9253,7 +9461,9 @@ function unionSyncItems(localArr, remoteArr, records, kind) {
 
 /**
  * Firestore write body. Todos, events, and deletedIds are the union of both
- * devices. This device's other fields stay. Does not read or write the UI.
+ * devices. Todo sortOrder survives that union: the newer orderUpdatedAt wins,
+ * and a tie keeps the order already stored on the document. This device's
+ * other fields stay. Does not read or write the UI.
  */
 function combineFirebaseSyncDocs(localDoc, remoteDoc) {
   const local = localDoc && typeof localDoc === 'object' ? localDoc : {};
@@ -9284,20 +9494,14 @@ function applyRemoteSyncPayload(remote, opts) {
   const allowAdds = authoritative || unionLists;
   if (Array.isArray(remote.todos)) {
     // Retired seed ids are dropped on every merge so Pages or Drive cannot put them back.
-    const remoteTodos = filterRemoteItemsByDeletions(withoutRetiredSeedTodos(remote.todos.map(t => {
-      const createdAt = t.createdAt || Date.now();
-      const out = {
-        id: t.id || uid('t'),
-        title: String(t.title || ''),
-        due: t.due || '',
-        done: !!t.done,
-        createdAt
-      };
-      if (t.updatedAt != null) out.updatedAt = t.updatedAt;
-      return out;
-    })), 'todo');
+    const remoteTodos = filterRemoteItemsByDeletions(withoutRetiredSeedTodos(remote.todos.map(normalizeTodoRecord)), 'todo');
     if ((authoritative || unionLists) && !VIEW_ONLY) clearDeletionRecordsForItems(remoteTodos, 'todo');
-    const r = mergeByIdPreferNewer(state.todos, remoteTodos, { allowAdds: allowAdds });
+    const r = mergeTodosPreferNewer(state.todos, remoteTodos, {
+      allowAdds: allowAdds,
+      // Firebase and a snapshot at least as new as the last sync share one order.
+      // An older file must not reshuffle the list already on this device.
+      preferRemoteOrder: !!(authoritative || unionLists)
+    });
     let nextTodos = r.arr;
     let prunedTodos = false;
     if (unionLists) {
@@ -9623,6 +9827,8 @@ function noteFirebaseSyncIssue(err) {
 /**
  * Pull users/{uid}/dashboard/sync into the lists on screen.
  * Rows union by id; the newer row wins. Tombstones remove a row on both devices.
+ * Todo order is sortOrder. The newer orderUpdatedAt wins; a tie follows the
+ * synced array. A title edit does not reshuffle that order.
  * A newer local syncUpdatedAt must not hide rows that exist only in Firestore.
  * Theme and the in-document 今天 / 個人活動 choice stay on this device.
  */
