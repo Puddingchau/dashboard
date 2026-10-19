@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#87CEEB" />
   <script>
     /* Theme is device-local (dash-hub-v1). Apply it before paint.
-       ?view=1 paints rain-cafe on the lock screen only and does not write localStorage. */
+       ?view=1 always paints sunny-beach (the owner dashboard look) and does not write localStorage. */
     (function () {
       var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
       var COLORS = {
@@ -25,8 +25,10 @@
         viewOnly = new URLSearchParams(location.search).get('view') === '1';
       } catch (e) {}
       if (viewOnly) {
-        document.documentElement.classList.add('view-only', 'theme-rain-window');
-        theme = 'rain-cafe';
+        /* Friend share stays on sunny-beach forever. Do not follow rain-cafe or localStorage. */
+        document.documentElement.classList.add('view-only');
+        document.documentElement.classList.remove('theme-rain-window');
+        theme = 'sunny-beach';
       } else {
         try {
           var raw = localStorage.getItem('dash-hub-v1');
@@ -45,7 +47,7 @@
         if (bootData.busExpanded) document.documentElement.classList.add('boot-bus-open');
       }
       var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB'));
+      if (meta) meta.setAttribute('content', COLORS[theme] || '#87CEEB');
       /* Owner opens from this device. Pages sync-data.json is prefetched only for ?view=1.
          Signed-in owner list sync is a Firestore pull after auth, not this file. */
       window.__DASH_BOOT_SYNC = null;
@@ -2962,24 +2964,24 @@
       align-items: center;
       justify-content: center;
       padding: 24px 16px;
-      background-color: #1E2C3A;
-      background-image: url('rain-cafe-bg.jpg');
+      background-color: #87CEEB;
+      background-image: url('sunny-beach-bg.jpg');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
     }
-    html.view-only.theme-rain-window .share-lock-card {
-      background: rgba(255, 252, 248, 0.48);
+    html.view-only .share-lock-card {
+      background: rgba(255, 255, 255, 0.52);
       backdrop-filter: blur(26px) saturate(1.35);
       -webkit-backdrop-filter: blur(26px) saturate(1.35);
-      border: 1px solid rgba(255, 255, 255, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.42);
       box-shadow:
-        0 24px 48px -12px rgba(10, 20, 35, 0.5),
-        inset 0 1px 0 rgba(255, 255, 255, 0.55);
-      color: #1E262E;
+        0 24px 48px -12px rgba(14, 116, 144, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      color: #1E3A4C;
     }
-    html.view-only.theme-rain-window .share-lock-msg {
-      color: #7A5420;
+    html.view-only .share-lock-msg {
+      color: #92400E;
     }
     .share-lock-card {
       width: min(420px, 100%);
@@ -3071,11 +3073,11 @@
   (function () {
     var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
     var viewOnly = document.documentElement.classList.contains('view-only');
-    var theme = viewOnly ? 'rain-cafe' : (window.__DASH_BOOT_THEME || 'sunny-beach');
+    var theme = viewOnly ? 'sunny-beach' : (window.__DASH_BOOT_THEME || 'sunny-beach');
+    if (THEMES.indexOf(theme) === -1) theme = 'sunny-beach';
     THEMES.forEach(function (p) { document.body.classList.remove('theme-' + p); });
     document.body.classList.remove('theme-rain-window');
     document.body.classList.add('theme-' + theme);
-    if (viewOnly) document.body.classList.add('theme-rain-window');
   })();
 </script>
   <div class="share-lock" id="shareLock" role="dialog" aria-modal="true" aria-labelledby="shareLockTitle">
@@ -5060,8 +5062,11 @@ function saveState(opts) {
 const THEME_PRESETS = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
 
 function applyTheme(preset, persist) {
-  if (VIEW_ONLY && persist !== false) return;
-  if (VIEW_ONLY && !shareViewUnlocked) return;
+  /* ?view=1 always shows sunny-beach. Do not persist that onto the viewer's device. */
+  if (VIEW_ONLY) {
+    preset = 'sunny-beach';
+    persist = false;
+  }
   const t = THEME_PRESETS.includes(preset) ? preset : 'sunny-beach';
   state.theme = t;
   const body = document.getElementById('appBody') || document.body;
@@ -11148,21 +11153,25 @@ function initViewOnlyChrome() {
   if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 布丁仔';
 }
 
-/** Lock screen only. Paints rain-cafe and does not write owner localStorage or state.theme. */
+/** Share / ?view=1, lock screen and dashboard. Always sunny-beach. Does not write localStorage. */
 function applyShareEntryTheme() {
-  if (!VIEW_ONLY || shareViewUnlocked) return;
-  document.documentElement.classList.add('view-only', 'theme-rain-window');
+  if (!VIEW_ONLY) return;
+  const t = 'sunny-beach';
+  document.documentElement.classList.add('view-only');
+  document.documentElement.classList.remove('theme-rain-window');
   THEME_PRESETS.forEach(function (p) {
     document.documentElement.classList.remove('theme-' + p);
   });
-  document.documentElement.classList.add('theme-rain-cafe');
+  document.documentElement.classList.add('theme-' + t);
+  document.documentElement.setAttribute('data-dash-theme', t);
   const body = document.getElementById('appBody') || document.body;
-  if (!body) return;
-  THEME_PRESETS.forEach(function (p) { body.classList.remove('theme-' + p); });
-  body.classList.remove('theme-rain-window');
-  body.classList.add('theme-rain-cafe', 'theme-rain-window');
+  if (body) {
+    THEME_PRESETS.forEach(function (p) { body.classList.remove('theme-' + p); });
+    body.classList.remove('theme-rain-window');
+    body.classList.add('theme-' + t);
+  }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', '#1E2C3A');
+  if (meta) meta.setAttribute('content', '#87CEEB');
 }
 
 /* ===== Share gate =====
@@ -11501,9 +11510,7 @@ async function unlockShareView() {
     await bootDashboard({ importCloud: true });
   } catch (e) {}
   document.documentElement.classList.add('share-unlocked');
-  document.documentElement.classList.remove('theme-rain-window');
-  const body = document.getElementById('appBody') || document.body;
-  if (body) body.classList.remove('theme-rain-window');
+  applyShareEntryTheme();
   const pw = document.getElementById('shareLockPassword');
   if (pw) pw.value = '';
 }
