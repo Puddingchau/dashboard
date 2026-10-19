@@ -46,15 +46,19 @@
       }
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB'));
-      /* Start the Pages snapshot during HTML parse so the first revealed paint can include it. */
+      /* Owner opens from this device. Pages sync-data.json is prefetched only for ?view=1. */
       window.__DASH_BOOT_SYNC = null;
-      window.__DASH_BOOT_SYNC_PROMISE = fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' })
-        .then(function (res) { return res.ok ? res.json() : null; })
-        .then(function (data) {
-          window.__DASH_BOOT_SYNC = data;
-          return data;
-        })
-        .catch(function () { return null; });
+      if (viewOnly) {
+        window.__DASH_BOOT_SYNC_PROMISE = fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' })
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (data) {
+            window.__DASH_BOOT_SYNC = data;
+            return data;
+          })
+          .catch(function () { return null; });
+      } else {
+        window.__DASH_BOOT_SYNC_PROMISE = Promise.resolve(null);
+      }
       /* If boot never finishes, do not leave the dashboard invisible. */
       setTimeout(function () {
         document.documentElement.classList.remove('dash-booting');
@@ -3311,7 +3315,7 @@
         <p id="shareOwnerStatus" aria-live="polite"></p>
         <div id="shareToast" class="share-toast" role="status"></div>
       </div>
-      <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入 · 布丁仔</p>
+      <p class="footer-note">本機儲存；要更新列表請按「立即同步」 · 布丁仔</p>
     </footer>
   </div>
 
@@ -8959,6 +8963,8 @@ function downloadSyncJson(obj, filename) {
    Document: users/{uid}/dashboard/sync
    Same fields as the Drive / Pages payload, plus deletedIds (tombstones).
    View-only (?view=1) never reads or writes Firebase.
+   Opening the page does not pull Firestore, Drive, or Pages into the list.
+   Local edits still write Firestore. 立即同步 merges; 推上線 publishes Pages.
    Theme stays on this device. Open still lands on 今天 / 個人活動;
    a tab picked in this document is kept across merges. */
 const FIREBASE_WEB_CONFIG = {
@@ -8976,7 +8982,6 @@ let firebaseStarted = false;
 let firebasePushTimer = null;
 let firebaseSyncInFlight = false;
 let firebasePushAgain = false;
-let firebaseVisAt = 0;
 
 function firebaseSdkReady() {
   return !!(window.firebase && firebase.auth && firebase.firestore && typeof firebase.initializeApp === 'function');
@@ -9027,30 +9032,6 @@ function clearFirebaseDirty(through) {
     const cur = firebaseDirtyAt();
     if (!cur || cur <= (Number(through) || 0)) localStorage.removeItem(FIREBASE_DIRTY_KEY);
   } catch (e) {}
-}
-
-function localMutationWatermark() {
-  let max = Number(state && state.syncUpdatedAt) || 0;
-  function bump(arr) {
-    (arr || []).forEach(function (item) { max = Math.max(max, itemSyncTs(item)); });
-  }
-  if (state) {
-    bump(state.todos);
-    bump(state.events);
-    bump(state.shortcuts);
-    bump(state.busStops);
-    max = Math.max(max, Number(state.share && state.share.updatedAt) || 0);
-  }
-  loadDeletionRecords().forEach(function (rec) { max = Math.max(max, Number(rec.at) || 0); });
-  return max;
-}
-
-function localAheadOfFirebase(remoteUpdated, exists) {
-  if (!exists) return true;
-  const remote = Number(remoteUpdated) || 0;
-  if (localMutationWatermark() > remote) return true;
-  if (firebaseDirtyAt() > remote) return true;
-  return false;
 }
 
 /** Keep the newer tombstone so a stale snapshot cannot restore a deleted row. */
@@ -9167,14 +9148,22 @@ async function pushFirebaseSnapshot() {
   return true;
 }
 
-function continueFirebaseSync() {
-  if (!firebasePushAgain) return;
-  firebasePushAgain = false;
-  if (firebaseDirtyAt()) queueFirebasePush();
-  else pullFirebaseOnOpen();
+function queueFirebasePush() {
+  if (VIEW_ONLY || !firebaseCanWrite()) return;
+  // Writes this device's snapshot only. Does not pull Firestore or Drive,
+  // so an edit cannot replace the list with a remote copy.
+  if (firebasePushTimer) clearTimeout(firebasePushTimer);
+  firebasePushTimer = setTimeout(function () {
+    firebasePushTimer = null;
+    if (firebaseSyncInFlight || gdriveSyncInFlight) {
+      queueFirebasePush();
+      return;
+    }
+    pushFirebaseOnly();
+  }, 800);
 }
 
-async function pullFirebaseOnOpen() {
+async function pushFirebaseOnly() {
   if (VIEW_ONLY || !firebaseCanWrite()) return;
   if (firebaseSyncInFlight) {
     firebasePushAgain = true;
@@ -9182,58 +9171,15 @@ async function pullFirebaseOnOpen() {
   }
   firebaseSyncInFlight = true;
   try {
-    const merged = await mergeFirebaseSnapshot();
-    if (!merged.ok) return;
-    if (localAheadOfFirebase(merged.remoteUpdated, merged.exists)) await pushFirebaseSnapshot();
-    else setFirebaseHint('in');
-  } catch (e) {
-    noteFirebaseSyncIssue(e);
-  } finally {
-    firebaseSyncInFlight = false;
-    continueFirebaseSync();
-  }
-}
-
-async function flushFirebaseDualWrite() {
-  if (VIEW_ONLY || !firebaseCanWrite()) return;
-  if (firebaseSyncInFlight) {
-    firebasePushAgain = true;
-    return;
-  }
-  firebaseSyncInFlight = true;
-  try {
-    const merged = await mergeFirebaseSnapshot();
-    if (!merged.ok) return;
     await pushFirebaseSnapshot();
   } catch (e) {
     noteFirebaseSyncIssue(e);
   } finally {
     firebaseSyncInFlight = false;
-    continueFirebaseSync();
+    if (!firebasePushAgain) return;
+    firebasePushAgain = false;
+    if (firebaseDirtyAt()) queueFirebasePush();
   }
-}
-
-function queueFirebasePush() {
-  if (VIEW_ONLY || !firebaseCanWrite()) return;
-  // Drive's runCloudSync pulls, then writes Drive and Firestore together.
-  if (gdriveAccessToken) return;
-  if (firebasePushTimer) clearTimeout(firebasePushTimer);
-  firebasePushTimer = setTimeout(function () {
-    firebasePushTimer = null;
-    if (gdriveAccessToken) {
-      if (!gdriveSyncInFlight) {
-        try { runCloudSync({ pull: true }); } catch (e) {}
-      } else {
-        scheduleCloudSync();
-      }
-      return;
-    }
-    if (firebaseSyncInFlight || gdriveSyncInFlight) {
-      queueFirebasePush();
-      return;
-    }
-    flushFirebaseDualWrite();
-  }, 800);
 }
 
 function scheduleFirebasePush() {
@@ -9302,14 +9248,7 @@ function startFirebaseSync() {
         return;
       }
       setFirebaseHint('in');
-      pullFirebaseOnOpen();
-    });
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState !== 'visible' || VIEW_ONLY || !firebaseCanWrite()) return;
-      const now = Date.now();
-      if (now - firebaseVisAt < 60000) return;
-      firebaseVisAt = now;
-      pullFirebaseOnOpen();
+      if (firebaseDirtyAt()) queueFirebasePush();
     });
   } catch (e) {
     noteFirebaseError(e);
@@ -9321,10 +9260,8 @@ const GDRIVE_TOKEN_SESSION_KEY = 'dash-hub-gdrive-token';
 let gdriveAccessToken = null;
 let gdriveTokenClient = null;
 let gdriveFileId = null;
-let gdriveAutoPushTimer = null;
 let gdriveSyncInFlight = false;
 let gcalAccessState = 'unknown'; // unknown | ok | no-scope | api-off | error
-let gcalVisSyncAt = 0;
 // Soft hint only: last token response did not list calendar.events. Not an access verdict.
 let gcalReauthCalendarOnly = false;
 // Fresh token must be probed even if a previous no-scope is still sitting in memory.
@@ -9528,27 +9465,11 @@ async function gdrivePush() {
   return true;
 }
 
-function scheduleGdriveAutoPush() {
-  scheduleCloudSync();
-}
-
 function scheduleCloudSync() {
   if (VIEW_ONLY) return;
-  // Firestore dual-write even when Drive is not connected. Drive still no-ops below.
+  // Local edits still dual-write to Firestore. Drive and Pages do not pull
+  // or push until 立即同步 or 推上線.
   scheduleFirebasePush();
-  if (!gdriveAccessToken) return;
-  if (gdriveAutoPushTimer) clearTimeout(gdriveAutoPushTimer);
-  gdriveAutoPushTimer = setTimeout(function () {
-    gdriveAutoPushTimer = null;
-    if (gdriveSyncInFlight) {
-      scheduleCloudSync();
-      return;
-    }
-    // Pull before push so this device applies a remote delete before writing
-    // its copy back. Local tombstones stop that pull from restoring a row
-    // just deleted here.
-    runCloudSync({ pull: true });
-  }, 2500);
 }
 
 function cloudStatusText(driveOk, gcalResult) {
@@ -10170,8 +10091,7 @@ function ensureGdriveTokenClient() {
         storeGdriveToken(resp.access_token);
         noteGcalAccessFromToken(resp);
         updateGdriveUiConnected(true);
-        setGdriveStatus('同步中…');
-        runCloudSync({ pull: true });
+        setGdriveStatus('已連接', '按「立即同步」先更新列表');
       } else if (resp && resp.error) {
         setGdriveStatus('授權失敗');
         console.warn('Google auth error', resp);
@@ -10239,14 +10159,6 @@ function bindGdriveUi() {
   if (!gdriveHasClientId()) {
     setGdriveStatus('未設定', '尚未設定 Google OAuth Client ID');
   }
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState !== 'visible' || VIEW_ONLY || !gdriveAccessToken) return;
-    if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') return;
-    const now = Date.now();
-    if (now - gcalVisSyncAt < 60000) return;
-    gcalVisSyncAt = now;
-    runCloudSync({ pull: true });
-  });
 }
 
 function tryGdriveSilentRestore() {
@@ -10272,7 +10184,7 @@ function tryGdriveSilentRestore() {
           storeGdriveToken(resp.access_token);
           noteGcalAccessFromToken(resp);
           updateGdriveUiConnected(true);
-          runCloudSync({ pull: true });
+          setGdriveStatus('已連接', '按「立即同步」先更新列表');
         } else if (gdriveAccessToken) {
           updateGdriveUiConnected(true);
           setGdriveStatus('已連接', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
@@ -11103,7 +11015,7 @@ function bindShareOwnerUi() {
 if (VIEW_ONLY) {
   bootShareGate();
 } else {
-  bootDashboard({ importCloud: true });
+  bootDashboard({ importCloud: false });
 }
 </script>
 </body>
