@@ -5980,6 +5980,9 @@ function removeEventById(id) {
   saveState();
   renderEvents();
   updateBlockSummaries();
+  if (ev && String(ev.id || '').indexOf('e_seed_') !== 0 && (eventKindOf(ev) === 'personal' || ev.gcalEventId)) {
+    scheduleGcalSync();
+  }
 }
 
 function openEventAddModal() {
@@ -6024,6 +6027,7 @@ function openEventAddModal() {
     syncEventsFilterUI();
     renderEvents();
     updateBlockSummaries();
+    if (kind === 'personal') scheduleGcalSync();
   };
 }
 
@@ -6075,9 +6079,11 @@ function openEventEditModal(editId) {
     const nextKind = readEventKind(fd);
     if (!title || !date) return;
     const idx = state.events.findIndex(x => x.id === editId);
+    let syncGcal = false;
     if (idx >= 0) {
       const prev = state.events[idx];
       const changed = prev.title !== title || prev.date !== date || (prev.time || '') !== (time || '') || (prev.work || '') !== work || eventKindOf(prev) !== nextKind;
+      syncGcal = String(prev.id || '').indexOf('e_seed_') !== 0 && (eventKindOf(prev) === 'personal' || nextKind === 'personal' || !!prev.gcalEventId);
       if (prev.gcalEventId && nextKind !== 'personal') queueGcalDelete(prev.gcalEventId);
       const nowTs = Date.now();
       state.events[idx] = normalizeEvent({
@@ -6100,6 +6106,7 @@ function openEventEditModal(editId) {
     applySessionViewFilters();
     syncEventsFilterUI();
     renderEvents();
+    if (syncGcal) scheduleGcalSync();
   };
 }
 
@@ -9071,8 +9078,10 @@ function downloadSyncJson(obj, filename) {
    Owner mode, once Firebase is signed in, pulls and merges Firestore after
    auth is ready and when this tab returns to the foreground. That pull does
    not read Drive or Pages. Owner mode does not auto-import sync-data.json.
-   Local edits still write Firestore. gdriveSyncNow() can still force a sync;
-   the owner UI has no 立即同步 button. 推上線 publishes Pages.
+   Local edits still write Firestore. Personal events also sync with the
+   primary Google Calendar: pull on open/foreground, push on add/edit/delete.
+   School events and e_seed_* stay out of Calendar. The owner UI has no
+   立即同步 button. 推上線 publishes Pages.
    Theme stays on this device. Open still lands on 今天 / 個人活動;
    a tab picked in this document is kept across merges. */
 const FIREBASE_WEB_CONFIG = {
@@ -9282,7 +9291,7 @@ function queueFirebasePush() {
   if (firebasePushTimer) clearTimeout(firebasePushTimer);
   firebasePushTimer = setTimeout(function () {
     firebasePushTimer = null;
-    if (firebaseSyncInFlight || gdriveSyncInFlight) {
+    if (firebaseSyncInFlight || gdriveSyncInFlight || gcalSyncInFlight || gcalSyncPromise) {
       queueFirebasePush();
       return;
     }
@@ -9317,10 +9326,12 @@ function scheduleFirebasePush() {
  * Pull users/{uid}/dashboard/sync and merge it into the lists on screen.
  * Does not read Drive or Pages, and does not write Firestore.
  * Local edits still push through scheduleFirebasePush.
+ * After the list is on screen, personal events pull from Google Calendar
+ * when Calendar is authorized.
  */
 async function pullFirebaseList() {
   if (VIEW_ONLY || !firebaseCanWrite()) return;
-  if (firebaseSyncInFlight || gdriveSyncInFlight) {
+  if (firebaseSyncInFlight || gdriveSyncInFlight || gcalSyncInFlight) {
     firebasePullAgain = true;
     return;
   }
@@ -9337,6 +9348,7 @@ async function pullFirebaseList() {
   } finally {
     firebaseSyncInFlight = false;
     flushFirebaseFollowUps();
+    scheduleGcalSync();
   }
 }
 
@@ -9367,6 +9379,11 @@ function flushFirebaseFollowUps() {
   if (firebasePullAgain) {
     firebasePullAgain = false;
     pullFirebaseList();
+    return;
+  }
+  if (gcalSyncAgain && !gcalSyncInFlight && !gcalSyncPromise) {
+    gcalSyncAgain = false;
+    scheduleGcalSync();
   }
 }
 
@@ -9376,9 +9393,11 @@ function scheduleFirebaseForegroundPull() {
   firebaseForegroundTimer = setTimeout(function () {
     firebaseForegroundTimer = null;
     if (document.visibilityState === 'hidden') return;
-    if (!firebaseCanWrite()) return;
-    if (Date.now() - firebaseAutoPullAt < FIREBASE_FOCUS_SYNC_MS) return;
-    pullFirebaseList();
+    const firebaseDue = firebaseCanWrite() && (Date.now() - firebaseAutoPullAt >= FIREBASE_FOCUS_SYNC_MS);
+    // Firestore pull already schedules Calendar. A throttled or signed-out
+    // return still pulls Calendar, so a new Google event shows up.
+    if (firebaseDue) pullFirebaseList();
+    else scheduleGcalSync();
   }, FIREBASE_FOCUS_DEBOUNCE_MS);
 }
 
@@ -9480,6 +9499,11 @@ let gcalAccessState = 'unknown'; // unknown | ok | no-scope | api-off | error
 let gcalReauthCalendarOnly = false;
 // Fresh token must be probed even if a previous no-scope is still sitting in memory.
 let gcalProbeAfterToken = false;
+let gcalSyncTimer = null;
+let gcalSyncInFlight = false;
+let gcalSyncAgain = false;
+let gcalSyncPromise = null;
+let gcalSilentAuth = false;
 
 function gdriveHasClientId() {
   return !!(GDRIVE_OAUTH_CLIENT_ID && String(GDRIVE_OAUTH_CLIENT_ID).trim());
@@ -9691,7 +9715,8 @@ function scheduleCloudSync() {
   if (VIEW_ONLY) return;
   // Local edits write Firestore. They do not pull Firestore, Drive, or Pages.
   // Firestore is pulled on sign-in and when the tab returns to the foreground.
-  // gdriveSyncNow() is the manual force sync. The owner UI does not show it.
+  // Personal Calendar push is scheduled from add / edit / delete, not here,
+  // so a To-Do or theme save does not hit the Calendar API.
   // 推上線 publishes Pages.
   scheduleFirebasePush();
 }
@@ -9735,7 +9760,7 @@ function setListSyncBusy(busy) {
 /** Firestore list sync. Drive file sync stays off. */
 async function runFirebaseListSync() {
   if (VIEW_ONLY) return { driveOk: false, pulled: false, skipped: 'view-only' };
-  if (gdriveSyncInFlight || firebaseSyncInFlight) {
+  if (gdriveSyncInFlight || firebaseSyncInFlight || gcalSyncInFlight) {
     firebaseForceSyncPending = true;
     return { driveOk: false, pulled: false, skipped: 'inflight' };
   }
@@ -9900,12 +9925,76 @@ function parseGcalReason(body, status) {
   return '';
 }
 
+function gcalAuthFailure(e) {
+  return !!(e && (e.status === 401 || e.status === 403 || e.gcalReason === 'no-scope' || e.gcalReason === 'api-off'));
+}
+
+async function refreshGcalAccessToken() {
+  if (VIEW_ONLY || !gdriveHasClientId()) return false;
+  if (refreshGcalAccessToken.inflight) return refreshGcalAccessToken.inflight;
+  refreshGcalAccessToken.inflight = new Promise(function (resolve) {
+    let settled = false;
+    function finish(ok) {
+      if (settled) return;
+      settled = true;
+      gcalSilentAuth = false;
+      refreshGcalAccessToken.inflight = null;
+      resolve(!!ok);
+    }
+    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+      finish(false);
+      return;
+    }
+    const client = ensureGdriveTokenClient();
+    if (!client) {
+      finish(false);
+      return;
+    }
+    const prev = client.callback;
+    client.callback = function (resp) {
+      client.callback = prev;
+      if (resp && resp.access_token) {
+        storeGdriveToken(resp.access_token);
+        noteGcalAccessFromToken(resp);
+        updateGdriveUiConnected(true);
+        finish(true);
+      } else {
+        finish(false);
+      }
+    };
+    gcalSilentAuth = true;
+    try {
+      client.requestAccessToken({
+        prompt: '',
+        login_hint: GCAL_ACCOUNT_EMAIL,
+        scope: GCAL_SCOPE,
+        include_granted_scopes: !!ENABLE_DRIVE_SYNC
+      });
+    } catch (e) {
+      client.callback = prev;
+      finish(false);
+    }
+    setTimeout(function () { finish(false); }, 8000);
+  });
+  return refreshGcalAccessToken.inflight;
+}
+
 async function gcalApi(url, opts) {
   opts = opts || {};
   if (VIEW_ONLY) {
     const err = new Error('view-only');
     err.status = 0;
     throw err;
+  }
+  if (!gdriveAccessToken) {
+    if (!opts._gcalRetried) {
+      const refreshed = await refreshGcalAccessToken();
+      if (refreshed) return gcalApi(url, Object.assign({}, opts, { _gcalRetried: true }));
+    }
+    const missing = new Error('no calendar token');
+    missing.status = 401;
+    missing.gcalReason = 'no-scope';
+    throw missing;
   }
   const headers = Object.assign({ Authorization: 'Bearer ' + gdriveAccessToken }, opts.headers || {});
   const res = await fetch(url, Object.assign({}, opts, { headers: headers }));
@@ -9916,10 +10005,15 @@ async function gcalApi(url, opts) {
   }
   if (!res.ok) {
     const body = await res.text().catch(function () { return ''; });
+    const reason = parseGcalReason(body, res.status);
+    if (!opts._gcalRetried && (res.status === 401 || reason === 'no-scope')) {
+      const refreshed = await refreshGcalAccessToken();
+      if (refreshed) return gcalApi(url, Object.assign({}, opts, { _gcalRetried: true }));
+    }
     const err = new Error('Calendar API ' + res.status);
     err.status = res.status;
     err.body = body;
-    err.gcalReason = parseGcalReason(body, res.status);
+    err.gcalReason = reason;
     throw err;
   }
   return res;
@@ -9976,7 +10070,8 @@ function gcalDashId(g) {
 function hkWallFromDate(d) {
   if (!d || !Number.isFinite(d.getTime())) return null;
   try {
-    const fmt = new Intl.DateTimeFormat('en-US', {
+    // en-GB is 24-hour. Some phones still return 12-hour parts; fold those in.
+    const fmt = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Hong_Kong',
       year: 'numeric',
       month: '2-digit',
@@ -9987,9 +10082,19 @@ function hkWallFromDate(d) {
     });
     const parts = {};
     fmt.formatToParts(d).forEach(function (p) { parts[p.type] = p.value; });
-    let hour = parts.hour || '00';
-    if (hour === '24') hour = '00';
-    return { date: parts.year + '-' + parts.month + '-' + parts.day, time: hour + ':' + parts.minute };
+    let hour = parseInt(parts.hour, 10);
+    if (!Number.isFinite(hour)) hour = 0;
+    if (hour === 24) hour = 0;
+    const dayPeriod = String(parts.dayPeriod || '').toLowerCase();
+    if (dayPeriod.indexOf('pm') !== -1 && hour < 12) hour += 12;
+    if (dayPeriod.indexOf('am') !== -1 && hour === 12) hour = 0;
+    const minute = parseInt(parts.minute, 10);
+    const month = String(parts.month || '').padStart(2, '0');
+    const day = String(parts.day || '').padStart(2, '0');
+    return {
+      date: parts.year + '-' + month + '-' + day,
+      time: pad2(hour) + ':' + pad2(Number.isFinite(minute) ? minute : 0)
+    };
   } catch (e) {
     return null;
   }
@@ -10002,12 +10107,20 @@ function gcalToPatch(g) {
   if (start.date) date = String(start.date);
   else if (start.dateTime) {
     const wall = hkWallFromDate(new Date(start.dateTime));
-    if (wall) { date = wall.date; time = wall.time; }
+    if (wall && wall.date) { date = wall.date; time = wall.time; }
+    else {
+      const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(String(start.dateTime));
+      if (m) { date = m[1]; time = m[2]; }
+    }
   }
   let title = String((g && g.summary) || '').trim();
   if (title.length > 200) title = title.slice(0, 200);
   let work = String((g && g.description) || '').trim();
   if (work.length > 500) work = work.slice(0, 500);
+  if (time && !/^\d{2}:\d{2}$/.test(time)) {
+    const m = /^(\d{1,2}):(\d{2})/.exec(time);
+    time = m ? pad2(Number(m[1])) + ':' + pad2(Number(m[2])) : '';
+  }
   return { title: title, date: date, time: time, work: work };
 }
 
@@ -10157,6 +10270,19 @@ function localIndexForGcal(g) {
 }
 
 async function gcalSync() {
+  if (gcalSyncPromise) {
+    gcalSyncAgain = true;
+    return gcalSyncPromise;
+  }
+  gcalSyncInFlight = true;
+  gcalSyncPromise = gcalSyncInner().finally(function () {
+    gcalSyncPromise = null;
+    gcalSyncInFlight = false;
+  });
+  return gcalSyncPromise;
+}
+
+async function gcalSyncInner() {
   if (VIEW_ONLY || !gdriveAccessToken) return { ok: false, reason: 'skip' };
   if (gcalProbeAfterToken) {
     gcalProbeAfterToken = false;
@@ -10170,11 +10296,14 @@ async function gcalSync() {
 
   let changed = false;
   (state.events || []).forEach(function (ev) {
-    if (eventKindOf(ev) !== 'personal' && ev.gcalEventId) {
-      queueGcalDelete(ev.gcalEventId);
-      delete ev.gcalEventId;
-      delete ev.gcalUpdated;
-      changed = true;
+    // School rows and seeded school events never stay linked to Calendar.
+    if (String(ev.id || '').indexOf('e_seed_') === 0 || eventKindOf(ev) !== 'personal') {
+      if (ev.gcalEventId) {
+        queueGcalDelete(ev.gcalEventId);
+        delete ev.gcalEventId;
+        delete ev.gcalUpdated;
+        changed = true;
+      }
     }
   });
   await flushGcalDeletes();
@@ -10187,6 +10316,7 @@ async function gcalSync() {
   });
   const now = Date.now();
   let windowItems = [];
+  let windowOk = true;
   try {
     windowItems = await gcalListAll({
       timeMin: new Date(now - 90 * 86400000).toISOString(),
@@ -10198,6 +10328,9 @@ async function gcalSync() {
     });
   } catch (e) {
     console.warn('GCal window list failed', e);
+    // An auth failure must surface. A query error must not block the push below.
+    if (gcalAuthFailure(e)) throw e;
+    windowOk = false;
     windowItems = [];
   }
 
@@ -10286,7 +10419,9 @@ async function gcalSync() {
     }
   }
 
-  const personalIds = state.events.filter(function (e) { return eventKindOf(e) === 'personal'; }).map(function (e) { return e.id; });
+  const personalIds = state.events.filter(function (e) {
+    return eventKindOf(e) === 'personal' && String(e.id || '').indexOf('e_seed_') !== 0;
+  }).map(function (e) { return e.id; });
   for (let p = 0; p < personalIds.length; p++) {
     const ev = state.events.find(function (e) { return e.id === personalIds[p]; });
     if (!ev || !ev.date || !String(ev.title || '').trim()) continue;
@@ -10300,6 +10435,15 @@ async function gcalSync() {
     if (!g) {
       g = remoteList.find(function (item) {
         return item.status !== 'cancelled' && gcalDashId(item) === ev.id;
+      }) || null;
+    }
+    if (!g && windowOk) {
+      const key = eventContentKey(ev);
+      g = remoteList.find(function (item) {
+        if (!item || item.status === 'cancelled' || pending[item.id]) return false;
+        if (gcalContentKey(item) !== key) return false;
+        const did = gcalDashId(item);
+        return !did || did === ev.id;
       }) || null;
     }
     const localMs = eventContentMs(ev);
@@ -10321,6 +10465,9 @@ async function gcalSync() {
         ev.gcalEventId = g.id;
         ev.gcalUpdated = gMs;
         changed = true;
+      }
+      if (!gcalDashId(g)) {
+        try { await gcalStamp(g.id, ev.id, ev.updatedAt || gMs); } catch (e) { console.warn('GCal stamp failed', e); }
       }
       continue;
     }
@@ -10358,6 +10505,42 @@ async function gcalSync() {
   gcalAccessState = 'ok';
   gcalReauthCalendarOnly = false;
   return { ok: true, changed: changed };
+}
+
+function scheduleGcalSync() {
+  if (VIEW_ONLY) return;
+  if (gcalSyncInFlight || gcalSyncPromise || gdriveSyncInFlight || firebaseSyncInFlight) gcalSyncAgain = true;
+  if (gcalSyncTimer) clearTimeout(gcalSyncTimer);
+  gcalSyncTimer = setTimeout(runScheduledGcalSync, 500);
+}
+
+async function runScheduledGcalSync() {
+  gcalSyncTimer = null;
+  if (VIEW_ONLY || !gdriveAccessToken) return;
+  if (gcalSyncInFlight || gcalSyncPromise || gdriveSyncInFlight || firebaseSyncInFlight || firebasePushTimer) {
+    gcalSyncAgain = true;
+    if (!gcalSyncTimer) gcalSyncTimer = setTimeout(runScheduledGcalSync, 800);
+    return;
+  }
+  let result = { ok: false, changed: false, reason: 'error' };
+  try {
+    result = await gcalSync() || result;
+  } catch (e) {
+    console.warn('GCal sync failed', e);
+    const reason = (e && e.gcalReason) || 'error';
+    if (reason === 'api-off' || reason === 'no-scope') gcalAccessState = reason;
+    else gcalAccessState = 'error';
+    result = { ok: false, changed: false, reason: reason };
+  }
+  try { updateGdriveUiConnected(!!gdriveAccessToken); } catch (e2) {}
+  if (result && result.ok && result.changed) {
+    try { scheduleFirebasePush(); } catch (e3) {}
+  }
+  if (gcalSyncAgain) {
+    gcalSyncAgain = false;
+    scheduleGcalSync();
+  }
+  try { flushFirebaseFollowUps(); } catch (e4) {}
 }
 
 function gcalScopeGranted(resp) {
@@ -10401,6 +10584,7 @@ function ensureGdriveTokenClient() {
         noteGcalAccessFromToken(resp);
         updateGdriveUiConnected(true);
         if (ENABLE_DRIVE_SYNC) setGdriveStatus('已連接', '列表由 Firebase 自動同步');
+        scheduleGcalSync();
       } else if (resp && resp.error) {
         if (ENABLE_DRIVE_SYNC) setGdriveStatus('授權失敗');
         else { try { showShareToast('Calendar 授權失敗'); } catch (e) {} }
@@ -10408,6 +10592,11 @@ function ensureGdriveTokenClient() {
       }
     },
     error_callback: function (err) {
+      if (gcalSilentAuth) {
+        gcalSilentAuth = false;
+        console.warn('Calendar silent auth skipped', err);
+        return;
+      }
       const t = (err && (err.type || err.message)) || '';
       if (String(t).indexOf('popup_closed') !== -1) {
         if (ENABLE_DRIVE_SYNC) setGdriveStatus('已取消授權');
@@ -10499,35 +10688,25 @@ function tryGdriveSilentRestore() {
   if (VIEW_ONLY) return;
   if (!gdriveHasClientId()) return;
   restoreGdriveTokenFromSession();
-  const hasFileId = !!localStorage.getItem(GDRIVE_FILE_ID_KEY);
-  if (!gdriveAccessToken && !hasFileId) return;
-
+  // Calendar does not use a Drive file. A phone that already granted
+  // calendar.events should refresh even when sessionStorage was cleared.
+  if (gdriveAccessToken) {
+    updateGdriveUiConnected(true);
+    scheduleGcalSync();
+  }
+  let tries = 0;
   function attempt() {
     if (!window.google || !google.accounts || !google.accounts.oauth2) {
+      if (tries++ > 40) return;
       setTimeout(attempt, 400);
       return;
     }
-    ensureGdriveTokenClient();
-    try {
-      const client = gdriveTokenClient;
-      if (!client) return;
-      const prevCb = client.callback;
-      client.callback = function (resp) {
-        client.callback = prevCb;
-        if (resp && resp.access_token) {
-          storeGdriveToken(resp.access_token);
-          noteGcalAccessFromToken(resp);
-          updateGdriveUiConnected(true);
-          setGdriveStatus('已連接', '列表由 Firebase 自動同步');
-        } else if (gdriveAccessToken) {
-          updateGdriveUiConnected(true);
-          setGdriveStatus('已連接', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
-        }
-      };
-      client.requestAccessToken({ prompt: '', login_hint: GCAL_ACCOUNT_EMAIL });
-    } catch (e) {
-      /* ignore */
-    }
+    refreshGcalAccessToken().then(function (ok) {
+      if (ok || gdriveAccessToken) {
+        updateGdriveUiConnected(true);
+        scheduleGcalSync();
+      }
+    }).catch(function () {});
   }
   attempt();
 }
