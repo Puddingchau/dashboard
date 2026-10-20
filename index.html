@@ -558,6 +558,14 @@
       opacity: 0;
       pointer-events: none;
     }
+    /* Login settle: do not smooth-scroll or anchor-jump while a sync repaint lands. */
+    html.sync-settling,
+    html.sync-settling body {
+      scroll-behavior: auto !important;
+    }
+    html.sync-settling .app {
+      overflow-anchor: none;
+    }
     /* Match a saved expanded training/bus block before JS removes is-collapsed. */
     html.boot-training-open #training.is-collapsed .block-body,
     html.boot-bus-open #bus.is-collapsed .block-body {
@@ -1932,18 +1940,27 @@
     .event-item.kind-school { box-shadow: inset 3px 0 0 #f59e0b; }
     .sync-actions {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       align-items: center;
       justify-content: flex-end;
       gap: 6px;
       margin: 0 0 6px;
       padding: 0;
       min-width: 0;
+      /* One fixed row. "Firebase 未登入" → "Firebase 已連" must not wrap and shove the list. */
+      height: 32px;
+      min-height: 32px;
+      max-height: 32px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
     }
+    .sync-actions::-webkit-scrollbar { display: none; height: 0; }
     .sync-actions .sync-pill {
+      flex: 0 0 auto;
       min-height: 26px;
+      height: 26px;
       min-width: 0;
-      height: auto;
       padding: 3px 10px;
       border-radius: 999px;
       font-size: 11px;
@@ -5346,10 +5363,12 @@ function saveState(opts) {
       console.warn('localStorage save failed', e);
     }
   }
-  try { updateBlockSummaries(); } catch (e) {}
-  try {
-    if (document.getElementById('calGrid')) renderCalendar();
-  } catch (e) {}
+  if (!opts.skipPaint) {
+    try { updateBlockSummaries(); } catch (e) {}
+    try {
+      if (document.getElementById('calGrid')) renderCalendar();
+    } catch (e) {}
+  }
   if (!VIEW_ONLY && opts.scheduleSync !== false) {
     try { scheduleCloudSync(); } catch (e) {}
   }
@@ -9913,25 +9932,95 @@ function applyRemoteSyncPayload(remote, opts) {
   return changed;
 }
 
-function reRenderAfterSync(extras) {
-  applySessionViewFilters();
-  try { renderTodos(); } catch (e) {}
-  try { renderEvents(); } catch (e) {}
-  try { updateBlockSummaries(); } catch (e) {}
-  if (extras) {
-    try { applyTheme(state.theme || 'sunny-beach', false); } catch (e) {}
-    try { syncShareOwnerUI(); } catch (e) {}
-    try { syncTodoTabUI(); } catch (e) {}
-    try { syncEventsFilterUI(); } catch (e) {}
-    try { renderCatChips(); } catch (e) {}
-    try { renderShortcuts(); } catch (e) {}
-    try { renderBus(); } catch (e) {}
-    try { renderCalendar(); } catch (e) {}
-  } else {
-    try {
-      if (document.getElementById('calGrid')) renderCalendar();
-    } catch (e) {}
+/* Visible rows only. gcalEventId / updatedAt / syncUpdatedAt must not count,
+   or every Calendar stamp repaints the lists and the page jumps. */
+function dashboardVisibleSig() {
+  function rows(list, pick) {
+    if (!Array.isArray(list)) return '';
+    return list.map(function (item) { return pick(item || {}); }).join('\n');
   }
+  const share = state && state.share ? state.share : {};
+  return [
+    rows(state && state.todos, function (t) {
+      return [t.id, t.title, t.due, t.done ? 1 : 0, t.sortOrder].join('\u0001');
+    }),
+    rows(state && state.events, function (e) {
+      return [e.id, e.title, e.date, e.time, e.work, e.done ? 1 : 0, e.kind, e.sortOrder].join('\u0001');
+    }),
+    rows(state && state.shortcuts, function (s) {
+      return [s.id, s.title, s.url, s.category].join('\u0001');
+    }),
+    rows(state && state.categories, function (c) {
+      return [c.id, c.name].join('\u0001');
+    }),
+    rows(state && state.busStops, function (b) {
+      return [b.id, b.route, b.stopId, b.stopName, b.direction, b.sortOrder].join('\u0001');
+    }),
+    String(state && state.theme || ''),
+    String(state && state.todoTab || ''),
+    String(state && state.eventsFilter || ''),
+    String(state && state.eventsKind || ''),
+    state && state.trainingExpanded ? 1 : 0,
+    state && state.busExpanded ? 1 : 0,
+    share.enabled ? 1 : 0,
+    Number(share.expiresAt) || 0,
+    Number(share.updatedAt) || 0
+  ].join('\u0002');
+}
+
+let dashPaintSig = '';
+let dashPaintQueued = false;
+let dashPaintExtras = false;
+
+function reRenderAfterSyncNow(extras) {
+  applySessionViewFilters();
+  if (dashboardVisibleSig() === dashPaintSig) return;
+  const root = document.documentElement;
+  const scroller = document.scrollingElement || root;
+  const y = scroller ? scroller.scrollTop : 0;
+  root.classList.add('sync-settling');
+  try {
+    try { renderTodos(); } catch (e) {}
+    try { renderEvents(); } catch (e) {}
+    try { updateBlockSummaries(); } catch (e) {}
+    if (extras) {
+      try { applyTheme(state.theme || 'sunny-beach', false); } catch (e) {}
+      try { syncShareOwnerUI(); } catch (e) {}
+      try { syncTodoTabUI(); } catch (e) {}
+      try { syncEventsFilterUI(); } catch (e) {}
+      try { renderCatChips(); } catch (e) {}
+      try { renderShortcuts(); } catch (e) {}
+      try { renderBus(); } catch (e) {}
+      try { renderCalendar(); } catch (e) {}
+    } else {
+      try {
+        if (document.getElementById('calGrid')) renderCalendar();
+      } catch (e) {}
+    }
+  } finally {
+    if (scroller) scroller.scrollTop = y;
+    dashPaintSig = dashboardVisibleSig();
+    const release = function () {
+      if (scroller) scroller.scrollTop = y;
+      root.classList.remove('sync-settling');
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(release);
+    else release();
+  }
+}
+
+function reRenderAfterSync(extras) {
+  if (extras) dashPaintExtras = true;
+  if (dashPaintQueued) return;
+  dashPaintQueued = true;
+  const run = function () {
+    dashPaintQueued = false;
+    const withExtras = dashPaintExtras;
+    dashPaintExtras = false;
+    reRenderAfterSyncNow(withExtras);
+  };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+  else run();
 }
 
 async function autoImportFromCloud() {
@@ -9950,7 +10039,7 @@ async function autoImportFromCloud() {
     // Pages sync-data.json applies busStops/shortcuts/categories. Theme stays local.
     const changed = applyRemoteSyncPayload(remote, { applyExtras: true });
     if (changed) {
-      saveState();
+      saveState({ skipPaint: true });
       reRenderAfterSync(true);
     }
   } catch (e) {
@@ -10009,6 +10098,10 @@ let firebaseForceSyncPending = false;
 let firebaseAutoPullAt = 0;
 let firebaseAutoPullUid = '';
 let firebaseForegroundTimer = null;
+// Google popup/redirect steals focus. Ignore the burst, or it schedules another sync
+// which opens another popup.
+let oauthPopupOpen = false;
+let oauthUiQuietUntil = 0;
 
 function firebaseSdkReady() {
   return !!(window.firebase && firebase.auth && firebase.firestore && typeof firebase.initializeApp === 'function');
@@ -10159,7 +10252,7 @@ async function mergeFirebaseSnapshot() {
   const remoteUpdated = Number(remote.updatedAt) || 0;
   const changed = applyRemoteSyncPayload(remote, { applyExtras: true, unionLists: true });
   if (changed) {
-    saveState({ scheduleSync: false });
+    saveState({ scheduleSync: false, skipPaint: true });
     reRenderAfterSync(true);
   }
   return { ok: true, exists: true, remoteUpdated: remoteUpdated, changed: !!changed };
@@ -10290,17 +10383,51 @@ function flushFirebaseFollowUps() {
   }
 }
 
+function beginOauthUi() {
+  oauthPopupOpen = true;
+  oauthUiQuietUntil = Math.max(oauthUiQuietUntil, Date.now() + 4000);
+}
+
+function endOauthUi() {
+  oauthPopupOpen = false;
+  // The focus/visibility events from the popup closing arrive just after this.
+  oauthUiQuietUntil = Math.max(oauthUiQuietUntil, Date.now() + 1600);
+}
+
+function oauthUiBlockingForeground() {
+  return oauthPopupOpen || Date.now() < oauthUiQuietUntil;
+}
+
+/* What a tab-foreground event should do. OAuth focus is not a return-to-tab.
+   Calendar uses the same gap as Firestore so a closing popup cannot chain syncs. */
+function foregroundSyncPlan(now, opts) {
+  opts = opts || {};
+  if (opts.viewOnly || opts.oauthBlocking || opts.hidden) return 'skip';
+  const gap = Number(opts.gapMs) || 10000;
+  const firebaseAt = Number(opts.firebaseAt) || 0;
+  const gcalAt = Number(opts.gcalAt) || 0;
+  if (opts.firebaseCanWrite && (now - firebaseAt >= gap)) return 'firebase';
+  if (opts.gcalToken && (now - gcalAt >= gap)) return 'gcal';
+  return 'skip';
+}
+
 function scheduleFirebaseForegroundPull() {
-  if (VIEW_ONLY) return;
+  if (VIEW_ONLY || oauthUiBlockingForeground()) return;
   if (firebaseForegroundTimer) clearTimeout(firebaseForegroundTimer);
   firebaseForegroundTimer = setTimeout(function () {
     firebaseForegroundTimer = null;
-    if (document.visibilityState === 'hidden') return;
-    const firebaseDue = firebaseCanWrite() && (Date.now() - firebaseAutoPullAt >= FIREBASE_FOCUS_SYNC_MS);
-    // Firestore pull already schedules Calendar. A throttled or signed-out
-    // return still pulls Calendar, so a new Google event shows up.
-    if (firebaseDue) pullFirebaseList();
-    else scheduleGcalSync();
+    const plan = foregroundSyncPlan(Date.now(), {
+      viewOnly: VIEW_ONLY,
+      oauthBlocking: oauthUiBlockingForeground(),
+      hidden: document.visibilityState === 'hidden',
+      firebaseCanWrite: firebaseCanWrite(),
+      firebaseAt: firebaseAutoPullAt,
+      gcalToken: !!gdriveAccessToken,
+      gcalAt: gcalAutoSyncAt,
+      gapMs: FIREBASE_FOCUS_SYNC_MS
+    });
+    if (plan === 'firebase') pullFirebaseList();
+    else if (plan === 'gcal') scheduleGcalSync();
   }, FIREBASE_FOCUS_DEBOUNCE_MS);
 }
 
@@ -10318,14 +10445,23 @@ function bindFirebaseForegroundSync() {
 
 function firebaseSignIn() {
   if (VIEW_ONLY || !firebaseSdkReady()) return;
+  beginOauthUi();
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
-  firebase.auth().signInWithPopup(provider).catch(function (err) {
+  firebase.auth().signInWithPopup(provider).then(function () {
+    endOauthUi();
+  }).catch(function (err) {
     const code = err && err.code;
     if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
-      firebase.auth().signInWithRedirect(provider).catch(noteFirebaseError);
+      firebase.auth().signInWithRedirect(provider).then(function () {
+        endOauthUi();
+      }).catch(function (err2) {
+        endOauthUi();
+        noteFirebaseError(err2);
+      });
       return;
     }
+    endOauthUi();
     noteFirebaseError(err);
   });
 }
@@ -10353,42 +10489,59 @@ function bindFirebaseUi() {
   });
 }
 
+let firebaseAuthReadyPromise = null;
 function startFirebaseSync() {
-  if (VIEW_ONLY || firebaseStarted) return;
+  if (VIEW_ONLY) return Promise.resolve();
+  if (firebaseAuthReadyPromise) return firebaseAuthReadyPromise;
   firebaseStarted = true;
   bindFirebaseUi();
   bindFirebaseForegroundSync();
-  setFirebaseHint('out');
-  if (!firebaseSdkReady()) {
-    setFirebaseHint('out', 'Firebase 元件尚未載入');
-    return;
-  }
-  try {
-    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_WEB_CONFIG);
-    const db = firebase.firestore();
-    try { db.settings({ ignoreUndefinedProperties: true }); } catch (e) {}
-    firebase.auth().getRedirectResult().catch(function (err) {
-      if (err && err.code && err.code !== 'auth/no-auth-event') noteFirebaseError(err);
-    });
-    firebase.auth().onAuthStateChanged(function (user) {
-      firebaseAuthUser = user || null;
-      if (!user) {
-        firebaseAutoPullUid = '';
-        setFirebaseHint('out');
-        return;
-      }
-      setFirebaseHint('in');
-      // Page open and a later sign-in. Token refresh does not change uid, so
-      // it does not pull again.
-      if (firebaseAutoPullUid !== user.uid) {
-        firebaseAutoPullUid = user.uid;
-        pullFirebaseList();
-      }
-      if (firebaseDirtyAt()) queueFirebasePush();
-    });
-  } catch (e) {
-    noteFirebaseError(e);
-  }
+  firebaseAuthReadyPromise = new Promise(function (resolve) {
+    let settled = false;
+    function ready() {
+      if (settled) return;
+      settled = true;
+      resolve();
+    }
+    // Auth restore is local. Cap the wait so a slow first pull cannot leave the page blank.
+    setTimeout(ready, 1800);
+    if (!firebaseSdkReady()) {
+      setFirebaseHint('out', 'Firebase 元件尚未載入');
+      ready();
+      return;
+    }
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_WEB_CONFIG);
+      const db = firebase.firestore();
+      try { db.settings({ ignoreUndefinedProperties: true }); } catch (e) {}
+      firebase.auth().getRedirectResult().catch(function (err) {
+        if (err && err.code && err.code !== 'auth/no-auth-event') noteFirebaseError(err);
+      });
+      firebase.auth().onAuthStateChanged(function (user) {
+        firebaseAuthUser = user || null;
+        if (!user) {
+          firebaseAutoPullUid = '';
+          setFirebaseHint('out');
+          ready();
+          return;
+        }
+        setFirebaseHint('in');
+        // Page open and a later sign-in. Token refresh does not change uid, so
+        // it does not pull again. The first pull finishes before the boot curtain lifts.
+        let pending = Promise.resolve();
+        if (firebaseAutoPullUid !== user.uid) {
+          firebaseAutoPullUid = user.uid;
+          pending = Promise.resolve(pullFirebaseList());
+        }
+        if (firebaseDirtyAt()) queueFirebasePush();
+        Promise.resolve(pending).then(ready, ready);
+      });
+    } catch (e) {
+      noteFirebaseError(e);
+      ready();
+    }
+  });
+  return firebaseAuthReadyPromise;
 }
 
 /* ===== Google Drive sync (todos + events) ===== */
@@ -10407,6 +10560,9 @@ let gcalSyncInFlight = false;
 let gcalSyncAgain = false;
 let gcalSyncPromise = null;
 let gcalSilentAuth = false;
+let gcalAutoSyncAt = 0;
+let gcalSilentRefreshNotBefore = 0;
+let gcalSilentAttempted = false;
 
 function gdriveHasClientId() {
   return !!(GDRIVE_OAUTH_CLIENT_ID && String(GDRIVE_OAUTH_CLIENT_ID).trim());
@@ -10587,7 +10743,7 @@ async function gdrivePull() {
   // Merge todos+events+bus+shortcuts+categories (applyExtras). Theme stays local.
   const changed = mergeSyncPayload(remote, { applyExtras: true });
   if (changed) {
-    saveState({ scheduleSync: false });
+    saveState({ scheduleSync: false, skipPaint: true });
     reRenderAfterSync(true);
   }
   return changed;
@@ -10839,16 +10995,27 @@ function gcalAuthFailure(e) {
 
 async function refreshGcalAccessToken() {
   if (VIEW_ONLY || !gdriveHasClientId()) return false;
+  // A Firebase or Calendar popup is already up, or the last silent popup was dismissed.
+  // Another prompt:'' here is the flash loop.
+  if (oauthPopupOpen) return false;
+  if (Date.now() < gcalSilentRefreshNotBefore) return false;
   if (refreshGcalAccessToken.inflight) return refreshGcalAccessToken.inflight;
   refreshGcalAccessToken.inflight = new Promise(function (resolve) {
     let settled = false;
+    let opened = false;
+    let restore = function () {};
     function finish(ok) {
       if (settled) return;
       settled = true;
       gcalSilentAuth = false;
+      try { restore(); } catch (e) {}
+      if (opened) endOauthUi();
+      if (!ok && opened) gcalSilentRefreshNotBefore = Date.now() + 30000;
       refreshGcalAccessToken.inflight = null;
+      refreshGcalAccessToken.finish = null;
       resolve(!!ok);
     }
+    refreshGcalAccessToken.finish = finish;
     if (!window.google || !google.accounts || !google.accounts.oauth2) {
       finish(false);
       return;
@@ -10859,8 +11026,11 @@ async function refreshGcalAccessToken() {
       return;
     }
     const prev = client.callback;
+    restore = function () {
+      if (client.callback !== prev) client.callback = prev;
+    };
     client.callback = function (resp) {
-      client.callback = prev;
+      restore();
       if (resp && resp.access_token) {
         storeGdriveToken(resp.access_token);
         noteGcalAccessFromToken(resp);
@@ -10871,6 +11041,8 @@ async function refreshGcalAccessToken() {
       }
     };
     gcalSilentAuth = true;
+    opened = true;
+    beginOauthUi();
     try {
       client.requestAccessToken({
         prompt: '',
@@ -10879,7 +11051,6 @@ async function refreshGcalAccessToken() {
         include_granted_scopes: !!ENABLE_DRIVE_SYNC
       });
     } catch (e) {
-      client.callback = prev;
       finish(false);
     }
     setTimeout(function () { finish(false); }, 8000);
@@ -11406,9 +11577,9 @@ async function gcalSyncInner() {
 
   if (changed) {
     state.events = dedupeEventsByTitleDate((state.events || []).map(normalizeEvent));
-    saveState({ scheduleSync: false });
-    try { renderEvents(); } catch (e) {}
-    try { updateBlockSummaries(); } catch (e) {}
+    // Metadata-only Calendar stamps must not rebuild the lists.
+    saveState({ scheduleSync: false, skipPaint: true });
+    reRenderAfterSync(false);
   }
   gcalAccessState = 'ok';
   gcalReauthCalendarOnly = false;
@@ -11417,6 +11588,7 @@ async function gcalSyncInner() {
 
 function scheduleGcalSync() {
   if (VIEW_ONLY) return;
+  gcalAutoSyncAt = Date.now();
   if (gcalSyncInFlight || gcalSyncPromise || gdriveSyncInFlight || firebaseSyncInFlight) gcalSyncAgain = true;
   if (gcalSyncTimer) clearTimeout(gcalSyncTimer);
   gcalSyncTimer = setTimeout(runScheduledGcalSync, 500);
@@ -11465,8 +11637,9 @@ function gcalScopeGranted(resp) {
 function noteGcalAccessFromToken(resp) {
   // hasGrantedAllScopes can be false after Continue even when Calendar is already
   // granted (resp.scope omits calendar.events). Do not treat that as no-scope.
+  // Leave a known-good pill alone so a token refresh does not flip Calendar 已連.
   gcalReauthCalendarOnly = !gcalScopeGranted(resp);
-  gcalAccessState = 'unknown';
+  if (gcalAccessState !== 'ok' && gcalAccessState !== 'api-off') gcalAccessState = 'unknown';
   gcalProbeAfterToken = true;
 }
 
@@ -11487,6 +11660,7 @@ function ensureGdriveTokenClient() {
     enable_granular_consent: true,
     login_hint: GCAL_ACCOUNT_EMAIL,
     callback: function (resp) {
+      endOauthUi();
       if (resp && resp.access_token) {
         storeGdriveToken(resp.access_token);
         noteGcalAccessFromToken(resp);
@@ -11501,10 +11675,12 @@ function ensureGdriveTokenClient() {
     },
     error_callback: function (err) {
       if (gcalSilentAuth) {
-        gcalSilentAuth = false;
         console.warn('Calendar silent auth skipped', err);
+        if (typeof refreshGcalAccessToken.finish === 'function') refreshGcalAccessToken.finish(false);
+        else endOauthUi();
         return;
       }
+      endOauthUi();
       const t = (err && (err.type || err.message)) || '';
       if (String(t).indexOf('popup_closed') !== -1) {
         if (ENABLE_DRIVE_SYNC) setGdriveStatus('已取消授權');
@@ -11531,7 +11707,14 @@ function requestGdriveToken(opts) {
     req.scope = ENABLE_DRIVE_SYNC ? opts.scope : GCAL_SCOPE;
     req.include_granted_scopes = !!ENABLE_DRIVE_SYNC;
   }
-  client.requestAccessToken(req);
+  gcalSilentRefreshNotBefore = 0;
+  beginOauthUi();
+  try {
+    client.requestAccessToken(req);
+  } catch (e) {
+    endOauthUi();
+    return false;
+  }
   return true;
 }
 
@@ -11596,19 +11779,32 @@ function tryGdriveSilentRestore() {
   if (VIEW_ONLY) return;
   if (!gdriveHasClientId()) return;
   restoreGdriveTokenFromSession();
-  // Calendar does not use a Drive file. A phone that already granted
-  // calendar.events should refresh even when sessionStorage was cleared.
+  // A token already in this tab is enough. prompt:'' opens a real popup;
+  // doing that on every load is the login/refresh flash.
   if (gdriveAccessToken) {
     updateGdriveUiConnected(true);
     scheduleGcalSync();
+    return;
   }
+  // No saved token: one silent restore, after any Firebase popup has closed.
   let tries = 0;
   function attempt() {
+    if (gdriveAccessToken) {
+      updateGdriveUiConnected(true);
+      scheduleGcalSync();
+      return;
+    }
+    if (!gcalSilentAttempted && oauthUiBlockingForeground()) {
+      setTimeout(attempt, 400);
+      return;
+    }
     if (!window.google || !google.accounts || !google.accounts.oauth2) {
       if (tries++ > 40) return;
       setTimeout(attempt, 400);
       return;
     }
+    if (gcalSilentAttempted) return;
+    gcalSilentAttempted = true;
     refreshGcalAccessToken().then(function (ok) {
       if (ok || gdriveAccessToken) {
         updateGdriveUiConnected(true);
@@ -12252,6 +12448,7 @@ function renderDashboardSurfaces() {
   renderBus();
   updateBlockSummaries();
   syncShareOwnerUI();
+  dashPaintSig = dashboardVisibleSig();
 }
 
 function waitForBootSync(ms) {
@@ -12292,7 +12489,7 @@ function applyPrefetchedBootSync() {
   markBootSyncApplied(remote);
   try {
     if (applyRemoteSyncPayload(remote, { applyExtras: true })) {
-      saveState({ scheduleSync: false });
+      saveState({ scheduleSync: false, skipPaint: true });
     }
   } catch (e) {}
 }
@@ -12302,6 +12499,7 @@ async function bootDashboard(opts) {
   let importedBeforePaint = false;
   try {
     initViewOnlyChrome();
+    if (!VIEW_ONLY) oauthUiQuietUntil = Math.max(oauthUiQuietUntil, Date.now() + 1500);
     if (opts.importCloud) {
       if (!(VIEW_ONLY && window.__DASH_SHARE_SNAPSHOT)) {
         try { await waitForBootSync(2500); } catch (e) {}
@@ -12332,9 +12530,14 @@ async function bootDashboard(opts) {
     dashboardBooted = true;
     try { await waitForBootFonts(700); } catch (e) {}
     if (!VIEW_ONLY) {
-      const startFb = function () { try { startFirebaseSync(); } catch (e) {} };
-      if (opts.importCloud && !importedBeforePaint) Promise.resolve(autoImportFromCloud()).then(startFb, startFb);
-      else startFb();
+      const startFb = function () {
+        try { return Promise.resolve(startFirebaseSync()); }
+        catch (e) { return Promise.resolve(); }
+      };
+      try {
+        if (opts.importCloud && !importedBeforePaint) await Promise.resolve(autoImportFromCloud()).then(startFb, startFb);
+        else await startFb();
+      } catch (e) {}
     } else if (opts.importCloud && !importedBeforePaint) {
       autoImportFromCloud();
     }
