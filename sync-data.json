@@ -1,5 +1,5 @@
 {
-  "updatedAt": 1792407026909,
+  "updatedAt": 1792502059463,
   "schemaVersion": 11,
   "todos": [
     {
@@ -1399,19 +1399,6 @@
       "gcalEventId": ""
     },
     {
-      "id": "e_hksh_eye_20261021",
-      "title": "養和眼科覆診",
-      "date": "2026-10-21",
-      "time": "14:00",
-      "work": "養和眼科中心(跑馬地)；李樹培院四樓眼科部；請帶身分證明文件；查詢 2835 8890。預約人：Mr. CHAU, HANG FUNG FREDDY。來源：HKSH 預約確認電郵。",
-      "kind": "personal",
-      "done": false,
-      "updatedAt": 1792242445156,
-      "createdAt": 1792242445156,
-      "gcalEventId": "68mgdhs58cp76k8125tn8jskk8",
-      "gcalUpdated": 1792242909474
-    },
-    {
       "id": "e_seed_exam_notice_055_20261015",
       "title": "乙類通告第055號（上學期期考）",
       "date": "2026-10-15",
@@ -1420,6 +1407,19 @@
       "kind": "school",
       "done": false,
       "updatedAt": 1728900001000,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_hksh_eye_20261023",
+      "title": "養和醫健眼科中心",
+      "date": "2026-10-23",
+      "time": "14:40",
+      "work": "香港金鐘太古廣場一座21樓眼科中心（Ophthalmology Centre, Level 21, One Pacific Place, Admiralty, Hong Kong）。請帶香港身份證登記；查詢 852-2855 6700；養和醫健眼科中心／吳小姐 (PSO)；HKSH Healthcare Medical Centre, Level 21, One Pacific Place。來源：電郵通告。",
+      "kind": "personal",
+      "done": false,
+      "updatedAt": 1792502059463,
+      "createdAt": 1792502059463,
+      "contentUpdatedAt": 1792502059463,
       "gcalEventId": ""
     }
   ],
@@ -1670,7 +1670,7 @@
   "todoTab": "today",
   "eventsFilter": "today",
   "eventsKind": "personal",
-  "syncUpdatedAt": 1792407026909,
+  "syncUpdatedAt": 1792502059463,
   "share": {
     "enabled": false,
     "salt": "",
