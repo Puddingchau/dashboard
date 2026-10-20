@@ -248,6 +248,10 @@
       --header-bg: rgba(255, 254, 250, 0.94);
       --amber: #E8B84A;
       --border-soft: rgba(160, 103, 59, 0.16);
+      /* Held card while reordering — warm gold. */
+      --drag-active-bg: #F6C453;
+      --drag-active-border: #B86E12;
+      --drag-active-shadow: rgba(184, 110, 18, 0.5);
     }
 
     /* 雨窗 — rainy window cafe: soft blue-grey rain, warm lamp amber, frosted glass, hygge */
@@ -279,6 +283,10 @@
       --header-bg: rgba(190, 210, 228, 0.42);
       --amber: #E8A838;
       --border-soft: rgba(255, 255, 255, 0.22);
+      /* Rain-window held card — warm gold, not the frosted row. */
+      --drag-active-bg: #F6C453;
+      --drag-active-border: #B86E12;
+      --drag-active-shadow: rgba(184, 110, 18, 0.5);
       isolation: isolate;
     }
     /* Fixed full-viewport photo layer (works on mobile; no body attachment:fixed) */
@@ -416,6 +424,10 @@
       --header-bg: rgba(255, 255, 255, 0.4);
       --amber: #E8A020;
       --border-soft: rgba(255, 255, 255, 0.32);
+      /* Sunny-beach held card — warm gold, not the frosted row. */
+      --drag-active-bg: #F6C453;
+      --drag-active-border: #B86E12;
+      --drag-active-shadow: rgba(184, 110, 18, 0.5);
       isolation: isolate;
     }
     /* Fixed full-viewport photo layer (works on mobile; no body attachment:fixed) */
@@ -1734,20 +1746,21 @@
       min-height: 72px;
       font-family: inherit;
     }
-    body .sc-item:active:not(.reorder-idle):not(:has([data-edit]:active)),
+    body .sc-item.reorder-hold,
     body .sc-item.dragging {
       cursor: grabbing;
-      opacity: 1;
+      opacity: 1 !important;
       position: relative;
-      background: var(--drag-active-bg, #F6C453);
-      border-color: var(--drag-active-border, #B86E12);
+      background-color: var(--drag-active-bg, #F6C453) !important;
+      background-image: none !important;
+      border-color: var(--drag-active-border, #B86E12) !important;
       box-shadow:
         0 10px 22px -8px var(--drag-active-shadow, rgba(184, 110, 18, 0.5)),
-        inset 0 0 0 2px var(--drag-active-border, #B86E12);
+        inset 0 0 0 2px var(--drag-active-border, #B86E12) !important;
       transform: scale(1.03);
       z-index: 5;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
     .sc-item.drag-over {
       outline: 2px dashed var(--accent-primary);
@@ -2081,32 +2094,40 @@
       flex-shrink: 0;
     }
     .todo-item.done { opacity: 0.65; }
-    .todo-item.todo-draggable {
+    .todo-item.todo-draggable,
+    .event-item.event-draggable {
       cursor: grab;
       user-select: none;
       -webkit-user-select: none;
+      -webkit-touch-callout: none;
       /* pan-y: allow vertical page scroll; drag handler preventDefault only while dragging */
       touch-action: pan-y;
-      transition: opacity .15s, box-shadow .15s, transform .15s, background .15s, border-color .15s;
+      transition: opacity .15s, box-shadow .15s, transform .15s, background-color .15s, border-color .15s;
     }
     /* Press / drag to reorder: theme frost must not cover this fill.
-       Checkbox, edit, and delete stay on the normal card color. */
-    body .todo-item.todo-draggable:active:not(.reorder-idle):not(:has(.todo-check:active, [data-edit]:active, [data-del]:active)),
-    body .todo-item.todo-draggable.dragging {
+       Checkbox, edit, and delete stay on the normal card color.
+       Hold/drag selectors stay out of the :has() rule so a browser that
+       drops :has(:active) still paints the held row. */
+    body .todo-item.todo-draggable.reorder-hold,
+    body .todo-item.todo-draggable.dragging,
+    body .event-item.event-draggable.reorder-hold,
+    body .event-item.event-draggable.dragging {
       cursor: grabbing;
-      opacity: 1;
+      opacity: 1 !important;
       position: relative;
       box-shadow:
         0 10px 22px -8px var(--drag-active-shadow, rgba(184, 110, 18, 0.5)),
-        inset 0 0 0 2px var(--drag-active-border, #B86E12);
+        inset 0 0 0 2px var(--drag-active-border, #B86E12) !important;
       transform: scale(1.01);
       z-index: 5;
-      background: var(--drag-active-bg, #F6C453);
-      border-color: var(--drag-active-border, #B86E12);
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
+      background-color: var(--drag-active-bg, #F6C453) !important;
+      background-image: none !important;
+      border-color: var(--drag-active-border, #B86E12) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
-    .todo-item.drag-over {
+    .todo-item.drag-over,
+    .event-item.drag-over {
       outline: 2px dashed var(--accent-primary);
       outline-offset: 2px;
     }
@@ -2312,19 +2333,23 @@
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
       outline: none;
     }
+    body .bus-card.reorder-hold,
     body .bus-card.dragging {
-      opacity: 1;
+      opacity: 1 !important;
       position: relative;
       transform: scale(1.02);
-      background: var(--drag-active-bg, #F6C453);
-      border-color: var(--drag-active-border, #B86E12);
+      background-color: var(--drag-active-bg, #F6C453) !important;
+      background-image: none !important;
+      border-color: var(--drag-active-border, #B86E12) !important;
       box-shadow:
         0 10px 22px -8px var(--drag-active-shadow, rgba(184, 110, 18, 0.5)),
-        inset 0 0 0 2px var(--drag-active-border, #B86E12);
+        inset 0 0 0 2px var(--drag-active-border, #B86E12) !important;
       z-index: 2;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    body .bus-card.dragging {
       touch-action: none;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
     }
     .bus-card.drag-over {
       border-color: var(--accent-primary, #3B82F6);
@@ -4239,6 +4264,11 @@ function normalizeEvent(e) {
   if (e && e.updatedAt != null) out.updatedAt = e.updatedAt;
   if (e && e.createdAt != null) out.createdAt = e.createdAt;
   if (e && Number(e.contentUpdatedAt)) out.contentUpdatedAt = Number(e.contentUpdatedAt);
+  if (e && e.sortOrder != null && e.sortOrder !== '') {
+    const ord = Number(e.sortOrder);
+    if (Number.isFinite(ord)) out.sortOrder = ord;
+  }
+  if (e && Number(e.orderUpdatedAt)) out.orderUpdatedAt = Number(e.orderUpdatedAt);
   if (kind === 'personal' && e && e.gcalEventId) {
     const gid = String(e.gcalEventId).trim();
     if (gid) out.gcalEventId = gid;
@@ -4611,7 +4641,98 @@ function applySessionViewFilters() {
 let todoDragId = null;
 let dragId = null;
 let busDragId = null;
+let eventDragId = null;
 let longPressTimer = null;
+
+function reorderGestureBlocked(target) {
+  if (!target || !target.closest) return true;
+  return !!target.closest('.todo-check, [data-edit], [data-del], .bus-del, .sc-edit-btn');
+}
+
+function beginReorderHold(el, target) {
+  if (!el || reorderGestureBlocked(target)) return false;
+  el.classList.add('reorder-hold');
+  el.classList.remove('reorder-idle');
+  return true;
+}
+
+function endReorderHold(el) {
+  if (!el) return;
+  el.classList.remove('reorder-hold', 'dragging');
+  el.classList.add('reorder-idle');
+}
+
+/** Class-based hold, so touch browsers that never apply :active still recolor the row. */
+function bindReorderPress(el, opts) {
+  opts = opts || {};
+  let active = false;
+  let sx = 0;
+  let sy = 0;
+  el.addEventListener('pointerdown', function (e) {
+    if (e.button != null && e.button !== 0) return;
+    if (!beginReorderHold(el, e.target)) return;
+    active = true;
+    sx = e.clientX;
+    sy = e.clientY;
+    el.dataset.reorderPointer = e.pointerType || '';
+  });
+  el.addEventListener('pointermove', function (e) {
+    if (!active || el.classList.contains('dragging')) return;
+    if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) {
+      active = false;
+      el.classList.remove('reorder-hold');
+      el.classList.add('reorder-idle');
+      if (opts.onSlideAway) opts.onSlideAway();
+    }
+  });
+  el.addEventListener('pointerup', function () {
+    active = false;
+    // Leave the color up while a drag is in progress; dragend / touchend clears it.
+    if (el.classList.contains('dragging')) return;
+    endReorderHold(el);
+  });
+  el.addEventListener('pointercancel', function () {
+    // iOS cancels the pointer during a long-press while the finger is still down.
+    if ((el.dataset.reorderPointer || '') === 'touch') return;
+    active = false;
+    if (!el.classList.contains('dragging')) endReorderHold(el);
+  });
+  el.addEventListener('contextmenu', function (e) {
+    if (el.classList.contains('reorder-hold') || el.classList.contains('dragging')) e.preventDefault();
+  });
+}
+
+function paintReorderDragImage(e, el) {
+  if (!e || !e.dataTransfer || !el) return;
+  try {
+    const cs = getComputedStyle(document.body);
+    const bg = (cs.getPropertyValue('--drag-active-bg') || '#F6C453').trim() || '#F6C453';
+    const border = (cs.getPropertyValue('--drag-active-border') || '#B86E12').trim() || '#B86E12';
+    const clone = el.cloneNode(true);
+    clone.classList.add('reorder-hold', 'dragging');
+    clone.style.position = 'fixed';
+    clone.style.left = '-2000px';
+    clone.style.top = '0';
+    clone.style.width = el.offsetWidth + 'px';
+    clone.style.boxSizing = 'border-box';
+    clone.style.margin = '0';
+    clone.style.pointerEvents = 'none';
+    clone.style.opacity = '1';
+    clone.style.backgroundColor = bg;
+    clone.style.backgroundImage = 'none';
+    clone.style.borderColor = border;
+    clone.style.backdropFilter = 'none';
+    clone.style.webkitBackdropFilter = 'none';
+    document.body.appendChild(clone);
+    const rect = el.getBoundingClientRect();
+    const ox = e.clientX != null ? Math.max(0, e.clientX - rect.left) : rect.width / 2;
+    const oy = e.clientY != null ? Math.max(0, e.clientY - rect.top) : rect.height / 2;
+    e.dataTransfer.setDragImage(clone, ox, oy);
+    setTimeout(function () {
+      if (clone.parentNode) clone.parentNode.removeChild(clone);
+    }, 0);
+  } catch (err) {}
+}
 
 function cloneSeedBus() {
   return SEED_BUS.map(b => ({ ...b }));
@@ -5532,24 +5653,23 @@ function renderShortcuts() {
       openShortcutModal(id);
     });
 
-    // Release clears a stuck :active so the card returns to its normal color.
-    item.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('[data-edit]')) return;
-      item.classList.remove('reorder-idle');
-    });
-    item.addEventListener('pointerup', () => item.classList.add('reorder-idle'));
-    item.addEventListener('pointercancel', () => item.classList.add('reorder-idle'));
+    bindReorderPress(item, { onSlideAway: function () { clearTimeout(longPressTimer); } });
 
     // Desktop drag
     item.addEventListener('dragstart', (e) => {
+      if (reorderGestureBlocked(e.target)) {
+        e.preventDefault();
+        return;
+      }
       dragId = id;
-      item.classList.add('dragging');
+      item.classList.add('dragging', 'reorder-hold');
+      item.classList.remove('reorder-idle');
       e.dataTransfer.effectAllowed = 'move';
       try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+      paintReorderDragImage(e, item);
     });
     item.addEventListener('dragend', () => {
-      item.classList.remove('dragging');
-      item.classList.add('reorder-idle');
+      endReorderHold(item);
       grid.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
       dragId = null;
     });
@@ -5570,11 +5690,13 @@ function renderShortcuts() {
     // Touch long-press drag
     let startX, startY, moved = false;
     item.addEventListener('touchstart', (e) => {
+      if (reorderGestureBlocked(e.target)) return;
+      beginReorderHold(item, e.target);
       const t = e.touches[0];
       startX = t.clientX; startY = t.clientY; moved = false;
       longPressTimer = setTimeout(() => {
         dragId = id;
-        item.classList.add('dragging', 'show-edit');
+        item.classList.add('dragging', 'reorder-hold', 'show-edit');
         if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
       }, 420);
     }, { passive: true });
@@ -5582,7 +5704,11 @@ function renderShortcuts() {
       const t = e.touches[0];
       if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
         moved = true;
-        if (!dragId) clearTimeout(longPressTimer);
+        if (!dragId) {
+          clearTimeout(longPressTimer);
+          item.classList.remove('reorder-hold');
+          item.classList.add('reorder-idle');
+        }
       }
       if (dragId) {
         e.preventDefault();
@@ -5600,17 +5726,18 @@ function renderShortcuts() {
         const target = el && el.closest('.sc-item');
         const to = target && target.getAttribute('data-id');
         if (to && to !== dragId) reorderShortcuts(dragId, to);
-        grid.querySelectorAll('.sc-item').forEach(x => x.classList.remove('dragging', 'drag-over'));
+        grid.querySelectorAll('.sc-item').forEach(x => x.classList.remove('dragging', 'reorder-hold', 'drag-over'));
         dragId = null;
+        e.preventDefault();
       } else {
         item.classList.remove('show-edit');
       }
-      item.classList.add('reorder-idle');
+      endReorderHold(item);
     });
     item.addEventListener('touchcancel', () => {
       clearTimeout(longPressTimer);
-      item.classList.remove('dragging', 'show-edit');
-      item.classList.add('reorder-idle');
+      item.classList.remove('show-edit');
+      endReorderHold(item);
       dragId = null;
     });
   });
@@ -5930,27 +6057,22 @@ function bindTodoDnD(row, list) {
   }
   const id = row.getAttribute('data-id');
   row.setAttribute('draggable', 'true');
-
-  row.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) return;
-    row.classList.remove('reorder-idle');
-  });
-  row.addEventListener('pointerup', () => row.classList.add('reorder-idle'));
-  row.addEventListener('pointercancel', () => row.classList.add('reorder-idle'));
+  bindReorderPress(row, { onSlideAway: function () { clearTimeout(longPressTimer); } });
 
   row.addEventListener('dragstart', (e) => {
-    if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) {
+    if (reorderGestureBlocked(e.target)) {
       e.preventDefault();
       return;
     }
     todoDragId = id;
-    row.classList.add('dragging');
+    row.classList.add('dragging', 'reorder-hold');
+    row.classList.remove('reorder-idle');
     e.dataTransfer.effectAllowed = 'move';
     try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+    paintReorderDragImage(e, row);
   });
   row.addEventListener('dragend', () => {
-    row.classList.remove('dragging');
-    row.classList.add('reorder-idle');
+    endReorderHold(row);
     list.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
     todoDragId = null;
   });
@@ -5971,19 +6093,24 @@ function bindTodoDnD(row, list) {
 
   let startX, startY;
   row.addEventListener('touchstart', (e) => {
-    if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) return;
+    if (reorderGestureBlocked(e.target)) return;
+    beginReorderHold(row, e.target);
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
     longPressTimer = setTimeout(() => {
       todoDragId = id;
-      row.classList.add('dragging');
+      row.classList.add('dragging', 'reorder-hold');
       if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
     }, 420);
   }, { passive: true });
   row.addEventListener('touchmove', (e) => {
     const t = e.touches[0];
     if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
-      if (!todoDragId) clearTimeout(longPressTimer);
+      if (!todoDragId) {
+        clearTimeout(longPressTimer);
+        row.classList.remove('reorder-hold');
+        row.classList.add('reorder-idle');
+      }
     }
     if (todoDragId) {
       e.preventDefault();
@@ -6001,15 +6128,15 @@ function bindTodoDnD(row, list) {
       const target = el && el.closest('.todo-item.todo-draggable');
       const to = target && target.getAttribute('data-id');
       if (to && to !== todoDragId) reorderTodos(todoDragId, to);
-      list.querySelectorAll('.todo-item').forEach(x => x.classList.remove('dragging', 'drag-over'));
+      list.querySelectorAll('.todo-item').forEach(x => x.classList.remove('dragging', 'reorder-hold', 'drag-over'));
       todoDragId = null;
+      e.preventDefault();
     }
-    row.classList.add('reorder-idle');
+    endReorderHold(row);
   });
   row.addEventListener('touchcancel', () => {
     clearTimeout(longPressTimer);
-    row.classList.remove('dragging');
-    row.classList.add('reorder-idle');
+    endReorderHold(row);
     todoDragId = null;
   });
 }
@@ -6396,6 +6523,145 @@ function sortEventsNearestFirst(list) {
   });
 }
 
+function eventHasManualOrder(ev) {
+  return !!(ev && Number(ev.orderUpdatedAt) > 0 && ev.sortOrder != null && ev.sortOrder !== '' && Number.isFinite(Number(ev.sortOrder)));
+}
+
+/** Date order until the user reorders this visible set. A full manual stamp keeps that order. */
+function sortEventsForDisplay(list) {
+  const rows = list || [];
+  if (rows.length && rows.every(eventHasManualOrder)) {
+    return rows.slice().sort(function (a, b) {
+      return Number(a.sortOrder) - Number(b.sortOrder);
+    });
+  }
+  return sortEventsNearestFirst(rows);
+}
+
+function reorderEvents(fromId, toId) {
+  if (VIEW_ONLY || !state || !Array.isArray(state.events)) return;
+  const filter = normalizeEventsFilter(state.eventsFilter);
+  const kind = normalizeEventsKind(state.eventsKind);
+  const all = sortEventsForDisplay(
+    state.events.filter(function (ev) { return eventKindOf(ev) === kind && eventInFilter(ev, filter); })
+  );
+  const open = all.filter(function (ev) { return !ev.done; });
+  const done = all.filter(function (ev) { return ev.done; });
+  const fromIdx = open.findIndex(function (ev) { return ev.id === fromId; });
+  const toIdx = open.findIndex(function (ev) { return ev.id === toId; });
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+  const moved = open.splice(fromIdx, 1)[0];
+  open.splice(toIdx, 0, moved);
+  const now = Date.now();
+  open.concat(done).forEach(function (ev, i) {
+    ev.sortOrder = (i + 1) * 1024;
+    ev.orderUpdatedAt = now;
+  });
+  saveState();
+  renderEvents();
+}
+
+function bindEventDnD(row, list) {
+  if (VIEW_ONLY) {
+    row.removeAttribute('draggable');
+    return;
+  }
+  const id = row.getAttribute('data-id');
+  row.setAttribute('draggable', 'true');
+  let suppressClick = false;
+  bindReorderPress(row, { onSlideAway: function () { clearTimeout(longPressTimer); } });
+  row.addEventListener('click', function (e) {
+    if (!suppressClick && !row.classList.contains('dragging')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    suppressClick = false;
+  }, true);
+
+  row.addEventListener('dragstart', function (e) {
+    if (reorderGestureBlocked(e.target)) {
+      e.preventDefault();
+      return;
+    }
+    eventDragId = id;
+    suppressClick = true;
+    row.classList.add('dragging', 'reorder-hold');
+    row.classList.remove('reorder-idle');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+    paintReorderDragImage(e, row);
+  });
+  row.addEventListener('dragend', function () {
+    endReorderHold(row);
+    list.querySelectorAll('.drag-over').forEach(function (x) { x.classList.remove('drag-over'); });
+    eventDragId = null;
+  });
+  row.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!row.classList.contains('event-draggable')) return;
+    row.classList.add('drag-over');
+  });
+  row.addEventListener('dragleave', function () { row.classList.remove('drag-over'); });
+  row.addEventListener('drop', function (e) {
+    e.preventDefault();
+    row.classList.remove('drag-over');
+    const from = eventDragId || e.dataTransfer.getData('text/plain');
+    const to = id;
+    if (from && to && from !== to) reorderEvents(from, to);
+  });
+
+  let startX, startY;
+  row.addEventListener('touchstart', function (e) {
+    if (reorderGestureBlocked(e.target)) return;
+    beginReorderHold(row, e.target);
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    longPressTimer = setTimeout(function () {
+      eventDragId = id;
+      suppressClick = true;
+      row.classList.add('dragging', 'reorder-hold');
+      if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
+    }, 420);
+  }, { passive: true });
+  row.addEventListener('touchmove', function (e) {
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+      if (!eventDragId) {
+        clearTimeout(longPressTimer);
+        row.classList.remove('reorder-hold');
+        row.classList.add('reorder-idle');
+      }
+    }
+    if (eventDragId) {
+      e.preventDefault();
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el && el.closest('.event-item.event-draggable');
+      list.querySelectorAll('.drag-over').forEach(function (x) { x.classList.remove('drag-over'); });
+      if (target && target.getAttribute('data-id') !== eventDragId) target.classList.add('drag-over');
+    }
+  }, { passive: false });
+  row.addEventListener('touchend', function (e) {
+    clearTimeout(longPressTimer);
+    if (eventDragId) {
+      const t = e.changedTouches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el && el.closest('.event-item.event-draggable');
+      const to = target && target.getAttribute('data-id');
+      if (to && to !== eventDragId) reorderEvents(eventDragId, to);
+      list.querySelectorAll('.event-item').forEach(function (x) { x.classList.remove('dragging', 'reorder-hold', 'drag-over'); });
+      eventDragId = null;
+      e.preventDefault();
+    }
+    endReorderHold(row);
+  });
+  row.addEventListener('touchcancel', function () {
+    clearTimeout(longPressTimer);
+    endReorderHold(row);
+    eventDragId = null;
+  });
+}
+
 let eventListFitBound = false;
 
 function fitEventListToFiveCards() {
@@ -6467,7 +6733,7 @@ function renderEvents() {
 
   const filter = normalizeEventsFilter(state.eventsFilter);
   const kind = normalizeEventsKind(state.eventsKind);
-  const visible = sortEventsNearestFirst(
+  const visible = sortEventsForDisplay(
     state.events.filter(ev => eventKindOf(ev) === kind && eventInFilter(ev, filter))
   );
 
@@ -6485,7 +6751,7 @@ function renderEvents() {
       ? '<div class="todo-title">' + escapeHtml(ev.title) + '</div>'
       : '<button type="button" class="todo-title event-title-toggle" aria-pressed="' + (ev.done ? 'true' : 'false') + '" aria-label="' + escapeHtml(ev.done ? '標為未完成' : '標為完成') + '">' + escapeHtml(ev.title) + '</button>';
     return (
-      '<div class="event-item kind-' + (eventKindOf(ev) === 'personal' ? 'personal' : 'school') + (ev.done ? ' done' : '') + '" data-id="' + escapeHtml(ev.id) + '">' +
+      '<div class="event-item kind-' + (eventKindOf(ev) === 'personal' ? 'personal' : 'school') + (ev.done ? ' done' : '') + ((VIEW_ONLY || ev.done) ? '' : ' event-draggable') + '" data-id="' + escapeHtml(ev.id) + '">' +
         '<div class="todo-body">' +
           titleHtml +
           '<div class="meta">' +
@@ -6553,6 +6819,7 @@ function renderEvents() {
         }
       });
     }
+    if (!VIEW_ONLY && row.classList.contains('event-draggable')) bindEventDnD(row, list);
   });
   bindEventListFit();
   fitEventListToFiveCards();
@@ -7918,19 +8185,22 @@ function bindBusDnD(card, list) {
   }
   const id = card.getAttribute('data-id');
   card.setAttribute('draggable', 'true');
+  bindReorderPress(card, { onSlideAway: function () { clearTimeout(longPressTimer); } });
 
   card.addEventListener('dragstart', function (e) {
-    if (e.target.closest('.bus-del')) {
+    if (reorderGestureBlocked(e.target)) {
       e.preventDefault();
       return;
     }
     busDragId = id;
-    card.classList.add('dragging');
+    card.classList.add('dragging', 'reorder-hold');
+    card.classList.remove('reorder-idle');
     e.dataTransfer.effectAllowed = 'move';
     try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+    paintReorderDragImage(e, card);
   });
   card.addEventListener('dragend', function () {
-    card.classList.remove('dragging');
+    endReorderHold(card);
     list.querySelectorAll('.drag-over').forEach(function (x) { x.classList.remove('drag-over'); });
     busDragId = null;
   });
@@ -7950,19 +8220,24 @@ function bindBusDnD(card, list) {
 
   let startX, startY;
   card.addEventListener('touchstart', function (e) {
-    if (e.target.closest('.bus-del')) return;
+    if (reorderGestureBlocked(e.target)) return;
+    beginReorderHold(card, e.target);
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
     longPressTimer = setTimeout(function () {
       busDragId = id;
-      card.classList.add('dragging');
+      card.classList.add('dragging', 'reorder-hold');
       if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
     }, 420);
   }, { passive: true });
   card.addEventListener('touchmove', function (e) {
     const t = e.touches[0];
     if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
-      if (!busDragId) clearTimeout(longPressTimer);
+      if (!busDragId) {
+        clearTimeout(longPressTimer);
+        card.classList.remove('reorder-hold');
+        card.classList.add('reorder-idle');
+      }
     }
     if (busDragId) {
       e.preventDefault();
@@ -7980,14 +8255,15 @@ function bindBusDnD(card, list) {
       const target = el && el.closest('.bus-card');
       const to = target && target.getAttribute('data-id');
       if (to && to !== busDragId) reorderBuses(busDragId, to);
-      list.querySelectorAll('.bus-card').forEach(function (x) { x.classList.remove('dragging', 'drag-over'); });
+      list.querySelectorAll('.bus-card').forEach(function (x) { x.classList.remove('dragging', 'reorder-hold', 'drag-over'); });
       busDragId = null;
       e.preventDefault();
     }
+    endReorderHold(card);
   });
   card.addEventListener('touchcancel', function () {
     clearTimeout(longPressTimer);
-    card.classList.remove('dragging');
+    endReorderHold(card);
     busDragId = null;
   });
 }
