@@ -20,6 +20,8 @@
       };
       var theme = 'sunny-beach';
       var viewOnly = false;
+      /* Browser scroll restoration and our own scroll restore were moving the page in opposite directions on open. */
+      try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e0) {}
       var bootData = null;
       try {
         viewOnly = new URLSearchParams(location.search).get('view') === '1';
@@ -540,11 +542,13 @@
 
     *, *::before, *::after { box-sizing: border-box; }
     html {
-      scroll-behavior: smooth;
+      /* auto, not smooth: a smooth root scroller animates overflow-anchor corrections and the page bounces. */
+      scroll-behavior: auto;
       scroll-padding-top: calc(72px + var(--safe-top));
       height: auto;
       overflow-x: hidden;
       overflow-y: auto;
+      overflow-anchor: none;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: auto;
     }
@@ -610,10 +614,11 @@
       padding-top: var(--safe-top);
       padding-bottom: calc(24px + var(--safe-bottom));
       min-height: 100vh;
-      min-height: 100dvh;
+      min-height: 100svh;
       height: auto;
-      overflow-x: hidden;
-      overflow-y: auto;
+      /* html is the only scroller. Both axes stay visible — if only one is visible,
+         CSS computes the other to auto and a nested scroller bounces against html. */
+      overflow: visible;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: auto;
       transition: background 0.4s ease, color 0.4s ease;
@@ -803,13 +808,19 @@
     .header-widgets {
       grid-area: widgets;
       display: flex;
-      flex-wrap: wrap;
+      /* nowrap: weather and bus text must not wrap this row and grow the sticky header. */
+      flex-wrap: nowrap;
       align-items: center;
       justify-content: center;
       gap: 8px;
       width: 100%;
       min-width: 0;
       flex-shrink: 0;
+    }
+    .header-widgets > .hdr-glass,
+    .header-widgets > .hdr-bus-pair {
+      min-width: 0;
+      overflow: hidden;
     }
     @media (min-width: 900px) {
       .header-widgets {
@@ -6880,7 +6891,13 @@ function fitEventListToFiveCards() {
       if (viaOffset > first.offsetHeight) height = viaOffset;
     }
     // A short peek of the next card shows that the list itself scrolls.
-    list.style.setProperty('--event-list-max', Math.ceil(height + 14) + 'px');
+    // Ignore a few pixels. A resize loop was setting a new cap, which resized again.
+    const nextPx = Math.ceil(height + 14);
+    const prevRaw = list.style.getPropertyValue('--event-list-max');
+    const prevPx = parseFloat(prevRaw);
+    if (prevRaw === nextPx + 'px') return;
+    if (Number.isFinite(prevPx) && Math.abs(prevPx - nextPx) < 8) return;
+    list.style.setProperty('--event-list-max', nextPx + 'px');
   };
   apply();
   // A scrollbar can wrap the work line and change card heights. Measure again.
@@ -10007,6 +10024,18 @@ function reRenderAfterSyncNow(extras) {
   const scroller = document.scrollingElement || root;
   const y = scroller ? scroller.scrollTop : 0;
   root.classList.add('sync-settling');
+  // Hold the current list height across innerHTML. Otherwise the list collapses
+  // to empty and then grows again, which is the open-page jump.
+  const locks = [];
+  ['todoList', 'eventList', 'shortcutGrid'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const h = el.getBoundingClientRect().height;
+    if (h > 8) {
+      el.style.minHeight = Math.round(h) + 'px';
+      locks.push(el);
+    }
+  });
   try {
     try { renderTodos(); } catch (e) {}
     try { renderEvents(); } catch (e) {}
@@ -10030,10 +10059,14 @@ function reRenderAfterSyncNow(extras) {
     dashPaintSig = dashboardVisibleSig();
     const release = function () {
       if (scroller) scroller.scrollTop = y;
+      locks.forEach(function (el) { el.style.minHeight = ''; });
       root.classList.remove('sync-settling');
     };
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(release);
-    else release();
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () { requestAnimationFrame(release); });
+    } else {
+      setTimeout(release, 50);
+    }
   }
 }
 
@@ -10126,6 +10159,7 @@ let firebaseForceSyncPending = false;
 let firebaseAutoPullAt = 0;
 let firebaseAutoPullUid = '';
 let firebaseForegroundTimer = null;
+let firebaseAuthBootSeen = false;
 // Google popup/redirect steals focus. Ignore the burst, or it schedules another sync
 // which opens another popup.
 let oauthPopupOpen = false;
@@ -10531,10 +10565,15 @@ function startFirebaseSync() {
       settled = true;
       resolve();
     }
-    // Auth restore is local. Cap the wait so a slow first pull cannot leave the page blank.
-    setTimeout(ready, 1800);
+    // Only if auth never calls back. Do not resolve while the first pull is still
+    // running — that used to lift the curtain and the lists then jumped into place.
+    // The head script uncovers the app at 8s if this wait itself hangs.
+    setTimeout(function () {
+      if (!firebaseAuthBootSeen) ready();
+    }, 7000);
     if (!firebaseSdkReady()) {
       setFirebaseHint('out', 'Firebase 元件尚未載入');
+      if (gdriveAccessToken) scheduleGcalSync();
       ready();
       return;
     }
@@ -10546,10 +10585,12 @@ function startFirebaseSync() {
         if (err && err.code && err.code !== 'auth/no-auth-event') noteFirebaseError(err);
       });
       firebase.auth().onAuthStateChanged(function (user) {
+        firebaseAuthBootSeen = true;
         firebaseAuthUser = user || null;
         if (!user) {
           firebaseAutoPullUid = '';
           setFirebaseHint('out');
+          if (gdriveAccessToken) scheduleGcalSync();
           ready();
           return;
         }
@@ -10566,6 +10607,7 @@ function startFirebaseSync() {
       });
     } catch (e) {
       noteFirebaseError(e);
+      if (gdriveAccessToken) scheduleGcalSync();
       ready();
     }
   });
@@ -11614,16 +11656,71 @@ async function gcalSyncInner() {
   return { ok: true, changed: changed };
 }
 
+let bootPaintHolds = 0;
+let bootPaintWaiters = [];
+let bootGcalHold = null;
+
+function dashBootCovered() {
+  return !dashBootPaintFinished && document.documentElement.classList.contains('dash-booting');
+}
+
+function holdDashBoot(promise) {
+  if (!dashBootCovered()) return promise;
+  bootPaintHolds++;
+  const done = Promise.resolve(promise).then(function () {}, function () {});
+  done.then(function () {
+    bootPaintHolds = Math.max(0, bootPaintHolds - 1);
+    if (bootPaintHolds === 0) {
+      const waiters = bootPaintWaiters;
+      bootPaintWaiters = [];
+      waiters.forEach(function (fn) { fn(); });
+    }
+  });
+  return done;
+}
+
+function waitDashBootHolds(maxMs) {
+  if (!dashBootCovered() || bootPaintHolds <= 0) return Promise.resolve();
+  return new Promise(function (resolve) {
+    let settled = false;
+    function finish() {
+      if (settled) return;
+      settled = true;
+      resolve();
+    }
+    const timer = setTimeout(finish, maxMs);
+    bootPaintWaiters.push(function () {
+      clearTimeout(timer);
+      finish();
+    });
+  });
+}
+
+function releaseBootGcalHold() {
+  if (!bootGcalHold) return;
+  if (gcalSyncTimer || gcalSyncAgain || gcalSyncInFlight || gcalSyncPromise) return;
+  const resolveHold = bootGcalHold;
+  bootGcalHold = null;
+  resolveHold();
+}
+
 function scheduleGcalSync() {
   if (VIEW_ONLY) return;
   gcalAutoSyncAt = Date.now();
   if (gcalSyncInFlight || gcalSyncPromise || gdriveSyncInFlight || firebaseSyncInFlight) gcalSyncAgain = true;
   if (gcalSyncTimer) clearTimeout(gcalSyncTimer);
-  gcalSyncTimer = setTimeout(runScheduledGcalSync, 500);
+  if (dashBootCovered() && !bootGcalHold) {
+    holdDashBoot(new Promise(function (resolve) { bootGcalHold = resolve; }));
+  }
+  gcalSyncTimer = setTimeout(function () {
+    gcalSyncTimer = null;
+    Promise.resolve(runScheduledGcalSync()).then(releaseBootGcalHold, releaseBootGcalHold);
+  }, 500);
 }
 
 async function runScheduledGcalSync() {
   gcalSyncTimer = null;
+  try {
   if (VIEW_ONLY || !gdriveAccessToken) return;
   if (gcalSyncInFlight || gcalSyncPromise || gdriveSyncInFlight || firebaseSyncInFlight || firebasePushTimer) {
     gcalSyncAgain = true;
@@ -11649,6 +11746,9 @@ async function runScheduledGcalSync() {
     scheduleGcalSync();
   }
   try { flushFirebaseFollowUps(); } catch (e4) {}
+  } finally {
+    releaseBootGcalHold();
+  }
 }
 
 function gcalScopeGranted(resp) {
@@ -11811,7 +11911,8 @@ function tryGdriveSilentRestore() {
   // doing that on every load is the login/refresh flash.
   if (gdriveAccessToken) {
     updateGdriveUiConnected(true);
-    scheduleGcalSync();
+    // Do not sync Calendar here. The first Firestore pull schedules it when the
+    // pull finishes, so the two syncs do not repaint the lists one after another.
     return;
   }
   // No saved token: one silent restore, after any Firebase popup has closed.
@@ -12556,7 +12657,7 @@ async function bootDashboard(opts) {
     }
     if (state.busExpanded) startBusNearbyAndEta(true);
     dashboardBooted = true;
-    try { await waitForBootFonts(700); } catch (e) {}
+    const fontsReady = waitForBootFonts(2000);
     if (!VIEW_ONLY) {
       const startFb = function () {
         try { return Promise.resolve(startFirebaseSync()); }
@@ -12566,9 +12667,13 @@ async function bootDashboard(opts) {
         if (opts.importCloud && !importedBeforePaint) await Promise.resolve(autoImportFromCloud()).then(startFb, startFb);
         else await startFb();
       } catch (e) {}
+      // The pull schedules Calendar when it finishes. Keep the curtain up for that
+      // paint too, so the page does not jump again as soon as it appears.
+      try { await waitDashBootHolds(2500); } catch (e) {}
     } else if (opts.importCloud && !importedBeforePaint) {
       autoImportFromCloud();
     }
+    try { await fontsReady; } catch (e) {}
   } finally {
     finishDashBootPaint();
   }
