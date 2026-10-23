@@ -24,7 +24,7 @@ function extractFn(html, name) {
 }
 
 test('index.html and dashboard.html share the login-settle helpers', () => {
-  for (const name of ['foregroundSyncPlan', 'dashboardVisibleSig', 'tryGdriveSilentRestore', 'refreshGcalAccessToken']) {
+  for (const name of ['foregroundSyncPlan', 'dashboardVisibleSig', 'tryGdriveSilentRestore', 'refreshGcalAccessToken', 'scheduleGcalSync', 'holdDashBoot', 'reRenderAfterSyncNow', 'startFirebaseSync']) {
     assert.equal(extractFn(indexHtml, name), extractFn(dashHtml, name), name);
   }
 });
@@ -45,6 +45,22 @@ test('a saved Calendar token does not open another silent popup', () => {
     const popup = fn.indexOf('refreshGcalAccessToken()');
     assert.ok(early > 0 && popup > early);
     assert.match(fn, /return;\s*\}\s*\n\s*\/\/ No saved token/);
+    const sched = fn.indexOf('scheduleGcalSync', early);
+    const ret = fn.indexOf('return;', early);
+    assert.ok(ret > early && (sched === -1 || sched > ret));
+  }
+});
+
+test('open stays covered until the first pull, and the root scroller does not bounce', () => {
+  for (const html of [indexHtml, dashHtml]) {
+    assert.equal(html.includes('setTimeout(ready, 1800)'), false);
+    assert.match(html, /scrollRestoration/);
+    assert.match(html, /scroll-behavior:\s*auto;/);
+    assert.equal(html.includes('scroll-behavior: smooth'), false);
+    assert.match(html, /flex-wrap:\s*nowrap;/);
+    assert.match(html, /function holdDashBoot/);
+    assert.match(html, /waitDashBootHolds\(2500\)/);
+    assert.match(extractFn(html, 'reRenderAfterSyncNow'), /minHeight/);
   }
 });
 
