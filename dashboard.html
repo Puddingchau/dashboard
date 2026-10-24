@@ -6020,15 +6020,58 @@ document.querySelectorAll('#todos .subtab[data-todotab]').forEach(btn => {
   });
 });
 
+/** Shift YYYY-MM-DD by whole calendar days. UTC math so the host zone cannot roll the day. */
+function addDaysToYmd(ymd, days) {
+  const m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const utc = Date.UTC(+m[1], +m[2] - 1, +m[3] + (Number(days) || 0));
+  const d = new Date(utc);
+  return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
+}
+
+/**
+ * Due date for a *new* todo, from the active To-Do tab, as Asia/Hong_Kong YYYY-MM-DD.
+ * Edit keeps the item's own due date; this is only for opening 新增待辦.
+ *   今天 → today
+ *   明天 → tomorrow
+ *   後日 → day after tomorrow
+ *   七天內 → today (first day of today…today+6)
+ *   未完成 → today (no single day; still editable)
+ */
+function defaultDueForTodoTab(tab) {
+  const today = hkTodayYMD();
+  if (tab === 'tomorrow') return addDaysToYmd(today, 1);
+  if (tab === 'dayAfter') return addDaysToYmd(today, 2);
+  return today;
+}
+
+/**
+ * Date for a *new* 個人活動 or 學校活動, from the active day filter.
+ * Edit keeps the event's own date. The form has one 日期 field (no separate start day);
+ * a range filter uses its start day.
+ *   今天 → today
+ *   明天 → tomorrow
+ *   後天 → day after tomorrow
+ *   一周內 → today (start of today…today+6)
+ *   全部 → today (no window; editable default, same as page-open)
+ */
+function defaultDateForEventsFilter(filter) {
+  const today = hkTodayYMD();
+  if (filter === 'tomorrow') return addDaysToYmd(today, 1);
+  if (filter === 'dayAfter') return addDaysToYmd(today, 2);
+  return today;
+}
+
 function openTodoAddModal() {
   if (VIEW_ONLY) return;
+  const dueDefault = defaultDueForTodoTab(sessionTodoTab || todoTab);
   openModal(
     '<h3>新增待辦</h3>' +
     '<form class="form-stack" id="todoAddForm">' +
       '<div><label class="field-label">標題</label>' +
         '<input type="text" name="title" required maxlength="200" placeholder="待辦事項…" autocomplete="off" /></div>' +
       '<div><label class="field-label">到期日</label>' +
-        '<input type="date" name="due" /></div>' +
+        '<input type="date" name="due" value="' + escapeHtml(dueDefault) + '" /></div>' +
       '<div class="modal-actions">' +
         '<button type="button" class="btn btn-ghost" id="todoAddCancel">取消</button>' +
         '<button type="submit" class="btn btn-primary">加入</button>' +
@@ -6395,6 +6438,7 @@ function removeEventById(id) {
 
 function openEventAddModal() {
   if (VIEW_ONLY) return;
+  const dateDefault = defaultDateForEventsFilter(sessionEventsFilter || (state && state.eventsFilter));
   openModal(
     '<h3>新增活動</h3>' +
     '<form class="form-stack" id="eventAddForm">' +
@@ -6403,7 +6447,7 @@ function openEventAddModal() {
         '<input type="text" name="title" required maxlength="200" placeholder="活動名稱…" autocomplete="off" /></div>' +
       '<div class="form-row">' +
         '<div style="flex:1"><label class="field-label">日期</label>' +
-          '<input type="date" name="date" required /></div>' +
+          '<input type="date" name="date" required value="' + escapeHtml(dateDefault) + '" /></div>' +
         '<div style="flex:1"><label class="field-label">時間（選填）</label>' +
           '<input type="time" name="time" /></div>' +
       '</div>' +
