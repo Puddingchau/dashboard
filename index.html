@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#87CEEB" />
   <script>
     /* Theme is device-local (dash-hub-v1). Apply it before paint.
-       ?view=1 paints rain-cafe on the lock screen only and does not write localStorage. */
+       ?view=1 always paints rain-cafe / 雨窗咖啡 (theme-rain-window) and does not write localStorage. */
     (function () {
       var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
       var COLORS = {
@@ -20,11 +20,14 @@
       };
       var theme = 'sunny-beach';
       var viewOnly = false;
+      /* Browser scroll restoration and our own scroll restore were moving the page in opposite directions on open. */
+      try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e0) {}
+      var bootData = null;
       try {
         viewOnly = new URLSearchParams(location.search).get('view') === '1';
       } catch (e) {}
-      var bootData = null;
       if (viewOnly) {
+        /* Friend share stays on rain-cafe / 雨窗咖啡 forever. Do not follow sunny-beach or localStorage. */
         document.documentElement.classList.add('view-only', 'theme-rain-window');
         theme = 'rain-cafe';
       } else {
@@ -39,13 +42,41 @@
       window.__DASH_BOOT_THEME = theme;
       document.documentElement.setAttribute('data-dash-theme', theme);
       document.documentElement.classList.add('theme-' + theme);
-      /* Pre-paint expand flags so training/bus do not jump open after JS. */
+      /* Saved expand flags before first paint, so training/bus do not pop open after JS. */
       if (!viewOnly && bootData) {
         if (bootData.trainingExpanded) document.documentElement.classList.add('boot-training-open');
         if (bootData.busExpanded) document.documentElement.classList.add('boot-bus-open');
       }
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB'));
+      /* Owner opens from this device. A ?view=1 link carries its own snapshot in #s=.
+         Pages sync-data.json is prefetched only when that snapshot is absent.
+         Signed-in owner list sync is a Firestore pull after auth, not this file. */
+      window.__DASH_BOOT_SYNC = null;
+      var shareHasSnapshot = false;
+      if (viewOnly) {
+        try {
+          shareHasSnapshot = location.hash.indexOf('#s=') === 0 ||
+            !!new URLSearchParams(location.search).get('s');
+        } catch (e3) {}
+      }
+      if (viewOnly && !shareHasSnapshot) {
+        window.__DASH_BOOT_SYNC_PROMISE = fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' })
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (data) {
+            if (!window.__DASH_BOOT_SYNC_LOCKED && !window.__DASH_SHARE_SNAPSHOT) {
+              window.__DASH_BOOT_SYNC = data;
+            }
+            return data;
+          })
+          .catch(function () { return null; });
+      } else {
+        window.__DASH_BOOT_SYNC_PROMISE = Promise.resolve(null);
+      }
+      /* If boot never finishes, do not leave the dashboard invisible. */
+      setTimeout(function () {
+        document.documentElement.classList.remove('dash-booting');
+      }, 8000);
     })();
   </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -219,6 +250,10 @@
       --header-bg: rgba(255, 254, 250, 0.94);
       --amber: #E8B84A;
       --border-soft: rgba(160, 103, 59, 0.16);
+      /* Held card while reordering — warm gold. */
+      --drag-active-bg: #F6C453;
+      --drag-active-border: #B86E12;
+      --drag-active-shadow: rgba(184, 110, 18, 0.5);
     }
 
     /* 雨窗 — rainy window cafe: soft blue-grey rain, warm lamp amber, frosted glass, hygge */
@@ -250,6 +285,10 @@
       --header-bg: rgba(190, 210, 228, 0.42);
       --amber: #E8A838;
       --border-soft: rgba(255, 255, 255, 0.22);
+      /* Rain-window held card — warm gold, not the frosted row. */
+      --drag-active-bg: #F6C453;
+      --drag-active-border: #B86E12;
+      --drag-active-shadow: rgba(184, 110, 18, 0.5);
       isolation: isolate;
     }
     /* Fixed full-viewport photo layer (works on mobile; no body attachment:fixed) */
@@ -314,7 +353,8 @@
     body.theme-rain-cafe .event-item,
     body.theme-rain-cafe .course-card,
     body.theme-rain-cafe .chip:not(.active):not(.cat-manage),
-    body.theme-rain-cafe .subtabs {
+    body.theme-rain-cafe .subtabs,
+    body.theme-rain-cafe .events-search {
       background: rgba(255, 255, 255, 0.3);
       backdrop-filter: blur(18px) saturate(1.25);
       -webkit-backdrop-filter: blur(18px) saturate(1.25);
@@ -387,6 +427,10 @@
       --header-bg: rgba(255, 255, 255, 0.4);
       --amber: #E8A020;
       --border-soft: rgba(255, 255, 255, 0.32);
+      /* Sunny-beach held card — warm gold, not the frosted row. */
+      --drag-active-bg: #F6C453;
+      --drag-active-border: #B86E12;
+      --drag-active-shadow: rgba(184, 110, 18, 0.5);
       isolation: isolate;
     }
     /* Fixed full-viewport photo layer (works on mobile; no body attachment:fixed) */
@@ -452,7 +496,8 @@
     body.theme-sunny-beach .event-item,
     body.theme-sunny-beach .course-card,
     body.theme-sunny-beach .chip:not(.active):not(.cat-manage),
-    body.theme-sunny-beach .subtabs {
+    body.theme-sunny-beach .subtabs,
+    body.theme-sunny-beach .events-search {
       background: rgba(255, 255, 255, 0.4);
       backdrop-filter: blur(18px) saturate(1.25);
       -webkit-backdrop-filter: blur(18px) saturate(1.25);
@@ -499,23 +544,35 @@
 
     *, *::before, *::after { box-sizing: border-box; }
     html {
-      scroll-behavior: smooth;
+      /* auto, not smooth: a smooth root scroller animates overflow-anchor corrections and the page bounces. */
+      scroll-behavior: auto;
       scroll-padding-top: calc(72px + var(--safe-top));
       height: auto;
       overflow-x: hidden;
       overflow-y: auto;
+      overflow-anchor: none;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: auto;
     }
-
-    /* Cold-boot: no theme/background transition flash (applyTheme re-applies classes). */
+    /* Cold open: head/body already painted the theme. Do not fade background while boot re-applies it. */
     html.dash-booting,
     html.dash-booting body {
       transition: none !important;
     }
-
-
-    /* First paint matches saved expand state (avoids collapsed→open jump after JS). */
+    /* Hide the app until the first full paint. Empty lists otherwise grow in public and shove the page. */
+    html.dash-booting .app {
+      opacity: 0;
+      pointer-events: none;
+    }
+    /* Login settle: do not smooth-scroll or anchor-jump while a sync repaint lands. */
+    html.sync-settling,
+    html.sync-settling body {
+      scroll-behavior: auto !important;
+    }
+    html.sync-settling .app {
+      overflow-anchor: none;
+    }
+    /* Match a saved expanded training/bus block before JS removes is-collapsed. */
     html.boot-training-open #training.is-collapsed .block-body,
     html.boot-bus-open #bus.is-collapsed .block-body {
       display: block !important;
@@ -523,9 +580,9 @@
       min-height: 0 !important;
       max-height: none !important;
       overflow: visible !important;
-      padding: initial;
-      margin: initial;
-      border: initial;
+      padding: initial !important;
+      margin: initial !important;
+      border: initial !important;
     }
     html.boot-training-open #body-training[hidden],
     html.boot-bus-open #body-bus[hidden] {
@@ -539,7 +596,6 @@
     html.boot-bus-open #bus.is-collapsed .block-header {
       border-bottom: 1px solid var(--card-border, #334155);
     }
-
     /* Head script sets these before <body> exists so the first paint matches the saved theme. */
     html.theme-sunny-beach { background: #87CEEB url('sunny-beach-bg.jpg') center / cover no-repeat; }
     html.theme-rain-cafe { background: #1E2C3A url('rain-cafe-bg.jpg') center / cover no-repeat; }
@@ -560,10 +616,11 @@
       padding-top: var(--safe-top);
       padding-bottom: calc(24px + var(--safe-bottom));
       min-height: 100vh;
-      min-height: 100dvh;
+      min-height: 100svh;
       height: auto;
-      overflow-x: hidden;
-      overflow-y: auto;
+      /* html is the only scroller. Both axes stay visible — if only one is visible,
+         CSS computes the other to auto and a nested scroller bounces against html. */
+      overflow: visible;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: auto;
       transition: background 0.4s ease, color 0.4s ease;
@@ -572,21 +629,20 @@
     @media (max-width: 1023px) {
       body { background-attachment: scroll; }
     }
-    /* Phone: one scroll root + stable svh to cut address-bar / nested-scroll rubber-band bounce. */
+    /* Phone: html is the only scroller. Both body axes stay visible — if only one
+       axis is visible, CSS computes the other to auto and the nested scroll returns.
+       100svh (not 100dvh) so the address bar does not resize a short page on open.
+       position:fixed theme photos stay on the viewport. */
     @media (max-width: 639px) {
       html {
-        height: 100%;
-        overflow: hidden;
         overscroll-behavior-y: none;
       }
       body {
-        height: 100%;
-        min-height: 100%;
+        min-height: 100vh;
         min-height: 100svh;
-        overflow-x: hidden;
-        overflow-y: auto;
-        overscroll-behavior-y: contain;
-        -webkit-overflow-scrolling: touch;
+        height: auto;
+        overflow: visible;
+        overscroll-behavior-y: none;
       }
     }
     /* Mobile: never trap vertical scroll inside shortcuts (or other) inner panes */
@@ -754,13 +810,19 @@
     .header-widgets {
       grid-area: widgets;
       display: flex;
-      flex-wrap: wrap;
+      /* nowrap: weather and bus text must not wrap this row and grow the sticky header. */
+      flex-wrap: nowrap;
       align-items: center;
       justify-content: center;
       gap: 8px;
       width: 100%;
       min-width: 0;
       flex-shrink: 0;
+    }
+    .header-widgets > .hdr-glass,
+    .header-widgets > .hdr-bus-pair {
+      min-width: 0;
+      overflow: hidden;
     }
     @media (min-width: 900px) {
       .header-widgets {
@@ -1309,6 +1371,7 @@
         line-height: 1.25;
         min-width: 0;
         max-width: 100%;
+        min-height: 1.25em;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1753,20 +1816,21 @@
       min-height: 72px;
       font-family: inherit;
     }
-    body .sc-item:active:not(.reorder-idle):not(:has([data-edit]:active)),
+    body .sc-item.reorder-hold,
     body .sc-item.dragging {
       cursor: grabbing;
-      opacity: 1;
+      opacity: 1 !important;
       position: relative;
-      background: var(--drag-active-bg, #F6C453);
-      border-color: var(--drag-active-border, #B86E12);
+      background-color: var(--drag-active-bg, #F6C453) !important;
+      background-image: none !important;
+      border-color: var(--drag-active-border, #B86E12) !important;
       box-shadow:
         0 10px 22px -8px var(--drag-active-shadow, rgba(184, 110, 18, 0.5)),
-        inset 0 0 0 2px var(--drag-active-border, #B86E12);
+        inset 0 0 0 2px var(--drag-active-border, #B86E12) !important;
       transform: scale(1.03);
       z-index: 5;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
     .sc-item.drag-over {
       outline: 2px dashed var(--accent-primary);
@@ -1884,23 +1948,120 @@
       font-size: 13px;
       min-height: 36px;
     }
+    /* Compact glass search under the day filters. Same frost tokens as the pills. */
+    .events-search {
+      position: relative;
+      display: flex;
+      align-items: center;
+      margin: 0 0 8px;
+      min-width: 0;
+      min-height: 36px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: var(--row-bg, rgba(255, 255, 255, 0.28));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(18px) saturate(1.25);
+      -webkit-backdrop-filter: blur(18px) saturate(1.25);
+    }
+    .events-search:focus-within,
+    body.theme-rain-cafe .events-search:focus-within,
+    body.theme-sunny-beach .events-search:focus-within {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+    .events-search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .events-search input[type="search"] {
+      width: 100%;
+      min-height: 34px;
+      height: 34px;
+      margin: 0;
+      padding: 0 34px 0 32px;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 16px;
+      line-height: 1.2;
+      outline: none;
+      box-shadow: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .events-search input[type="search"]::-webkit-search-cancel-button,
+    .events-search input[type="search"]::-webkit-search-decoration {
+      -webkit-appearance: none;
+      appearance: none;
+      display: none;
+    }
+    .events-search input[type="search"]::placeholder {
+      color: var(--muted);
+      opacity: 0.9;
+    }
+    .events-search input[type="search"]:focus {
+      border-color: transparent;
+      box-shadow: none;
+      background: transparent;
+    }
+    .events-search-clear {
+      position: absolute;
+      right: 3px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      min-height: 28px;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .events-search-clear:hover,
+    .events-search-clear:focus-visible {
+      background: var(--accent-light);
+      color: var(--text-strong, var(--text));
+    }
+    .events-search-clear[hidden] { display: none !important; }
     .event-kind-picker { margin-bottom: 0; }
     .event-item.kind-personal { box-shadow: inset 3px 0 0 #2dd4bf; }
     .event-item.kind-school { box-shadow: inset 3px 0 0 #f59e0b; }
     .sync-actions {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       align-items: center;
       justify-content: flex-end;
       gap: 6px;
       margin: 0 0 6px;
       padding: 0;
       min-width: 0;
+      /* One fixed row. "Firebase 未登入" → "Firebase 已連" must not wrap and shove the list. */
+      height: 32px;
+      min-height: 32px;
+      max-height: 32px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
     }
+    .sync-actions::-webkit-scrollbar { display: none; height: 0; }
     .sync-actions .sync-pill {
+      flex: 0 0 auto;
       min-height: 26px;
+      height: 26px;
       min-width: 0;
-      height: auto;
       padding: 3px 10px;
       border-radius: 999px;
       font-size: 11px;
@@ -1920,6 +2081,14 @@
     }
     .sync-actions .sync-pill[hidden] {
       display: none !important;
+    }
+    .sync-actions .firebase-hint {
+      color: var(--muted);
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+    .sync-actions .firebase-hint.is-on {
+      color: var(--accent-badge-text, #7A5420);
     }
     #eventsFilterTabs {
       flex-wrap: nowrap;
@@ -1964,7 +2133,7 @@
     #todos .section-toolbar .subtab {
       flex: 1 0 auto;
       min-width: 0;
-      padding: 5px 6px;
+      padding: 5px 3px;
       font-size: 11px;
       min-height: 32px;
       white-space: nowrap;
@@ -2023,7 +2192,7 @@
     @media (max-width: 639px) {
       #events .event-list {
         position: relative;
-        /* ~5 dense cards before JS measures; avoids tall→short bounce on open. */
+        /* About five dense cards before JS measures. none here let the list paint full height, then snap shut. */
         max-height: var(--event-list-max, 22rem);
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
@@ -2092,32 +2261,40 @@
       flex-shrink: 0;
     }
     .todo-item.done { opacity: 0.65; }
-    .todo-item.todo-draggable {
+    .todo-item.todo-draggable,
+    .event-item.event-draggable {
       cursor: grab;
       user-select: none;
       -webkit-user-select: none;
+      -webkit-touch-callout: none;
       /* pan-y: allow vertical page scroll; drag handler preventDefault only while dragging */
       touch-action: pan-y;
-      transition: opacity .15s, box-shadow .15s, transform .15s, background .15s, border-color .15s;
+      transition: opacity .15s, box-shadow .15s, transform .15s, background-color .15s, border-color .15s;
     }
     /* Press / drag to reorder: theme frost must not cover this fill.
-       Checkbox, edit, and delete stay on the normal card color. */
-    body .todo-item.todo-draggable:active:not(.reorder-idle):not(:has(.todo-check:active, [data-edit]:active, [data-del]:active)),
-    body .todo-item.todo-draggable.dragging {
+       Checkbox, edit, and delete stay on the normal card color.
+       Hold/drag selectors stay out of the :has() rule so a browser that
+       drops :has(:active) still paints the held row. */
+    body .todo-item.todo-draggable.reorder-hold,
+    body .todo-item.todo-draggable.dragging,
+    body .event-item.event-draggable.reorder-hold,
+    body .event-item.event-draggable.dragging {
       cursor: grabbing;
-      opacity: 1;
+      opacity: 1 !important;
       position: relative;
       box-shadow:
         0 10px 22px -8px var(--drag-active-shadow, rgba(184, 110, 18, 0.5)),
-        inset 0 0 0 2px var(--drag-active-border, #B86E12);
+        inset 0 0 0 2px var(--drag-active-border, #B86E12) !important;
       transform: scale(1.01);
       z-index: 5;
-      background: var(--drag-active-bg, #F6C453);
-      border-color: var(--drag-active-border, #B86E12);
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
+      background-color: var(--drag-active-bg, #F6C453) !important;
+      background-image: none !important;
+      border-color: var(--drag-active-border, #B86E12) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
-    .todo-item.drag-over {
+    .todo-item.drag-over,
+    .event-item.drag-over {
       outline: 2px dashed var(--accent-primary);
       outline-offset: 2px;
     }
@@ -2323,19 +2500,23 @@
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
       outline: none;
     }
+    body .bus-card.reorder-hold,
     body .bus-card.dragging {
-      opacity: 1;
+      opacity: 1 !important;
       position: relative;
       transform: scale(1.02);
-      background: var(--drag-active-bg, #F6C453);
-      border-color: var(--drag-active-border, #B86E12);
+      background-color: var(--drag-active-bg, #F6C453) !important;
+      background-image: none !important;
+      border-color: var(--drag-active-border, #B86E12) !important;
       box-shadow:
         0 10px 22px -8px var(--drag-active-shadow, rgba(184, 110, 18, 0.5)),
-        inset 0 0 0 2px var(--drag-active-border, #B86E12);
+        inset 0 0 0 2px var(--drag-active-border, #B86E12) !important;
       z-index: 2;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    body .bus-card.dragging {
       touch-action: none;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
     }
     .bus-card.drag-over {
       border-color: var(--accent-primary, #3B82F6);
@@ -2725,8 +2906,8 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       gap: 3px;
-      /* Reserve ~6 rows before JS fills days — cuts calendar section jump on open. */
-      min-height: min(42vw, 16.5rem);
+      /* Always 6 rows. 7/6 matches square cells once 3px gaps are included, before JS fills the days. */
+      aspect-ratio: 7 / 6;
     }
     .cal-day {
       aspect-ratio: 1;
@@ -3045,6 +3226,7 @@
     var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
     var viewOnly = document.documentElement.classList.contains('view-only');
     var theme = viewOnly ? 'rain-cafe' : (window.__DASH_BOOT_THEME || 'sunny-beach');
+    if (THEMES.indexOf(theme) === -1) theme = viewOnly ? 'rain-cafe' : 'sunny-beach';
     THEMES.forEach(function (p) { document.body.classList.remove('theme-' + p); });
     document.body.classList.remove('theme-rain-window');
     document.body.classList.add('theme-' + theme);
@@ -3065,10 +3247,10 @@
   <div class="app">
     <header class="page-header">
       <div class="sync-actions">
-        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveConnectBtn">連接 Google</button>
-        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveSyncNowBtn" hidden>立即同步</button>
-        <span class="glass-card hdr-glass sync-pill sync-status" id="gdriveSyncStatus">未連接</span>
+        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="gdriveConnectBtn">連接 Calendar</button>
+        <span class="glass-card hdr-glass sync-pill sync-status" id="gdriveSyncStatus" hidden></span>
         <p class="glass-card hdr-glass sync-pill gcal-hint" id="gcalHint" hidden>Calendar 未授權</p>
+        <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill firebase-hint" id="firebaseAuthBtn" title="用 Google 登入 Firebase">Firebase 未登入</button>
         <button type="button" class="btn btn-ghost glass-card hdr-glass sync-pill" id="btnPushPages">推上線</button>
       </div>
       <div class="page-header-inner">
@@ -3182,6 +3364,7 @@
             <button type="button" class="subtab" data-todotab="tomorrow">明天</button>
             <button type="button" class="subtab" data-todotab="dayAfter">後日</button>
             <button type="button" class="subtab" data-todotab="week">七天內</button>
+            <button type="button" class="subtab" data-todotab="overdue">未完成</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnAddTodo">＋ 新增</button>
         </div>
@@ -3216,6 +3399,16 @@
             <button type="button" class="subtab" data-events-filter="all">全部</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnAddEvent">＋ 新增</button>
+        </div>
+        <div class="events-search">
+          <span class="events-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.25" fill="none" stroke="currentColor" stroke-width="2"></circle>
+              <path d="M16.2 16.2L20.5 20.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+            </svg>
+          </span>
+          <input type="search" id="eventsSearchInput" aria-label="搜尋活動" placeholder="搜尋活動名稱或備註" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" inputmode="search" maxlength="80" />
+          <button type="button" class="events-search-clear" id="eventsSearchClear" hidden aria-label="清除搜尋">×</button>
         </div>
         <p class="meta" id="eventsViewHint" style="margin-bottom:8px">顯示今天的個人活動</p>
         <div class="event-list" id="eventList"></div>
@@ -3348,7 +3541,7 @@
         <p id="shareOwnerStatus" aria-live="polite"></p>
         <div id="shareToast" class="share-toast" role="status"></div>
       </div>
-      <p class="footer-note">本機儲存；開啟時自動由 sync-data.json 匯入 · 布丁仔</p>
+      <p class="footer-note">本機儲存；列表經 Firebase 自動同步 · 布丁仔</p>
     </footer>
   </div>
 
@@ -3357,6 +3550,9 @@
     <div class="modal" id="modalPanel"></div>
   </div>
 
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js"></script>
 <script>
 /* ===== Embedded TCS course data ===== */
 const TCS_DATA = {
@@ -3628,11 +3824,14 @@ const TCS_DATA = {
 
 const STORAGE_KEY = 'dash-hub-v1';
 const SCHEMA_VERSION = 11; // 11: drop retired seed todos t_seed_p3_math, t_seed_ai_score, t_seed_dash_tidy
+// Drive 檔「布丁仔-sync.json」永久停用：唔讀、唔寫、亦唔會為同步彈 drive.file。
+// 列表只經 Firebase；公開頁只經「推上線」寫 sync-data.json。個人活動仍用 calendar.events。
+const ENABLE_DRIVE_SYNC = false;
 const GDRIVE_SYNC_FILENAME = '布丁仔-sync.json';
 const GDRIVE_OAUTH_CLIENT_ID = '508206831418-cmm0ra1v21lajj6ned33l33d8ohdtll8.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
-const GOOGLE_OAUTH_SCOPES = GDRIVE_SCOPE + ' ' + GCAL_SCOPE;
+const GOOGLE_OAUTH_SCOPES = (ENABLE_DRIVE_SYNC ? GDRIVE_SCOPE + ' ' : '') + GCAL_SCOPE;
 const GCAL_ACCOUNT_EMAIL = 'freddychow82@gmail.com';
 const GCAL_CALENDAR_ID = 'primary';
 const GDRIVE_FILE_ID_KEY = 'dash-hub-gdrive-file-id';
@@ -4490,7 +4689,6 @@ const SEED_EVENTS = [
     time: '09:00',
     work: '09:00–17:00；香港亞洲國際博覽館。峯展品／簡報同上。科學科 1/11 工作分配。'
   }
-
 ];
 
 
@@ -4614,6 +4812,11 @@ function normalizeEvent(e) {
   if (e && e.updatedAt != null) out.updatedAt = e.updatedAt;
   if (e && e.createdAt != null) out.createdAt = e.createdAt;
   if (e && Number(e.contentUpdatedAt)) out.contentUpdatedAt = Number(e.contentUpdatedAt);
+  if (e && e.sortOrder != null && e.sortOrder !== '') {
+    const ord = Number(e.sortOrder);
+    if (Number.isFinite(ord)) out.sortOrder = ord;
+  }
+  if (e && Number(e.orderUpdatedAt)) out.orderUpdatedAt = Number(e.orderUpdatedAt);
   if (kind === 'personal' && e && e.gcalEventId) {
     const gid = String(e.gcalEventId).trim();
     if (gid) out.gcalEventId = gid;
@@ -4649,7 +4852,7 @@ function normalizeEventsFilter(raw) {
   return 'today';
 }
 
-const TODO_TABS = ['today', 'tomorrow', 'dayAfter', 'week'];
+const TODO_TABS = ['today', 'tomorrow', 'dayAfter', 'week', 'overdue'];
 
 function normalizeTodoTab(raw) {
   return TODO_TABS.includes(raw) ? raw : 'today';
@@ -4703,8 +4906,43 @@ function countEventsToday() {
   return (state.events || []).filter(ev => eventKindOf(ev) === kind && eventOnDate(ev, today)).length;
 }
 
+/** Session-only. Never written to localStorage, Firebase, Drive, or Pages. */
+let sessionEventsQuery = '';
+
+function normalizeEventsQuery(raw) {
+  return String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+}
+
+function currentEventsQuery() {
+  return normalizeEventsQuery(sessionEventsQuery);
+}
+
+/** Case-insensitive substring. Chinese matches as-is. Title, 工作/備註, and location when present. */
+function eventMatchesQuery(ev, query) {
+  const q = normalizeEventsQuery(query).toLowerCase();
+  if (!q) return true;
+  if (!ev) return false;
+  const parts = [ev.title, ev.work, ev.notes, ev.location, ev.place];
+  for (let i = 0; i < parts.length; i++) {
+    if (String(parts[i] == null ? '' : parts[i]).toLowerCase().indexOf(q) !== -1) return true;
+  }
+  return false;
+}
+
+/**
+ * Kind is always applied. A non-empty query ignores the day window and
+ * searches every date of that kind, so a search started on 今天 can still
+ * find a later activity. An empty query uses the day filter again.
+ */
+function eventPassesEventsView(ev, kind, filter, query) {
+  if (!ev || eventKindOf(ev) !== normalizeEventsKind(kind)) return false;
+  if (normalizeEventsQuery(query)) return eventMatchesQuery(ev, query);
+  return eventInFilter(ev, filter);
+}
+
 function eventsFilterHintText() {
   const kind = eventsKindLabel(state.eventsKind);
+  if (currentEventsQuery()) return '搜尋全部' + kind + '（不限日期）';
   if (normalizeEventsFilter(state.eventsFilter) === 'all') return '顯示全部' + kind;
   const win = getEventsFilterRange(state.eventsFilter);
   return '顯示' + win.label + '的' + kind;
@@ -4712,6 +4950,11 @@ function eventsFilterHintText() {
 
 function eventsFilterEmptyText() {
   const kind = eventsKindLabel(state.eventsKind);
+  const q = currentEventsQuery();
+  if (q) {
+    const shown = q.length > 24 ? q.slice(0, 24) + '…' : q;
+    return '找不到符合「' + shown + '」的' + kind;
+  }
   if (normalizeEventsFilter(state.eventsFilter) === 'all') return '暫無' + kind;
   const win = getEventsFilterRange(state.eventsFilter);
   return win.label + '暫無' + kind;
@@ -4752,11 +4995,217 @@ function letterFallback(title) {
  *  Example: https://puddingchau.github.io/dashboard/?view=1
  *  Password is not in the URL. Guests read share-config.json (hash only).
  *  Personal sync-data.json loads only after the password matches.
- *  No dashboard localStorage writes and no Google Drive writes.
+ *  No dashboard localStorage writes, Google Drive writes, or Firebase writes.
  */
 const VIEW_ONLY = new URLSearchParams(location.search).get('view') === '1';
 if (VIEW_ONLY) document.documentElement.classList.add('view-only');
 let shareViewUnlocked = false;
+
+/* TODO_ORDER_SYNC_START
+   Todo order rule (phone, web, Pages, Firebase):
+   - Each todo carries sortOrder (lower first) and orderUpdatedAt.
+   - A drag or a new top item sets orderUpdatedAt to that moment.
+   - On id-union, the greater orderUpdatedAt supplies sortOrder for that id.
+     Content (title, due, done, updatedAt) still follows itemSyncTs, so a
+     title edit does not wipe a newer order and a reorder does not wipe a
+     newer title.
+   - When orderUpdatedAt ties, including legacy rows with no stamp, the remote
+     array wins if this merge is allowed to adopt it (Firestore pull/push, or
+     a Pages/Drive snapshot at least as new as the last sync). A push passes
+     the document already stored as remote, so a tie does not reshuffle it.
+     An older snapshot keeps this device's order.
+   - Rows missing sortOrder are backfilled from their current array index
+     ((index + 1) * 1024) with no orderUpdatedAt. That backfill never beats
+     an explicit reorder. deletedIds tombstones are unchanged and still drop
+     a row when the tombstone is newer than the row's content time.
+*/
+const TODO_ORDER_STEP = 1024;
+
+function todoSortOrderValue(item) {
+  if (!item || item.sortOrder == null || item.sortOrder === '') return null;
+  const n = Number(item.sortOrder);
+  return Number.isFinite(n) ? n : null;
+}
+
+function todoOrderUpdatedAt(item) {
+  const n = Number(item && item.orderUpdatedAt);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function compareTodosByOrder(a, b) {
+  if (a === b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  const ao = todoSortOrderValue(a);
+  const bo = todoSortOrderValue(b);
+  if (ao != null && bo != null && ao !== bo) return ao - bo;
+  if (ao != null && bo == null) return -1;
+  if (ao == null && bo != null) return 1;
+  const ac = Number(a.createdAt) || 0;
+  const bc = Number(b.createdAt) || 0;
+  if (ac !== bc) return bc - ac;
+  const ai = String(a.id || '');
+  const bi = String(b.id || '');
+  if (ai < bi) return -1;
+  if (ai > bi) return 1;
+  return 0;
+}
+
+function sortTodosByOrder(arr) {
+  return (Array.isArray(arr) ? arr.slice() : []).sort(compareTodosByOrder);
+}
+
+function backfillTodoSortOrders(arr) {
+  const list = Array.isArray(arr) ? arr.slice() : [];
+  let max = 0;
+  let any = false;
+  list.forEach(function (item) {
+    const n = todoSortOrderValue(item);
+    if (n == null) return;
+    any = true;
+    if (n > max) max = n;
+  });
+  let cursor = any ? max : 0;
+  list.forEach(function (item) {
+    if (!item || typeof item !== 'object') return;
+    if (todoSortOrderValue(item) != null) return;
+    cursor += TODO_ORDER_STEP;
+    item.sortOrder = cursor;
+  });
+  return list;
+}
+
+function nextTopTodoSortOrder(list) {
+  let min = null;
+  (list || []).forEach(function (item) {
+    const n = todoSortOrderValue(item);
+    if (n == null) return;
+    if (min == null || n < min) min = n;
+  });
+  return min == null ? TODO_ORDER_STEP : min - TODO_ORDER_STEP;
+}
+
+function normalizeTodoRecord(t) {
+  const src = t && typeof t === 'object' ? t : {};
+  const createdAt = src.createdAt || Date.now();
+  const out = {
+    id: src.id || uid('t'),
+    title: String(src.title || ''),
+    due: src.due || '',
+    done: !!src.done,
+    createdAt: createdAt
+  };
+  if (src.updatedAt != null) out.updatedAt = src.updatedAt;
+  const sortOrder = todoSortOrderValue(src);
+  if (sortOrder != null) out.sortOrder = sortOrder;
+  const orderUpdatedAt = todoOrderUpdatedAt(src);
+  if (orderUpdatedAt) out.orderUpdatedAt = orderUpdatedAt;
+  return out;
+}
+
+function normalizeTodoList(arr) {
+  const list = (Array.isArray(arr) ? arr : []).map(normalizeTodoRecord);
+  backfillTodoSortOrders(list);
+  return sortTodosByOrder(list);
+}
+
+/**
+ * Newer orderUpdatedAt wins. On a tie, remote wins when preferRemoteOrder is
+ * set (Firestore pull/push and a newer Pages snapshot). An older snapshot
+ * leaves the local order in place.
+ */
+function pickTodoOrderFields(localItem, remoteItem, preferRemoteOrder) {
+  const lAt = todoOrderUpdatedAt(localItem);
+  const rAt = todoOrderUpdatedAt(remoteItem);
+  const lOrd = todoSortOrderValue(localItem);
+  const rOrd = todoSortOrderValue(remoteItem);
+  if (lOrd == null && rOrd == null) return null;
+  if (rAt > lAt && rOrd != null) return { sortOrder: rOrd, orderUpdatedAt: rAt };
+  if (lAt > rAt && lOrd != null) return { sortOrder: lOrd, orderUpdatedAt: lAt };
+  if (preferRemoteOrder && rOrd != null) return { sortOrder: rOrd, orderUpdatedAt: rAt };
+  if (lOrd != null) return { sortOrder: lOrd, orderUpdatedAt: lAt };
+  if (rOrd != null) return { sortOrder: rOrd, orderUpdatedAt: rAt };
+  return null;
+}
+
+function applyPickedTodoOrder(item, picked) {
+  if (!item || !picked) return item;
+  const sameOrder = todoSortOrderValue(item) === picked.sortOrder;
+  const sameAt = todoOrderUpdatedAt(item) === (picked.orderUpdatedAt || 0);
+  if (sameOrder && sameAt) return item;
+  const out = Object.assign({}, item);
+  out.sortOrder = picked.sortOrder;
+  if (picked.orderUpdatedAt) out.orderUpdatedAt = picked.orderUpdatedAt;
+  else delete out.orderUpdatedAt;
+  return out;
+}
+
+/**
+ * Same splice the drag used: move fromId to toId's index, incomplete rows
+ * only. Then stamp sortOrder from the resulting array and orderUpdatedAt on
+ * every row so this order wins over an older stamp on the other device.
+ */
+function moveTodoInOrder(todos, fromId, toId, at) {
+  const list = sortTodosByOrder(backfillTodoSortOrders(todos));
+  const fromIdx = list.findIndex(function (s) { return s && s.id === fromId; });
+  const toIdx = list.findIndex(function (s) { return s && s.id === toId; });
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return { arr: list, changed: false };
+  const fromItem = list[fromIdx];
+  const toItem = list[toIdx];
+  if (!fromItem || !toItem || fromItem.done || toItem.done) return { arr: list, changed: false };
+  const item = list.splice(fromIdx, 1)[0];
+  list.splice(toIdx, 0, item);
+  const atMs = Number(at) || Date.now();
+  list.forEach(function (row, i) {
+    if (!row || typeof row !== 'object') return;
+    row.sortOrder = (i + 1) * TODO_ORDER_STEP;
+    row.orderUpdatedAt = atMs;
+  });
+  return { arr: list, changed: true };
+}
+
+/**
+ * Id-union for todos. Content uses mergeByIdPreferNewer. sortOrder is applied
+ * afterwards from pickTodoOrderFields so a newer title cannot drop the order.
+ * The returned array is sorted by sortOrder. Does not read deletedIds.
+ */
+function mergeTodosPreferNewer(localArr, remoteArr, opts) {
+  opts = opts || {};
+  const localFilled = backfillTodoSortOrders(localArr);
+  const remoteFilled = backfillTodoSortOrders(remoteArr);
+  let remoteHasId = false;
+  remoteFilled.forEach(function (item) {
+    if (item && item.id) remoteHasId = true;
+  });
+  const content = remoteHasId
+    ? mergeByIdPreferNewer(localFilled, remoteFilled, opts)
+    : { arr: localFilled.slice(), changed: false };
+  const localById = new Map();
+  localFilled.forEach(function (item) {
+    if (item && item.id) localById.set(item.id, item);
+  });
+  const remoteById = new Map();
+  remoteFilled.forEach(function (item) {
+    if (item && item.id) remoteById.set(item.id, item);
+  });
+  let changed = !!content.changed;
+  const merged = (content.arr || []).map(function (item) {
+    if (!item || !item.id) return item;
+    const picked = pickTodoOrderFields(localById.get(item.id), remoteById.get(item.id), opts.preferRemoteOrder !== false);
+    const next = applyPickedTodoOrder(item, picked);
+    if (next !== item) changed = true;
+    return next;
+  });
+  const sorted = sortTodosByOrder(merged);
+  let orderChanged = sorted.length !== merged.length;
+  if (!orderChanged) {
+    for (let i = 0; i < sorted.length; i++) {
+      if (sorted[i] !== merged[i]) { orderChanged = true; break; }
+    }
+  }
+  return { arr: sorted, changed: changed || orderChanged };
+}
+/* TODO_ORDER_SYNC_END */
 
 let state = loadState();
 let activeCat = 'all';
@@ -4780,7 +5229,98 @@ function applySessionViewFilters() {
 let todoDragId = null;
 let dragId = null;
 let busDragId = null;
+let eventDragId = null;
 let longPressTimer = null;
+
+function reorderGestureBlocked(target) {
+  if (!target || !target.closest) return true;
+  return !!target.closest('.todo-check, [data-edit], [data-del], .bus-del, .sc-edit-btn');
+}
+
+function beginReorderHold(el, target) {
+  if (!el || reorderGestureBlocked(target)) return false;
+  el.classList.add('reorder-hold');
+  el.classList.remove('reorder-idle');
+  return true;
+}
+
+function endReorderHold(el) {
+  if (!el) return;
+  el.classList.remove('reorder-hold', 'dragging');
+  el.classList.add('reorder-idle');
+}
+
+/** Class-based hold, so touch browsers that never apply :active still recolor the row. */
+function bindReorderPress(el, opts) {
+  opts = opts || {};
+  let active = false;
+  let sx = 0;
+  let sy = 0;
+  el.addEventListener('pointerdown', function (e) {
+    if (e.button != null && e.button !== 0) return;
+    if (!beginReorderHold(el, e.target)) return;
+    active = true;
+    sx = e.clientX;
+    sy = e.clientY;
+    el.dataset.reorderPointer = e.pointerType || '';
+  });
+  el.addEventListener('pointermove', function (e) {
+    if (!active || el.classList.contains('dragging')) return;
+    if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) {
+      active = false;
+      el.classList.remove('reorder-hold');
+      el.classList.add('reorder-idle');
+      if (opts.onSlideAway) opts.onSlideAway();
+    }
+  });
+  el.addEventListener('pointerup', function () {
+    active = false;
+    // Leave the color up while a drag is in progress; dragend / touchend clears it.
+    if (el.classList.contains('dragging')) return;
+    endReorderHold(el);
+  });
+  el.addEventListener('pointercancel', function () {
+    // iOS cancels the pointer during a long-press while the finger is still down.
+    if ((el.dataset.reorderPointer || '') === 'touch') return;
+    active = false;
+    if (!el.classList.contains('dragging')) endReorderHold(el);
+  });
+  el.addEventListener('contextmenu', function (e) {
+    if (el.classList.contains('reorder-hold') || el.classList.contains('dragging')) e.preventDefault();
+  });
+}
+
+function paintReorderDragImage(e, el) {
+  if (!e || !e.dataTransfer || !el) return;
+  try {
+    const cs = getComputedStyle(document.body);
+    const bg = (cs.getPropertyValue('--drag-active-bg') || '#F6C453').trim() || '#F6C453';
+    const border = (cs.getPropertyValue('--drag-active-border') || '#B86E12').trim() || '#B86E12';
+    const clone = el.cloneNode(true);
+    clone.classList.add('reorder-hold', 'dragging');
+    clone.style.position = 'fixed';
+    clone.style.left = '-2000px';
+    clone.style.top = '0';
+    clone.style.width = el.offsetWidth + 'px';
+    clone.style.boxSizing = 'border-box';
+    clone.style.margin = '0';
+    clone.style.pointerEvents = 'none';
+    clone.style.opacity = '1';
+    clone.style.backgroundColor = bg;
+    clone.style.backgroundImage = 'none';
+    clone.style.borderColor = border;
+    clone.style.backdropFilter = 'none';
+    clone.style.webkitBackdropFilter = 'none';
+    document.body.appendChild(clone);
+    const rect = el.getBoundingClientRect();
+    const ox = e.clientX != null ? Math.max(0, e.clientX - rect.left) : rect.width / 2;
+    const oy = e.clientY != null ? Math.max(0, e.clientY - rect.top) : rect.height / 2;
+    e.dataTransfer.setDragImage(clone, ox, oy);
+    setTimeout(function () {
+      if (clone.parentNode) clone.parentNode.removeChild(clone);
+    }, 0);
+  } catch (err) {}
+}
 
 function cloneSeedBus() {
   return SEED_BUS.map(b => ({ ...b }));
@@ -5110,18 +5650,8 @@ function normalizeState(data) {
   }
 
   if (Array.isArray(data.todos)) {
-    base.todos = data.todos.map(t => {
-      const createdAt = t.createdAt || Date.now();
-      const out = {
-        id: t.id || uid('t'),
-        title: String(t.title || ''),
-        due: t.due || '',
-        done: !!t.done,
-        createdAt
-      };
-      if (t.updatedAt != null) out.updatedAt = t.updatedAt;
-      return out;
-    });
+    // Keep sortOrder / orderUpdatedAt. Array index alone is not synced.
+    base.todos = normalizeTodoList(data.todos);
   }
   // Ensure seeded todos exist (stable id); do not wipe user todos.
   // SEED_TODOS is empty, so this no longer resurrects deleted items.
@@ -5197,7 +5727,7 @@ function normalizeState(data) {
     : (['shortcuts', 'todos', 'events', 'training', 'bus', 'calendar'].includes(exp) ? exp : null);
   base.trainingExpanded = !!data.trainingExpanded;
   base.busExpanded = !!data.busExpanded;
-  // Same rule as eventsFilter: do not restore 明天 / 後日 / 七天內 from storage.
+  // Same rule as eventsFilter: do not restore 明天 / 後日 / 七天內 / 未完成 from storage.
   base.todoTab = 'today';
   const THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
   const THEME_MIGRATE = {
@@ -5296,10 +5826,12 @@ function saveState(opts) {
       console.warn('localStorage save failed', e);
     }
   }
-  try { updateBlockSummaries(); } catch (e) {}
-  try {
-    if (document.getElementById('calGrid')) renderCalendar();
-  } catch (e) {}
+  if (!opts.skipPaint) {
+    try { updateBlockSummaries(); } catch (e) {}
+    try {
+      if (document.getElementById('calGrid')) renderCalendar();
+    } catch (e) {}
+  }
   if (!VIEW_ONLY && opts.scheduleSync !== false) {
     try { scheduleCloudSync(); } catch (e) {}
   }
@@ -5310,16 +5842,21 @@ function saveState(opts) {
 const THEME_PRESETS = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
 
 function applyTheme(preset, persist) {
-  if (VIEW_ONLY && persist !== false) return;
-  if (VIEW_ONLY && !shareViewUnlocked) return;
+  /* ?view=1 always shows rain-cafe / 雨窗咖啡. Do not persist that onto the viewer's device.
+     Owner theme (no ?view=1) still follows the argument and localStorage. */
+  if (VIEW_ONLY) {
+    preset = 'rain-cafe';
+    persist = false;
+  }
   const t = THEME_PRESETS.includes(preset) ? preset : 'sunny-beach';
-  state.theme = t;
+  if (!VIEW_ONLY) state.theme = t;
   const body = document.getElementById('appBody') || document.body;
+  const wantRain = !!VIEW_ONLY;
   const already =
     body.classList.contains('theme-' + t) &&
     document.documentElement.classList.contains('theme-' + t) &&
-    !body.classList.contains('theme-rain-window') &&
-    !document.documentElement.classList.contains('theme-rain-window');
+    body.classList.contains('theme-rain-window') === wantRain &&
+    document.documentElement.classList.contains('theme-rain-window') === wantRain;
   if (!already) {
     THEME_PRESETS.forEach(p => {
       body.classList.remove('theme-' + p);
@@ -5329,13 +5866,17 @@ function applyTheme(preset, persist) {
     document.documentElement.classList.remove('theme-rain-window');
     body.classList.add('theme-' + t);
     document.documentElement.classList.add('theme-' + t);
+    if (wantRain) {
+      body.classList.add('theme-rain-window');
+      document.documentElement.classList.add('theme-rain-window');
+    }
   }
   document.querySelectorAll('.theme-chips .theme-chip').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === t);
   });
   const meta = document.querySelector('meta[name="theme-color"]');
   const colors = { 'sunny-beach': '#87CEEB', 'rain-cafe': '#C5D4E0', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
-  if (meta) meta.setAttribute('content', colors[t] || '#87CEEB');
+  if (meta) meta.setAttribute('content', VIEW_ONLY ? '#1E2C3A' : (colors[t] || '#87CEEB'));
   if (persist !== false) saveState();
 }
 
@@ -5738,24 +6279,23 @@ function renderShortcuts() {
       openShortcutModal(id);
     });
 
-    // Release clears a stuck :active so the card returns to its normal color.
-    item.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('[data-edit]')) return;
-      item.classList.remove('reorder-idle');
-    });
-    item.addEventListener('pointerup', () => item.classList.add('reorder-idle'));
-    item.addEventListener('pointercancel', () => item.classList.add('reorder-idle'));
+    bindReorderPress(item, { onSlideAway: function () { clearTimeout(longPressTimer); } });
 
     // Desktop drag
     item.addEventListener('dragstart', (e) => {
+      if (reorderGestureBlocked(e.target)) {
+        e.preventDefault();
+        return;
+      }
       dragId = id;
-      item.classList.add('dragging');
+      item.classList.add('dragging', 'reorder-hold');
+      item.classList.remove('reorder-idle');
       e.dataTransfer.effectAllowed = 'move';
       try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+      paintReorderDragImage(e, item);
     });
     item.addEventListener('dragend', () => {
-      item.classList.remove('dragging');
-      item.classList.add('reorder-idle');
+      endReorderHold(item);
       grid.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
       dragId = null;
     });
@@ -5776,11 +6316,13 @@ function renderShortcuts() {
     // Touch long-press drag
     let startX, startY, moved = false;
     item.addEventListener('touchstart', (e) => {
+      if (reorderGestureBlocked(e.target)) return;
+      beginReorderHold(item, e.target);
       const t = e.touches[0];
       startX = t.clientX; startY = t.clientY; moved = false;
       longPressTimer = setTimeout(() => {
         dragId = id;
-        item.classList.add('dragging', 'show-edit');
+        item.classList.add('dragging', 'reorder-hold', 'show-edit');
         if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
       }, 420);
     }, { passive: true });
@@ -5788,7 +6330,11 @@ function renderShortcuts() {
       const t = e.touches[0];
       if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
         moved = true;
-        if (!dragId) clearTimeout(longPressTimer);
+        if (!dragId) {
+          clearTimeout(longPressTimer);
+          item.classList.remove('reorder-hold');
+          item.classList.add('reorder-idle');
+        }
       }
       if (dragId) {
         e.preventDefault();
@@ -5806,17 +6352,18 @@ function renderShortcuts() {
         const target = el && el.closest('.sc-item');
         const to = target && target.getAttribute('data-id');
         if (to && to !== dragId) reorderShortcuts(dragId, to);
-        grid.querySelectorAll('.sc-item').forEach(x => x.classList.remove('dragging', 'drag-over'));
+        grid.querySelectorAll('.sc-item').forEach(x => x.classList.remove('dragging', 'reorder-hold', 'drag-over'));
         dragId = null;
+        e.preventDefault();
       } else {
         item.classList.remove('show-edit');
       }
-      item.classList.add('reorder-idle');
+      endReorderHold(item);
     });
     item.addEventListener('touchcancel', () => {
       clearTimeout(longPressTimer);
-      item.classList.remove('dragging', 'show-edit');
-      item.classList.add('reorder-idle');
+      item.classList.remove('show-edit');
+      endReorderHold(item);
       dragId = null;
     });
   });
@@ -5951,33 +6498,73 @@ document.getElementById('btnManageCats').addEventListener('click', () => {
 });
 
 /* ===== Todos ===== */
+/** Hong Kong calendar day (YYYY-MM-DD), same day the header clock shows. */
+function hkTodayYMD() {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Hong_Kong',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const parts = {};
+    fmt.formatToParts(new Date()).forEach(function (p) {
+      if (p.type !== 'literal') parts[p.type] = p.value;
+    });
+    const y = parts.year;
+    const m = String(parts.month || '').padStart(2, '0');
+    const d = String(parts.day || '').padStart(2, '0');
+    if (/^\d{4}$/.test(y) && /^\d{2}$/.test(m) && /^\d{2}$/.test(d)) return y + '-' + m + '-' + d;
+  } catch (e) {}
+  const local = todayLocal();
+  return local.getFullYear() + '-' + pad2(local.getMonth() + 1) + '-' + pad2(local.getDate());
+}
+
+function todoDueYMD(t) {
+  const m = String(t && t.due || '').match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (!m) return '';
+  return m[1] + '-' + pad2(+m[2]) + '-' + pad2(+m[3]);
+}
+
+/** Days from the Hong Kong calendar today. Negative means overdue. */
+function todoDayOffset(t) {
+  const due = todoDueYMD(t);
+  if (!due) return null;
+  const today = hkTodayYMD();
+  const dueUtc = Date.UTC(+due.slice(0, 4), +due.slice(5, 7) - 1, +due.slice(8, 10));
+  const todayUtc = Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10));
+  return Math.round((dueUtc - todayUtc) / 86400000);
+}
+
 function isTodoDueToday(t) {
-  const d = parseDateOnly(t && t.due);
-  if (!d) return false;
-  return daysDiff(d) === 0;
+  return todoDayOffset(t) === 0;
 }
 
 function isTodoDueTomorrow(t) {
-  const d = parseDateOnly(t && t.due);
-  if (!d) return false;
-  return daysDiff(d) === 1;
+  return todoDayOffset(t) === 1;
 }
 
 function isTodoDueDayAfter(t) {
-  const d = parseDateOnly(t && t.due);
-  if (!d) return false;
-  return daysDiff(d) === 2;
+  return todoDayOffset(t) === 2;
 }
 
 function isTodoDueWithinWeek(t) {
-  const d = parseDateOnly(t && t.due);
-  if (!d) return false;
-  const n = daysDiff(d);
-  return n >= 0 && n <= 6;
+  const n = todoDayOffset(t);
+  return n != null && n >= 0 && n <= 6;
+}
+
+function isTodoOverdueIncomplete(t) {
+  if (!t || t.done) return false;
+  const n = todoDayOffset(t);
+  return n != null && n < 0;
 }
 
 function matchesTodoTab(t) {
   const noDue = !(t && t.due);
+  if (todoTab === 'overdue') {
+    // 「未完成」：到期日早於今天（香港曆日）而且未完成。今天到期留在「今天」。
+    return isTodoOverdueIncomplete(t);
+  }
   if (todoTab === 'week') {
     // No-due items belong on 今日/七天; keep completed visible (strikethrough at bottom)
     if (noDue) return true;
@@ -5999,6 +6586,7 @@ function matchesTodoTab(t) {
 }
 
 function todosFilterHintText() {
+  if (todoTab === 'overdue') return '顯示過期未完成的待辦';
   if (todoTab === 'week') return '顯示七天內的待辦';
   if (todoTab === 'dayAfter') return '顯示後日的待辦';
   if (todoTab === 'tomorrow') return '顯示明天的待辦';
@@ -6028,15 +6616,58 @@ document.querySelectorAll('#todos .subtab[data-todotab]').forEach(btn => {
   });
 });
 
+/** Shift YYYY-MM-DD by whole calendar days. UTC math so the host zone cannot roll the day. */
+function addDaysToYmd(ymd, days) {
+  const m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const utc = Date.UTC(+m[1], +m[2] - 1, +m[3] + (Number(days) || 0));
+  const d = new Date(utc);
+  return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
+}
+
+/**
+ * Due date for a *new* todo, from the active To-Do tab, as Asia/Hong_Kong YYYY-MM-DD.
+ * Edit keeps the item's own due date; this is only for opening 新增待辦.
+ *   今天 → today
+ *   明天 → tomorrow
+ *   後日 → day after tomorrow
+ *   七天內 → today (first day of today…today+6)
+ *   未完成 → today (no single day; still editable)
+ */
+function defaultDueForTodoTab(tab) {
+  const today = hkTodayYMD();
+  if (tab === 'tomorrow') return addDaysToYmd(today, 1);
+  if (tab === 'dayAfter') return addDaysToYmd(today, 2);
+  return today;
+}
+
+/**
+ * Date for a *new* 個人活動 or 學校活動, from the active day filter.
+ * Edit keeps the event's own date. The form has one 日期 field (no separate start day);
+ * a range filter uses its start day.
+ *   今天 → today
+ *   明天 → tomorrow
+ *   後天 → day after tomorrow
+ *   一周內 → today (start of today…today+6)
+ *   全部 → today (no window; editable default, same as page-open)
+ */
+function defaultDateForEventsFilter(filter) {
+  const today = hkTodayYMD();
+  if (filter === 'tomorrow') return addDaysToYmd(today, 1);
+  if (filter === 'dayAfter') return addDaysToYmd(today, 2);
+  return today;
+}
+
 function openTodoAddModal() {
   if (VIEW_ONLY) return;
+  const dueDefault = defaultDueForTodoTab(sessionTodoTab || todoTab);
   openModal(
     '<h3>新增待辦</h3>' +
     '<form class="form-stack" id="todoAddForm">' +
       '<div><label class="field-label">標題</label>' +
         '<input type="text" name="title" required maxlength="200" placeholder="待辦事項…" autocomplete="off" /></div>' +
       '<div><label class="field-label">到期日</label>' +
-        '<input type="date" name="due" /></div>' +
+        '<input type="date" name="due" value="' + escapeHtml(dueDefault) + '" /></div>' +
       '<div class="modal-actions">' +
         '<button type="button" class="btn btn-ghost" id="todoAddCancel">取消</button>' +
         '<button type="submit" class="btn btn-primary">加入</button>' +
@@ -6050,12 +6681,23 @@ function openTodoAddModal() {
     const title = String(fd.get('title') || '').trim();
     const due = String(fd.get('due') || '');
     if (!title) return;
-    // Newest input on top
+    // Newest input on top. Its sortOrder is what the other device keeps after id-union.
     const _nowAdd = Date.now();
-    state.todos.unshift({ id: uid('t'), title, due, done: false, createdAt: _nowAdd, updatedAt: _nowAdd });
+    backfillTodoSortOrders(state.todos);
+    state.todos.unshift({
+      id: uid('t'),
+      title: title,
+      due: due,
+      done: false,
+      createdAt: _nowAdd,
+      updatedAt: _nowAdd,
+      sortOrder: nextTopTodoSortOrder(state.todos),
+      orderUpdatedAt: _nowAdd
+    });
+    state.todos = sortTodosByOrder(state.todos);
     saveState();
     closeModal();
-    // Stay on the tab the user was filling in (明天 / 後日 / 七天內).
+    // Stay on the tab the user was filling in (明天 / 後日 / 七天內 / 未完成).
     applySessionViewFilters();
     syncTodoTabUI();
     renderTodos();
@@ -6066,16 +6708,13 @@ function openTodoAddModal() {
 document.getElementById('btnAddTodo').addEventListener('click', openTodoAddModal);
 
 function reorderTodos(fromId, toId) {
-  if (VIEW_ONLY) return;
-  const fromIdx = state.todos.findIndex(s => s.id === fromId);
-  const toIdx = state.todos.findIndex(s => s.id === toId);
-  if (fromIdx < 0 || toIdx < 0) return;
-  const fromItem = state.todos[fromIdx];
-  const toItem = state.todos[toIdx];
-  // Only reorder among incomplete items
-  if (fromItem.done || toItem.done) return;
-  const [item] = state.todos.splice(fromIdx, 1);
-  state.todos.splice(toIdx, 0, item);
+  if (VIEW_ONLY || !state || !Array.isArray(state.todos)) return;
+  // Legacy rows have no sortOrder. Stamp the on-screen array before sorting
+  // so this drag starts from the order the owner already sees.
+  backfillTodoSortOrders(state.todos);
+  const moved = moveTodoInOrder(state.todos, fromId, toId, Date.now());
+  if (!moved.changed) return;
+  state.todos = moved.arr;
   saveState();
   renderTodos();
 }
@@ -6087,27 +6726,22 @@ function bindTodoDnD(row, list) {
   }
   const id = row.getAttribute('data-id');
   row.setAttribute('draggable', 'true');
-
-  row.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) return;
-    row.classList.remove('reorder-idle');
-  });
-  row.addEventListener('pointerup', () => row.classList.add('reorder-idle'));
-  row.addEventListener('pointercancel', () => row.classList.add('reorder-idle'));
+  bindReorderPress(row, { onSlideAway: function () { clearTimeout(longPressTimer); } });
 
   row.addEventListener('dragstart', (e) => {
-    if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) {
+    if (reorderGestureBlocked(e.target)) {
       e.preventDefault();
       return;
     }
     todoDragId = id;
-    row.classList.add('dragging');
+    row.classList.add('dragging', 'reorder-hold');
+    row.classList.remove('reorder-idle');
     e.dataTransfer.effectAllowed = 'move';
     try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+    paintReorderDragImage(e, row);
   });
   row.addEventListener('dragend', () => {
-    row.classList.remove('dragging');
-    row.classList.add('reorder-idle');
+    endReorderHold(row);
     list.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
     todoDragId = null;
   });
@@ -6128,19 +6762,24 @@ function bindTodoDnD(row, list) {
 
   let startX, startY;
   row.addEventListener('touchstart', (e) => {
-    if (e.target.closest('.todo-check') || e.target.closest('[data-del]') || e.target.closest('[data-edit]')) return;
+    if (reorderGestureBlocked(e.target)) return;
+    beginReorderHold(row, e.target);
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
     longPressTimer = setTimeout(() => {
       todoDragId = id;
-      row.classList.add('dragging');
+      row.classList.add('dragging', 'reorder-hold');
       if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
     }, 420);
   }, { passive: true });
   row.addEventListener('touchmove', (e) => {
     const t = e.touches[0];
     if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
-      if (!todoDragId) clearTimeout(longPressTimer);
+      if (!todoDragId) {
+        clearTimeout(longPressTimer);
+        row.classList.remove('reorder-hold');
+        row.classList.add('reorder-idle');
+      }
     }
     if (todoDragId) {
       e.preventDefault();
@@ -6158,15 +6797,15 @@ function bindTodoDnD(row, list) {
       const target = el && el.closest('.todo-item.todo-draggable');
       const to = target && target.getAttribute('data-id');
       if (to && to !== todoDragId) reorderTodos(todoDragId, to);
-      list.querySelectorAll('.todo-item').forEach(x => x.classList.remove('dragging', 'drag-over'));
+      list.querySelectorAll('.todo-item').forEach(x => x.classList.remove('dragging', 'reorder-hold', 'drag-over'));
       todoDragId = null;
+      e.preventDefault();
     }
-    row.classList.add('reorder-idle');
+    endReorderHold(row);
   });
   row.addEventListener('touchcancel', () => {
     clearTimeout(longPressTimer);
-    row.classList.remove('dragging');
-    row.classList.add('reorder-idle');
+    endReorderHold(row);
     todoDragId = null;
   });
 }
@@ -6221,15 +6860,16 @@ function openTodoEditModal(editId) {
 function renderTodos() {
   applySessionViewFilters();
   const list = document.getElementById('todoList');
-  // Preserve state.todos order; incompletes first, completed at bottom
-  const filtered = state.todos.filter(matchesTodoTab);
+  // sortOrder is the shared order. Incomplete stays above completed.
+  const filtered = sortTodosByOrder((state.todos || []).filter(matchesTodoTab));
   const openItems = filtered.filter(t => !t.done);
   const doneItems = filtered.filter(t => t.done);
   const items = openItems.concat(doneItems);
 
   if (!items.length) {
     let emptyMsg = '今天暫無待辦，輕鬆一下吧';
-    if (todoTab === 'week') emptyMsg = '七天內暫無待辦';
+    if (todoTab === 'overdue') emptyMsg = '沒有過期未完成，輕鬆一下吧';
+    else if (todoTab === 'week') emptyMsg = '七天內暫無待辦';
     else if (todoTab === 'dayAfter') emptyMsg = '後日暫無待辦';
     else if (todoTab === 'tomorrow') emptyMsg = '明天暫無待辦';
     list.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
@@ -6237,8 +6877,7 @@ function renderTodos() {
   }
   let openOrd = 0;
   list.innerHTML = items.map(t => {
-    const d = parseDateOnly(t.due);
-    const dd = daysDiff(d);
+    const dd = todoDayOffset(t);
     const dragCls = (VIEW_ONLY || t.done) ? '' : ' todo-draggable';
     const ord = t.done ? 0 : (++openOrd);
     const numHtml = t.done
@@ -6311,6 +6950,58 @@ function syncEventsFilterUI() {
   if (hint) hint.textContent = eventsFilterHintText();
 }
 
+function syncEventsSearchUI() {
+  const q = currentEventsQuery();
+  const clearBtn = document.getElementById('eventsSearchClear');
+  if (clearBtn) clearBtn.hidden = !q;
+  const input = document.getElementById('eventsSearchInput');
+  if (input && document.activeElement !== input && input.value !== sessionEventsQuery) {
+    input.value = sessionEventsQuery;
+  }
+}
+
+function clearEventsQuery() {
+  sessionEventsQuery = '';
+  const input = document.getElementById('eventsSearchInput');
+  if (input) input.value = '';
+  syncEventsSearchUI();
+  syncEventsFilterUI();
+  renderEvents();
+}
+
+(function bindEventsSearch() {
+  const input = document.getElementById('eventsSearchInput');
+  const clearBtn = document.getElementById('eventsSearchClear');
+  if (!input) return;
+  let composing = false;
+  function applyQuery() {
+    sessionEventsQuery = input.value;
+    syncEventsSearchUI();
+    if (composing) return;
+    syncEventsFilterUI();
+    renderEvents();
+  }
+  input.addEventListener('compositionstart', function () { composing = true; });
+  input.addEventListener('compositionend', function () {
+    composing = false;
+    applyQuery();
+  });
+  input.addEventListener('input', applyQuery);
+  input.addEventListener('search', applyQuery);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && input.value) {
+      e.preventDefault();
+      clearEventsQuery();
+    }
+  });
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function () {
+      clearEventsQuery();
+      input.focus();
+    });
+  }
+})();
+
 document.querySelectorAll('#eventsFilterTabs .subtab').forEach(btn => {
   btn.addEventListener('click', () => {
     sessionEventsFilter = normalizeEventsFilter(btn.getAttribute('data-events-filter'));
@@ -6336,7 +7027,7 @@ function eventKindPickerHtml(selected) {
   const kind = selected === 'school' ? 'school' : 'personal';
   const hint = kind === 'personal'
     ? '個人活動會同步到 Google Calendar（' + GCAL_ACCOUNT_EMAIL + '）。'
-    : '學校活動只留喺本機同 Drive，唔會推去 Google Calendar。';
+    : '學校活動只留喺本機同 Firebase，唔會推去 Google Calendar。';
   return (
     '<div><label class="field-label">類型</label>' +
     '<div class="subtabs event-kind-picker" id="eventKindPicker" role="radiogroup" aria-label="活動類型">' +
@@ -6363,7 +7054,7 @@ function bindEventKindPicker() {
       if (hint) {
         hint.textContent = k === 'personal'
           ? '個人活動會同步到 Google Calendar（' + GCAL_ACCOUNT_EMAIL + '）。'
-          : '學校活動只留喺本機同 Drive，唔會推去 Google Calendar。';
+          : '學校活動只留喺本機同 Firebase，唔會推去 Google Calendar。';
       }
     });
   });
@@ -6388,10 +7079,14 @@ function removeEventById(id) {
   saveState();
   renderEvents();
   updateBlockSummaries();
+  if (ev && String(ev.id || '').indexOf('e_seed_') !== 0 && (eventKindOf(ev) === 'personal' || ev.gcalEventId)) {
+    scheduleGcalSync();
+  }
 }
 
 function openEventAddModal() {
   if (VIEW_ONLY) return;
+  const dateDefault = defaultDateForEventsFilter(sessionEventsFilter || (state && state.eventsFilter));
   openModal(
     '<h3>新增活動</h3>' +
     '<form class="form-stack" id="eventAddForm">' +
@@ -6400,7 +7095,7 @@ function openEventAddModal() {
         '<input type="text" name="title" required maxlength="200" placeholder="活動名稱…" autocomplete="off" /></div>' +
       '<div class="form-row">' +
         '<div style="flex:1"><label class="field-label">日期</label>' +
-          '<input type="date" name="date" required /></div>' +
+          '<input type="date" name="date" required value="' + escapeHtml(dateDefault) + '" /></div>' +
         '<div style="flex:1"><label class="field-label">時間（選填）</label>' +
           '<input type="time" name="time" /></div>' +
       '</div>' +
@@ -6432,6 +7127,7 @@ function openEventAddModal() {
     syncEventsFilterUI();
     renderEvents();
     updateBlockSummaries();
+    if (kind === 'personal') scheduleGcalSync();
   };
 }
 
@@ -6483,9 +7179,11 @@ function openEventEditModal(editId) {
     const nextKind = readEventKind(fd);
     if (!title || !date) return;
     const idx = state.events.findIndex(x => x.id === editId);
+    let syncGcal = false;
     if (idx >= 0) {
       const prev = state.events[idx];
       const changed = prev.title !== title || prev.date !== date || (prev.time || '') !== (time || '') || (prev.work || '') !== work || eventKindOf(prev) !== nextKind;
+      syncGcal = String(prev.id || '').indexOf('e_seed_') !== 0 && (eventKindOf(prev) === 'personal' || nextKind === 'personal' || !!prev.gcalEventId);
       if (prev.gcalEventId && nextKind !== 'personal') queueGcalDelete(prev.gcalEventId);
       const nowTs = Date.now();
       state.events[idx] = normalizeEvent({
@@ -6508,6 +7206,7 @@ function openEventEditModal(editId) {
     applySessionViewFilters();
     syncEventsFilterUI();
     renderEvents();
+    if (syncGcal) scheduleGcalSync();
   };
 }
 
@@ -6546,6 +7245,148 @@ function sortEventsNearestFirst(list) {
   });
 }
 
+function eventHasManualOrder(ev) {
+  return !!(ev && Number(ev.orderUpdatedAt) > 0 && ev.sortOrder != null && ev.sortOrder !== '' && Number.isFinite(Number(ev.sortOrder)));
+}
+
+/** Date order until the user reorders this visible set. A full manual stamp keeps that order. */
+function sortEventsForDisplay(list) {
+  const rows = list || [];
+  if (rows.length && rows.every(eventHasManualOrder)) {
+    return rows.slice().sort(function (a, b) {
+      return Number(a.sortOrder) - Number(b.sortOrder);
+    });
+  }
+  return sortEventsNearestFirst(rows);
+}
+
+function reorderEvents(fromId, toId) {
+  if (VIEW_ONLY || !state || !Array.isArray(state.events)) return;
+  // Search shows a cross-date subset. Reordering it would stamp sortOrder on
+  // only the matches and scramble the day list when the query is cleared.
+  if (currentEventsQuery()) return;
+  const filter = normalizeEventsFilter(state.eventsFilter);
+  const kind = normalizeEventsKind(state.eventsKind);
+  const all = sortEventsForDisplay(
+    state.events.filter(function (ev) { return eventPassesEventsView(ev, kind, filter, ''); })
+  );
+  const open = all.filter(function (ev) { return !ev.done; });
+  const done = all.filter(function (ev) { return ev.done; });
+  const fromIdx = open.findIndex(function (ev) { return ev.id === fromId; });
+  const toIdx = open.findIndex(function (ev) { return ev.id === toId; });
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+  const moved = open.splice(fromIdx, 1)[0];
+  open.splice(toIdx, 0, moved);
+  const now = Date.now();
+  open.concat(done).forEach(function (ev, i) {
+    ev.sortOrder = (i + 1) * 1024;
+    ev.orderUpdatedAt = now;
+  });
+  saveState();
+  renderEvents();
+}
+
+function bindEventDnD(row, list) {
+  if (VIEW_ONLY) {
+    row.removeAttribute('draggable');
+    return;
+  }
+  const id = row.getAttribute('data-id');
+  row.setAttribute('draggable', 'true');
+  let suppressClick = false;
+  bindReorderPress(row, { onSlideAway: function () { clearTimeout(longPressTimer); } });
+  row.addEventListener('click', function (e) {
+    if (!suppressClick && !row.classList.contains('dragging')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    suppressClick = false;
+  }, true);
+
+  row.addEventListener('dragstart', function (e) {
+    if (reorderGestureBlocked(e.target)) {
+      e.preventDefault();
+      return;
+    }
+    eventDragId = id;
+    suppressClick = true;
+    row.classList.add('dragging', 'reorder-hold');
+    row.classList.remove('reorder-idle');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+    paintReorderDragImage(e, row);
+  });
+  row.addEventListener('dragend', function () {
+    endReorderHold(row);
+    list.querySelectorAll('.drag-over').forEach(function (x) { x.classList.remove('drag-over'); });
+    eventDragId = null;
+  });
+  row.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!row.classList.contains('event-draggable')) return;
+    row.classList.add('drag-over');
+  });
+  row.addEventListener('dragleave', function () { row.classList.remove('drag-over'); });
+  row.addEventListener('drop', function (e) {
+    e.preventDefault();
+    row.classList.remove('drag-over');
+    const from = eventDragId || e.dataTransfer.getData('text/plain');
+    const to = id;
+    if (from && to && from !== to) reorderEvents(from, to);
+  });
+
+  let startX, startY;
+  row.addEventListener('touchstart', function (e) {
+    if (reorderGestureBlocked(e.target)) return;
+    beginReorderHold(row, e.target);
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    longPressTimer = setTimeout(function () {
+      eventDragId = id;
+      suppressClick = true;
+      row.classList.add('dragging', 'reorder-hold');
+      if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
+    }, 420);
+  }, { passive: true });
+  row.addEventListener('touchmove', function (e) {
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+      if (!eventDragId) {
+        clearTimeout(longPressTimer);
+        row.classList.remove('reorder-hold');
+        row.classList.add('reorder-idle');
+      }
+    }
+    if (eventDragId) {
+      e.preventDefault();
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el && el.closest('.event-item.event-draggable');
+      list.querySelectorAll('.drag-over').forEach(function (x) { x.classList.remove('drag-over'); });
+      if (target && target.getAttribute('data-id') !== eventDragId) target.classList.add('drag-over');
+    }
+  }, { passive: false });
+  row.addEventListener('touchend', function (e) {
+    clearTimeout(longPressTimer);
+    if (eventDragId) {
+      const t = e.changedTouches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el && el.closest('.event-item.event-draggable');
+      const to = target && target.getAttribute('data-id');
+      if (to && to !== eventDragId) reorderEvents(eventDragId, to);
+      list.querySelectorAll('.event-item').forEach(function (x) { x.classList.remove('dragging', 'reorder-hold', 'drag-over'); });
+      eventDragId = null;
+      e.preventDefault();
+    }
+    endReorderHold(row);
+  });
+  row.addEventListener('touchcancel', function () {
+    clearTimeout(longPressTimer);
+    endReorderHold(row);
+    eventDragId = null;
+  });
+}
+
 let eventListFitBound = false;
 
 function fitEventListToFiveCards() {
@@ -6558,20 +7399,28 @@ function fitEventListToFiveCards() {
   }
   const cards = list.querySelectorAll('.event-item');
   if (cards.length <= 5) {
-    list.style.removeProperty('--event-list-max');
+    // Fallback 22rem is only for the first paint. Five or fewer stay fully visible.
+    list.style.setProperty('--event-list-max', 'none');
     return;
   }
   const apply = function () {
     const first = cards[0];
     const fifth = cards[4];
-    // Measure without clearing --event-list-max (uncapping caused tall→short bounce on open).
+    if (!first || !fifth) return;
+    // Do not clear --event-list-max first. Uncapping laid the list out at full height, then snapped it back.
     let height = (5 * first.offsetHeight) + (4 * 6);
-    if (fifth && first.offsetParent) {
+    if (first.offsetParent) {
       const viaOffset = fifth.offsetTop + fifth.offsetHeight;
       if (viaOffset > first.offsetHeight) height = viaOffset;
     }
     // A short peek of the next card shows that the list itself scrolls.
-    list.style.setProperty('--event-list-max', Math.ceil(height + 14) + 'px');
+    // Ignore a few pixels. A resize loop was setting a new cap, which resized again.
+    const nextPx = Math.ceil(height + 14);
+    const prevRaw = list.style.getPropertyValue('--event-list-max');
+    const prevPx = parseFloat(prevRaw);
+    if (prevRaw === nextPx + 'px') return;
+    if (Number.isFinite(prevPx) && Math.abs(prevPx - nextPx) < 8) return;
+    list.style.setProperty('--event-list-max', nextPx + 'px');
   };
   apply();
   // A scrollbar can wrap the work line and change card heights. Measure again.
@@ -6613,10 +7462,12 @@ function renderEvents() {
   });
   if (dirty) saveState();
 
+  syncEventsSearchUI();
   const filter = normalizeEventsFilter(state.eventsFilter);
   const kind = normalizeEventsKind(state.eventsKind);
-  const visible = sortEventsNearestFirst(
-    state.events.filter(ev => eventKindOf(ev) === kind && eventInFilter(ev, filter))
+  const query = currentEventsQuery();
+  const visible = sortEventsForDisplay(
+    state.events.filter(ev => eventPassesEventsView(ev, kind, filter, query))
   );
 
   if (!visible.length) {
@@ -6633,7 +7484,7 @@ function renderEvents() {
       ? '<div class="todo-title">' + escapeHtml(ev.title) + '</div>'
       : '<button type="button" class="todo-title event-title-toggle" aria-pressed="' + (ev.done ? 'true' : 'false') + '" aria-label="' + escapeHtml(ev.done ? '標為未完成' : '標為完成') + '">' + escapeHtml(ev.title) + '</button>';
     return (
-      '<div class="event-item kind-' + (eventKindOf(ev) === 'personal' ? 'personal' : 'school') + (ev.done ? ' done' : '') + '" data-id="' + escapeHtml(ev.id) + '">' +
+      '<div class="event-item kind-' + (eventKindOf(ev) === 'personal' ? 'personal' : 'school') + (ev.done ? ' done' : '') + ((VIEW_ONLY || ev.done || query) ? '' : ' event-draggable') + '" data-id="' + escapeHtml(ev.id) + '">' +
         '<div class="todo-body">' +
           titleHtml +
           '<div class="meta">' +
@@ -6701,6 +7552,7 @@ function renderEvents() {
         }
       });
     }
+    if (!VIEW_ONLY && row.classList.contains('event-draggable')) bindEventDnD(row, list);
   });
   bindEventListFit();
   fitEventListToFiveCards();
@@ -8066,19 +8918,22 @@ function bindBusDnD(card, list) {
   }
   const id = card.getAttribute('data-id');
   card.setAttribute('draggable', 'true');
+  bindReorderPress(card, { onSlideAway: function () { clearTimeout(longPressTimer); } });
 
   card.addEventListener('dragstart', function (e) {
-    if (e.target.closest('.bus-del')) {
+    if (reorderGestureBlocked(e.target)) {
       e.preventDefault();
       return;
     }
     busDragId = id;
-    card.classList.add('dragging');
+    card.classList.add('dragging', 'reorder-hold');
+    card.classList.remove('reorder-idle');
     e.dataTransfer.effectAllowed = 'move';
     try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+    paintReorderDragImage(e, card);
   });
   card.addEventListener('dragend', function () {
-    card.classList.remove('dragging');
+    endReorderHold(card);
     list.querySelectorAll('.drag-over').forEach(function (x) { x.classList.remove('drag-over'); });
     busDragId = null;
   });
@@ -8098,19 +8953,24 @@ function bindBusDnD(card, list) {
 
   let startX, startY;
   card.addEventListener('touchstart', function (e) {
-    if (e.target.closest('.bus-del')) return;
+    if (reorderGestureBlocked(e.target)) return;
+    beginReorderHold(card, e.target);
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
     longPressTimer = setTimeout(function () {
       busDragId = id;
-      card.classList.add('dragging');
+      card.classList.add('dragging', 'reorder-hold');
       if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
     }, 420);
   }, { passive: true });
   card.addEventListener('touchmove', function (e) {
     const t = e.touches[0];
     if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
-      if (!busDragId) clearTimeout(longPressTimer);
+      if (!busDragId) {
+        clearTimeout(longPressTimer);
+        card.classList.remove('reorder-hold');
+        card.classList.add('reorder-idle');
+      }
     }
     if (busDragId) {
       e.preventDefault();
@@ -8128,14 +8988,15 @@ function bindBusDnD(card, list) {
       const target = el && el.closest('.bus-card');
       const to = target && target.getAttribute('data-id');
       if (to && to !== busDragId) reorderBuses(busDragId, to);
-      list.querySelectorAll('.bus-card').forEach(function (x) { x.classList.remove('dragging', 'drag-over'); });
+      list.querySelectorAll('.bus-card').forEach(function (x) { x.classList.remove('dragging', 'reorder-hold', 'drag-over'); });
       busDragId = null;
       e.preventDefault();
     }
+    endReorderHold(card);
   });
   card.addEventListener('touchcancel', function () {
     clearTimeout(longPressTimer);
-    card.classList.remove('dragging');
+    endReorderHold(card);
     busDragId = null;
   });
 }
@@ -9354,8 +10215,10 @@ function clearDeletionRecordsForItems(items, kind) {
   gcalCancel.forEach(function (gid) { cancelQueuedGcalDelete(gid); });
 }
 
-/** Drop remote rows the user already deleted here, unless that row is newer than the delete. */
+/** Drop remote rows the user already deleted here, unless that row is newer than the delete.
+ *  A read-only share shows the snapshot as published. This device's tombstones stay untouched. */
 function filterRemoteItemsByDeletions(remoteArr, kind) {
+  if (VIEW_ONLY) return (remoteArr || []).filter(function (item) { return item && item.id; });
   const out = [];
   (remoteArr || []).forEach(function (item) {
     if (!item || !item.id) return;
@@ -9435,6 +10298,93 @@ function pruneAbsentFromAuthoritativeRemote(localArr, remoteArr, remoteUpdatedAt
   return { arr: arr, changed: dropped.length > 0, dropped: dropped };
 }
 
+/** True when a blocking tombstone is at least as new as the row. */
+function deletionRecordsBlockItem(records, item, kind) {
+  let at = 0;
+  (records || []).forEach(function (rec) {
+    if (!rec || rec.blockSync === false) return;
+    if (deletionRecordMatchesItem(rec, item, kind)) at = Math.max(at, Number(rec.at) || 0);
+  });
+  return !!(at && itemSyncTs(item) <= at);
+}
+
+function dropItemsBlockedByDeletions(arr, kind) {
+  const records = loadDeletionRecords();
+  const kept = [];
+  let changed = false;
+  (arr || []).forEach(function (item) {
+    if (!item || !item.id) { kept.push(item); return; }
+    if (deletionRecordsBlockItem(records, item, kind)) { changed = true; return; }
+    kept.push(item);
+  });
+  return { arr: kept, changed: changed };
+}
+
+/** Newer tombstone wins. Used when a Firestore write must not drop the other device's deletes. */
+function mergeDeletionRecordLists(a, b) {
+  const items = [];
+  function add(entry) {
+    if (!entry || !entry.id) return;
+    const kind = entry.kind === 'todo' ? 'todo' : (entry.kind === 'event' ? 'event' : '');
+    if (!kind) return;
+    const id = String(entry.id);
+    const at = Number(entry.at) || 0;
+    if (!at) return;
+    let found = null;
+    items.forEach(function (x) {
+      if (x.kind === kind && x.id === id) found = x;
+    });
+    if (found) {
+      if (at > (Number(found.at) || 0)) {
+        found.at = at;
+        found.blockSync = entry.blockSync !== false;
+      } else if (at === (Number(found.at) || 0) && entry.blockSync !== false) {
+        found.blockSync = true;
+      }
+      if (entry.gcalEventId) found.gcalEventId = String(entry.gcalEventId);
+      if (entry.contentKey) found.contentKey = String(entry.contentKey);
+      return;
+    }
+    const row = { kind: kind, id: id, at: at, blockSync: entry.blockSync !== false };
+    if (entry.gcalEventId) row.gcalEventId = String(entry.gcalEventId);
+    if (entry.contentKey) row.contentKey = String(entry.contentKey);
+    items.push(row);
+  }
+  (a || []).forEach(add);
+  (b || []).forEach(add);
+  return items.length > DELETED_SYNC_CAP ? items.slice(-DELETED_SYNC_CAP) : items;
+}
+
+function unionSyncItems(localArr, remoteArr, records, kind) {
+  // Todos carry sortOrder through the union. Events stay id-and-newer-content.
+  const merged = (kind === 'todo'
+    ? mergeTodosPreferNewer(localArr || [], remoteArr || [], { allowAdds: true })
+    : mergeByIdPreferNewer(localArr || [], remoteArr || [], { allowAdds: true })
+  ).arr;
+  return merged.filter(function (item) {
+    return item && item.id && !deletionRecordsBlockItem(records, item, kind);
+  });
+}
+
+/**
+ * Firestore write body. Todos, events, and deletedIds are the union of both
+ * devices. Todo sortOrder survives that union: the newer orderUpdatedAt wins,
+ * and a tie keeps the order already stored on the document. This device's
+ * other fields stay. Does not read or write the UI.
+ */
+function combineFirebaseSyncDocs(localDoc, remoteDoc) {
+  const local = localDoc && typeof localDoc === 'object' ? localDoc : {};
+  const remote = remoteDoc && typeof remoteDoc === 'object' ? remoteDoc : {};
+  const deletedIds = mergeDeletionRecordLists(local.deletedIds, remote.deletedIds || remote.tombstones);
+  const out = Object.assign({}, local);
+  out.todos = unionSyncItems(local.todos, remote.todos, deletedIds, 'todo');
+  out.events = unionSyncItems(local.events, remote.events, deletedIds, 'event');
+  out.deletedIds = deletedIds;
+  out.updatedAt = Date.now();
+  out.schemaVersion = SCHEMA_VERSION;
+  return plainJson(out);
+}
+
 function applyRemoteSyncPayload(remote, opts) {
   opts = opts || {};
   if (!remote || typeof remote !== 'object') return false;
@@ -9444,44 +10394,53 @@ function applyRemoteSyncPayload(remote, opts) {
   // >= so the same Drive/Pages updatedAt, already stored in syncUpdatedAt by
   // the old merge, still drops ids that file does not contain. An older file
   // (updatedAt < syncUpdatedAt) must not delete newer local work.
+  // unionLists (Firestore) does not use that watermark: a row on either device
+  // stays unless a tombstone is newer than the row.
   const authoritative = remoteUpdated > 0 && remoteUpdated >= localSync;
+  const unionLists = opts.unionLists === true;
+  const allowAdds = authoritative || unionLists;
   if (Array.isArray(remote.todos)) {
     // Retired seed ids are dropped on every merge so Pages or Drive cannot put them back.
-    const remoteTodos = filterRemoteItemsByDeletions(withoutRetiredSeedTodos(remote.todos.map(t => {
-      const createdAt = t.createdAt || Date.now();
-      const out = {
-        id: t.id || uid('t'),
-        title: String(t.title || ''),
-        due: t.due || '',
-        done: !!t.done,
-        createdAt
-      };
-      if (t.updatedAt != null) out.updatedAt = t.updatedAt;
-      return out;
-    })), 'todo');
-    if (authoritative) clearDeletionRecordsForItems(remoteTodos, 'todo');
-    const r = mergeByIdPreferNewer(state.todos, remoteTodos, { allowAdds: authoritative });
+    const remoteTodos = filterRemoteItemsByDeletions(withoutRetiredSeedTodos(remote.todos.map(normalizeTodoRecord)), 'todo');
+    if ((authoritative || unionLists) && !VIEW_ONLY) clearDeletionRecordsForItems(remoteTodos, 'todo');
+    const r = mergeTodosPreferNewer(state.todos, remoteTodos, {
+      allowAdds: allowAdds,
+      // Firebase and a snapshot at least as new as the last sync share one order.
+      // An older file must not reshuffle the list already on this device.
+      preferRemoteOrder: !!(authoritative || unionLists)
+    });
     let nextTodos = r.arr;
     let prunedTodos = false;
-    if (authoritative) {
+    if (unionLists) {
+      const d = dropItemsBlockedByDeletions(nextTodos, 'todo');
+      nextTodos = d.arr;
+      prunedTodos = d.changed;
+    } else if (authoritative) {
       const p = pruneAbsentFromAuthoritativeRemote(nextTodos, remoteTodos, remoteUpdated);
       nextTodos = p.arr;
       prunedTodos = p.changed;
     }
     if (r.changed || prunedTodos) { state.todos = nextTodos; changed = true; }
+  } else if (unionLists) {
+    const d = dropItemsBlockedByDeletions(state.todos, 'todo');
+    if (d.changed) { state.todos = d.arr; changed = true; }
   }
   if (Array.isArray(remote.events)) {
     const remoteEvents = filterRemoteItemsByDeletions(remote.events.map(normalizeEvent), 'event');
-    if (authoritative) clearDeletionRecordsForItems(remoteEvents, 'event');
+    if ((authoritative || unionLists) && !VIEW_ONLY) clearDeletionRecordsForItems(remoteEvents, 'event');
     let next = Array.isArray(state.events) ? state.events : [];
     let upsertChanged = false;
     if (remoteEvents.length) {
-      const r = mergeByIdPreferNewer(next, remoteEvents, { allowAdds: authoritative });
+      const r = mergeByIdPreferNewer(next, remoteEvents, { allowAdds: allowAdds });
       next = r.arr;
       upsertChanged = r.changed;
     }
     let prunedEvents = false;
-    if (authoritative) {
+    if (unionLists) {
+      const d = dropItemsBlockedByDeletions(next, 'event');
+      next = d.arr;
+      prunedEvents = d.changed;
+    } else if (authoritative) {
       const p = pruneAbsentFromAuthoritativeRemote(next, remoteEvents, remoteUpdated, { preserveSeedEvents: true });
       next = p.arr;
       prunedEvents = p.changed;
@@ -9495,6 +10454,12 @@ function applyRemoteSyncPayload(remote, opts) {
         changed = true;
       }
     }
+  } else if (unionLists) {
+    const d = dropItemsBlockedByDeletions(state.events, 'event');
+    if (d.changed) {
+      state.events = dedupeEventsByTitleDate(d.arr);
+      changed = true;
+    }
   }
   if (remoteUpdated && remoteUpdated > localSync) {
     state.syncUpdatedAt = remoteUpdated;
@@ -9507,8 +10472,11 @@ function applyRemoteSyncPayload(remote, opts) {
       if (r.changed) { state.shortcuts = r.arr; changed = true; }
     }
     if (Array.isArray(remote.categories)) {
-      state.categories = migrateCategories(remote.categories.filter(c => c && c.id !== 'all'));
-      changed = true;
+      const nextCats = migrateCategories(remote.categories.filter(c => c && c.id !== 'all'));
+      if (JSON.stringify(nextCats) !== JSON.stringify(state.categories || [])) {
+        state.categories = nextCats;
+        changed = true;
+      }
     }
     if (Array.isArray(remote.busStops) && remote.busStops.length) {
       const migrated = migrateBusStops(remote.busStops);
@@ -9517,7 +10485,7 @@ function applyRemoteSyncPayload(remote, opts) {
     } else if (Array.isArray(remote.busStops) && !remote.busStops.length) {
       // empty remote: keep local busStops (do not wipe)
     }
-    // Theme is device-local. Drive and Pages sync must not overwrite it.
+    // Theme is device-local. Drive, Pages, and Firebase sync must not overwrite it.
     // todoTab / eventsFilter / eventsKind stay on the tab chosen in this document.
     // A full reload still opens on 今天 / 個人活動. Remote copies are ignored,
     // including when the current list is empty.
@@ -9534,37 +10502,130 @@ function applyRemoteSyncPayload(remote, opts) {
   return changed;
 }
 
-function reRenderAfterSync(extras) {
-  applySessionViewFilters();
-  try { renderTodos(); } catch (e) {}
-  try { renderEvents(); } catch (e) {}
-  try { updateBlockSummaries(); } catch (e) {}
-  if (extras) {
-    try { applyTheme(state.theme || 'sunny-beach', false); } catch (e) {}
-    try { syncShareOwnerUI(); } catch (e) {}
-    try { syncTodoTabUI(); } catch (e) {}
-    try { syncEventsFilterUI(); } catch (e) {}
-    try { renderCatChips(); } catch (e) {}
-    try { renderShortcuts(); } catch (e) {}
-    try { renderBus(); } catch (e) {}
-    try { renderCalendar(); } catch (e) {}
-  } else {
-    try {
-      if (document.getElementById('calGrid')) renderCalendar();
-    } catch (e) {}
+/* Visible rows only. gcalEventId / updatedAt / syncUpdatedAt must not count,
+   or every Calendar stamp repaints the lists and the page jumps. */
+function dashboardVisibleSig() {
+  function rows(list, pick) {
+    if (!Array.isArray(list)) return '';
+    return list.map(function (item) { return pick(item || {}); }).join('\n');
   }
+  const share = state && state.share ? state.share : {};
+  return [
+    rows(state && state.todos, function (t) {
+      return [t.id, t.title, t.due, t.done ? 1 : 0, t.sortOrder].join('\u0001');
+    }),
+    rows(state && state.events, function (e) {
+      return [e.id, e.title, e.date, e.time, e.work, e.done ? 1 : 0, e.kind, e.sortOrder].join('\u0001');
+    }),
+    rows(state && state.shortcuts, function (s) {
+      return [s.id, s.title, s.url, s.category].join('\u0001');
+    }),
+    rows(state && state.categories, function (c) {
+      return [c.id, c.name].join('\u0001');
+    }),
+    rows(state && state.busStops, function (b) {
+      return [b.id, b.route, b.stopId, b.stopName, b.direction, b.sortOrder].join('\u0001');
+    }),
+    String(state && state.theme || ''),
+    String(state && state.todoTab || ''),
+    String(state && state.eventsFilter || ''),
+    String(state && state.eventsKind || ''),
+    state && state.trainingExpanded ? 1 : 0,
+    state && state.busExpanded ? 1 : 0,
+    share.enabled ? 1 : 0,
+    Number(share.expiresAt) || 0,
+    Number(share.updatedAt) || 0
+  ].join('\u0002');
+}
+
+let dashPaintSig = '';
+let dashPaintQueued = false;
+let dashPaintExtras = false;
+
+function reRenderAfterSyncNow(extras) {
+  applySessionViewFilters();
+  if (dashboardVisibleSig() === dashPaintSig) return;
+  const root = document.documentElement;
+  const scroller = document.scrollingElement || root;
+  const y = scroller ? scroller.scrollTop : 0;
+  root.classList.add('sync-settling');
+  // Hold the current list height across innerHTML. Otherwise the list collapses
+  // to empty and then grows again, which is the open-page jump.
+  const locks = [];
+  ['todoList', 'eventList', 'shortcutGrid'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const h = el.getBoundingClientRect().height;
+    if (h > 8) {
+      el.style.minHeight = Math.round(h) + 'px';
+      locks.push(el);
+    }
+  });
+  try {
+    try { renderTodos(); } catch (e) {}
+    try { renderEvents(); } catch (e) {}
+    try { updateBlockSummaries(); } catch (e) {}
+    if (extras) {
+      try { applyTheme(state.theme || 'sunny-beach', false); } catch (e) {}
+      try { syncShareOwnerUI(); } catch (e) {}
+      try { syncTodoTabUI(); } catch (e) {}
+      try { syncEventsFilterUI(); } catch (e) {}
+      try { renderCatChips(); } catch (e) {}
+      try { renderShortcuts(); } catch (e) {}
+      try { renderBus(); } catch (e) {}
+      try { renderCalendar(); } catch (e) {}
+    } else {
+      try {
+        if (document.getElementById('calGrid')) renderCalendar();
+      } catch (e) {}
+    }
+  } finally {
+    if (scroller) scroller.scrollTop = y;
+    dashPaintSig = dashboardVisibleSig();
+    const release = function () {
+      if (scroller) scroller.scrollTop = y;
+      locks.forEach(function (el) { el.style.minHeight = ''; });
+      root.classList.remove('sync-settling');
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () { requestAnimationFrame(release); });
+    } else {
+      setTimeout(release, 50);
+    }
+  }
+}
+
+function reRenderAfterSync(extras) {
+  if (extras) dashPaintExtras = true;
+  if (dashPaintQueued) return;
+  dashPaintQueued = true;
+  const run = function () {
+    dashPaintQueued = false;
+    const withExtras = dashPaintExtras;
+    dashPaintExtras = false;
+    reRenderAfterSyncNow(withExtras);
+  };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+  else run();
 }
 
 async function autoImportFromCloud() {
   try {
+    // A share link with #s= already has the owner's tap-time list. Do not replace it
+    // with whatever sync-data.json Pages is still serving.
+    if (VIEW_ONLY && window.__DASH_SHARE_SNAPSHOT) return;
     const res = await fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) return;
     const remote = await res.json();
     if (!remote || remote.updatedAt == null) return;
+    if (VIEW_ONLY && !pagesSnapshotMatchesLink(remote)) return;
+    // The boot paint already applied this exact snapshot. A second copy must not shove the lists.
+    if (window.__DASH_BOOT_SYNC_APPLIED_AT && Number(remote.updatedAt) === Number(window.__DASH_BOOT_SYNC_APPLIED_AT)) return;
+    markBootSyncApplied(remote);
     // Pages sync-data.json applies busStops/shortcuts/categories. Theme stays local.
     const changed = applyRemoteSyncPayload(remote, { applyExtras: true });
     if (changed) {
-      saveState();
+      saveState({ skipPaint: true });
       reRenderAfterSync(true);
     }
   } catch (e) {
@@ -9586,19 +10647,517 @@ function downloadSyncJson(obj, filename) {
 }
 
 
+/* ===== Firebase Auth + Firestore (dual-write with Drive / Pages) =====
+   Document: users/{uid}/dashboard/sync
+   Same fields as the Drive / Pages payload, plus deletedIds (tombstones).
+   View-only (?view=1) never reads or writes Firebase.
+   Owner mode, once Firebase is signed in, pulls and merges Firestore after
+   auth is ready and when this tab returns to the foreground. That pull does
+   not read Drive or Pages. Owner mode does not auto-import sync-data.json.
+   Local edits still write Firestore. Personal events also sync with the
+   primary Google Calendar: pull on open/foreground, push on add/edit/delete.
+   School events and e_seed_* stay out of Calendar. The owner UI has no
+   立即同步 button. 推上線 publishes Pages.
+   Theme stays on this device. Open still lands on 今天 / 個人活動;
+   a tab picked in this document is kept across merges. */
+const FIREBASE_WEB_CONFIG = {
+  apiKey: 'AIzaSyBwdjc5On7RXwNpMgyvR5AJPqNwBjfc0YI',
+  authDomain: 'pudding-dashboard-5d8c8.firebaseapp.com',
+  projectId: 'pudding-dashboard-5d8c8',
+  storageBucket: 'pudding-dashboard-5d8c8.firebasestorage.app',
+  messagingSenderId: '1033223249070',
+  appId: '1:1033223249070:web:ee4f9596490c6d4a4e613f',
+  measurementId: 'G-5FNPG7D0GH'
+};
+const FIREBASE_DIRTY_KEY = 'dash-hub-firebase-dirty-at';
+// Collapse visibility and focus into one pull, then ignore further foreground
+// events until this gap has passed so a noisy browser cannot hammer Firestore.
+const FIREBASE_FOCUS_SYNC_MS = 10000;
+const FIREBASE_FOCUS_DEBOUNCE_MS = 700;
+let firebaseAuthUser = null;
+let firebaseStarted = false;
+let firebasePushTimer = null;
+let firebaseSyncInFlight = false;
+let firebasePushAgain = false;
+let firebasePullAgain = false;
+let firebaseForceSyncPending = false;
+let firebaseAutoPullAt = 0;
+let firebaseAutoPullUid = '';
+let firebaseForegroundTimer = null;
+let firebaseAuthBootSeen = false;
+// Google popup/redirect steals focus. Ignore the burst, or it schedules another sync
+// which opens another popup.
+let oauthPopupOpen = false;
+let oauthUiQuietUntil = 0;
+
+function firebaseSdkReady() {
+  return !!(window.firebase && firebase.auth && firebase.firestore && typeof firebase.initializeApp === 'function');
+}
+
+function firebaseCanWrite() {
+  return !VIEW_ONLY && firebaseSdkReady() && !!(firebaseAuthUser && firebaseAuthUser.uid);
+}
+
+function firebaseSyncRef() {
+  return firebase.firestore()
+    .collection('users').doc(firebaseAuthUser.uid)
+    .collection('dashboard').doc('sync');
+}
+
+function plainJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+/** Sync payload plus tombstones. Drive / Pages builders are unchanged. */
+function buildFirebaseSyncDoc() {
+  const payload = buildSyncPayload();
+  payload.deletedIds = loadDeletionRecords().map(function (x) {
+    const row = {
+      kind: x.kind === 'todo' ? 'todo' : 'event',
+      id: String(x.id || ''),
+      at: Number(x.at) || 0,
+      blockSync: x.blockSync !== false
+    };
+    if (x.gcalEventId) row.gcalEventId = String(x.gcalEventId);
+    if (x.contentKey) row.contentKey = String(x.contentKey);
+    return row;
+  }).filter(function (x) { return x.id && x.at; });
+  return payload;
+}
+
+function markFirebaseDirty() {
+  if (VIEW_ONLY) return;
+  try { localStorage.setItem(FIREBASE_DIRTY_KEY, String(Date.now())); } catch (e) {}
+}
+
+function firebaseDirtyAt() {
+  try { return Number(localStorage.getItem(FIREBASE_DIRTY_KEY) || 0) || 0; } catch (e) { return 0; }
+}
+
+function clearFirebaseDirty(through) {
+  try {
+    const cur = firebaseDirtyAt();
+    if (!cur || cur <= (Number(through) || 0)) localStorage.removeItem(FIREBASE_DIRTY_KEY);
+  } catch (e) {}
+}
+
+/** Keep the newer tombstone so a stale snapshot cannot restore a deleted row. */
+function adoptRemoteDeletionRecords(list) {
+  if (VIEW_ONLY || !Array.isArray(list) || !list.length) return;
+  const items = loadDeletionRecords();
+  let changed = false;
+  list.forEach(function (entry) {
+    if (!entry || !entry.id) return;
+    const kind = entry.kind === 'todo' ? 'todo' : (entry.kind === 'event' ? 'event' : '');
+    if (!kind) return;
+    const id = String(entry.id);
+    const at = Number(entry.at) || 0;
+    if (!at) return;
+    let found = null;
+    items.forEach(function (x) {
+      if (x.kind === kind && x.id === id) found = x;
+    });
+    if (found) {
+      if (at <= (Number(found.at) || 0)) return;
+      found.at = at;
+      found.blockSync = entry.blockSync !== false;
+      if (entry.gcalEventId) found.gcalEventId = String(entry.gcalEventId);
+      if (entry.contentKey) found.contentKey = String(entry.contentKey);
+      changed = true;
+      return;
+    }
+    const row = { kind: kind, id: id, at: at, blockSync: entry.blockSync !== false };
+    if (entry.gcalEventId) row.gcalEventId = String(entry.gcalEventId);
+    if (entry.contentKey) row.contentKey = String(entry.contentKey);
+    items.push(row);
+    changed = true;
+  });
+  if (changed) saveDeletionRecords(items);
+}
+
+function setFirebaseHint(mode, detail) {
+  const btn = document.getElementById('firebaseAuthBtn');
+  if (!btn) return;
+  const on = mode === 'in';
+  btn.textContent = on ? 'Firebase 已連' : 'Firebase 未登入';
+  btn.classList.toggle('is-on', on);
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const email = firebaseAuthUser && firebaseAuthUser.email ? String(firebaseAuthUser.email) : '';
+  let title = on
+    ? ('Firebase 已連' + (email ? ' · ' + email : '') + ' · 再按可登出')
+    : '用 Google 登入 Firebase';
+  if (detail) title = detail;
+  btn.title = title;
+}
+
+function noteFirebaseError(err) {
+  const code = err && err.code ? String(err.code) : '';
+  let detail = 'Firebase 暫未能連線';
+  if (code === 'auth/unauthorized-domain') {
+    detail = 'Firebase 未登入 · 請在 Console 授權網域 puddingchau.github.io';
+  } else if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+    detail = 'Firebase 未登入 · 請在 Console 啟用 Google 登入';
+  } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    detail = '已取消 Firebase 登入';
+  } else if (code) {
+    detail = 'Firebase 未登入 · ' + code;
+  }
+  console.warn('Firebase', err);
+  setFirebaseHint('out', detail);
+}
+
+function noteFirebaseSyncIssue(err) {
+  console.warn('Firebase sync failed', err);
+  const btn = document.getElementById('firebaseAuthBtn');
+  if (!btn) return;
+  const code = err && err.code ? String(err.code) : '';
+  if (!firebaseAuthUser) {
+    noteFirebaseError(err);
+    return;
+  }
+  btn.textContent = 'Firebase 已連';
+  btn.classList.add('is-on');
+  btn.title = code === 'permission-denied'
+    ? 'Firebase 已連 · 沒有讀寫權限'
+    : 'Firebase 已連 · 同步失敗';
+}
+
+/**
+ * Pull users/{uid}/dashboard/sync into the lists on screen.
+ * Rows union by id; the newer row wins. Tombstones remove a row on both devices.
+ * Todo order is sortOrder. The newer orderUpdatedAt wins; a tie follows the
+ * synced array. A title edit does not reshuffle that order.
+ * A newer local syncUpdatedAt must not hide rows that exist only in Firestore.
+ * Theme and the in-document 今天 / 個人活動 choice stay on this device.
+ */
+async function mergeFirebaseSnapshot() {
+  if (!firebaseCanWrite()) return { ok: false, skipped: true, exists: false, remoteUpdated: 0 };
+  const snap = await firebaseSyncRef().get();
+  if (!snap.exists) return { ok: true, exists: false, remoteUpdated: 0 };
+  const remote = snap.data() || {};
+  adoptRemoteDeletionRecords(remote.deletedIds || remote.tombstones);
+  const remoteUpdated = Number(remote.updatedAt) || 0;
+  const changed = applyRemoteSyncPayload(remote, { applyExtras: true, unionLists: true });
+  if (changed) {
+    saveState({ scheduleSync: false, skipPaint: true });
+    reRenderAfterSync(true);
+  }
+  return { ok: true, exists: true, remoteUpdated: remoteUpdated, changed: !!changed };
+}
+
+async function pushFirebaseSnapshot() {
+  if (!firebaseCanWrite()) return false;
+  const dirtyAt = firebaseDirtyAt();
+  const localPayload = plainJson(buildFirebaseSyncDoc());
+  const ref = firebaseSyncRef();
+  // Union with the document already stored so this write cannot erase the other device.
+  await firebase.firestore().runTransaction(function (tx) {
+    return tx.get(ref).then(function (snap) {
+      const remote = snap && snap.exists ? (snap.data() || null) : null;
+      const payload = remote ? combineFirebaseSyncDocs(localPayload, remote) : localPayload;
+      tx.set(ref, payload);
+    });
+  });
+  // A save that landed while this write was in flight keeps its dirty mark.
+  const cur = firebaseDirtyAt();
+  if (cur && cur !== dirtyAt) firebasePushAgain = true;
+  else clearFirebaseDirty(dirtyAt || Date.now());
+  setFirebaseHint('in');
+  return true;
+}
+
+function queueFirebasePush() {
+  if (VIEW_ONLY || !firebaseCanWrite()) return;
+  // Does not pull Firestore into the on-screen list. A pull on this path would
+  // bounce against the foreground auto-pull. The write still unions todos,
+  // events, and deletedIds so an edit cannot erase the other device.
+  if (firebasePushTimer) clearTimeout(firebasePushTimer);
+  firebasePushTimer = setTimeout(function () {
+    firebasePushTimer = null;
+    if (firebaseSyncInFlight || gdriveSyncInFlight || gcalSyncInFlight || gcalSyncPromise) {
+      queueFirebasePush();
+      return;
+    }
+    pushFirebaseOnly();
+  }, 800);
+}
+
+async function pushFirebaseOnly() {
+  if (VIEW_ONLY || !firebaseCanWrite()) return;
+  if (firebaseSyncInFlight) {
+    firebasePushAgain = true;
+    return;
+  }
+  firebaseSyncInFlight = true;
+  try {
+    await pushFirebaseSnapshot();
+  } catch (e) {
+    noteFirebaseSyncIssue(e);
+  } finally {
+    firebaseSyncInFlight = false;
+    flushFirebaseFollowUps();
+  }
+}
+
+function scheduleFirebasePush() {
+  if (VIEW_ONLY) return;
+  markFirebaseDirty();
+  queueFirebasePush();
+}
+
+/**
+ * Pull users/{uid}/dashboard/sync and merge it into the lists on screen.
+ * Does not read Drive or Pages, and does not write Firestore.
+ * Local edits still push through scheduleFirebasePush.
+ * After the list is on screen, personal events pull from Google Calendar
+ * when Calendar is authorized.
+ */
+async function pullFirebaseList() {
+  if (VIEW_ONLY || !firebaseCanWrite()) return;
+  if (firebaseSyncInFlight || gdriveSyncInFlight || gcalSyncInFlight) {
+    firebasePullAgain = true;
+    return;
+  }
+  firebaseSyncInFlight = true;
+  firebaseAutoPullAt = Date.now();
+  try {
+    const merged = await mergeFirebaseSnapshot();
+    if (merged && merged.ok) {
+      setFirebaseHint('in');
+      noteFirebaseAutoPullStatus();
+    }
+  } catch (e) {
+    noteFirebaseSyncIssue(e);
+  } finally {
+    firebaseSyncInFlight = false;
+    flushFirebaseFollowUps();
+    scheduleGcalSync();
+  }
+}
+
+function noteFirebaseAutoPullStatus() {
+  const time = formatGdriveSyncTime();
+  let detail = 'Firebase 已自動同步 ' + time;
+  const email = firebaseAuthUser && firebaseAuthUser.email ? String(firebaseAuthUser.email) : '';
+  if (email) detail += ' · ' + email;
+  // No-op while Drive file sync is off; the status pill stays hidden.
+  setGdriveStatus('已同步 ' + time, detail);
+}
+
+function flushFirebaseFollowUps() {
+  if (firebaseSyncInFlight || gdriveSyncInFlight) return;
+  if (firebaseForceSyncPending) {
+    firebaseForceSyncPending = false;
+    firebasePullAgain = false;
+    runFirebaseListSync();
+    return;
+  }
+  if (firebasePushAgain) {
+    firebasePushAgain = false;
+    if (firebaseDirtyAt()) {
+      queueFirebasePush();
+      return;
+    }
+  }
+  if (firebasePullAgain) {
+    firebasePullAgain = false;
+    pullFirebaseList();
+    return;
+  }
+  if (gcalSyncAgain && !gcalSyncInFlight && !gcalSyncPromise) {
+    gcalSyncAgain = false;
+    scheduleGcalSync();
+  }
+}
+
+function beginOauthUi() {
+  oauthPopupOpen = true;
+  oauthUiQuietUntil = Math.max(oauthUiQuietUntil, Date.now() + 4000);
+}
+
+function endOauthUi() {
+  oauthPopupOpen = false;
+  // The focus/visibility events from the popup closing arrive just after this.
+  oauthUiQuietUntil = Math.max(oauthUiQuietUntil, Date.now() + 1600);
+}
+
+function oauthUiBlockingForeground() {
+  return oauthPopupOpen || Date.now() < oauthUiQuietUntil;
+}
+
+/* What a tab-foreground event should do. OAuth focus is not a return-to-tab.
+   Calendar uses the same gap as Firestore so a closing popup cannot chain syncs. */
+function foregroundSyncPlan(now, opts) {
+  opts = opts || {};
+  if (opts.viewOnly || opts.oauthBlocking || opts.hidden) return 'skip';
+  const gap = Number(opts.gapMs) || 10000;
+  const firebaseAt = Number(opts.firebaseAt) || 0;
+  const gcalAt = Number(opts.gcalAt) || 0;
+  if (opts.firebaseCanWrite && (now - firebaseAt >= gap)) return 'firebase';
+  if (opts.gcalToken && (now - gcalAt >= gap)) return 'gcal';
+  return 'skip';
+}
+
+function scheduleFirebaseForegroundPull() {
+  if (VIEW_ONLY || oauthUiBlockingForeground()) return;
+  if (firebaseForegroundTimer) clearTimeout(firebaseForegroundTimer);
+  firebaseForegroundTimer = setTimeout(function () {
+    firebaseForegroundTimer = null;
+    const plan = foregroundSyncPlan(Date.now(), {
+      viewOnly: VIEW_ONLY,
+      oauthBlocking: oauthUiBlockingForeground(),
+      hidden: document.visibilityState === 'hidden',
+      firebaseCanWrite: firebaseCanWrite(),
+      firebaseAt: firebaseAutoPullAt,
+      gcalToken: !!gdriveAccessToken,
+      gcalAt: gcalAutoSyncAt,
+      gapMs: FIREBASE_FOCUS_SYNC_MS
+    });
+    if (plan === 'firebase') pullFirebaseList();
+    else if (plan === 'gcal') scheduleGcalSync();
+  }, FIREBASE_FOCUS_DEBOUNCE_MS);
+}
+
+function bindFirebaseForegroundSync() {
+  if (window.__dashFirebaseForegroundBound) return;
+  window.__dashFirebaseForegroundBound = true;
+  window.addEventListener('focus', scheduleFirebaseForegroundPull);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') scheduleFirebaseForegroundPull();
+  });
+  window.addEventListener('pageshow', function (event) {
+    if (event && event.persisted) scheduleFirebaseForegroundPull();
+  });
+}
+
+function firebaseSignIn() {
+  if (VIEW_ONLY || !firebaseSdkReady()) return;
+  beginOauthUi();
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  firebase.auth().signInWithPopup(provider).then(function () {
+    endOauthUi();
+  }).catch(function (err) {
+    const code = err && err.code;
+    if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+      firebase.auth().signInWithRedirect(provider).then(function () {
+        endOauthUi();
+      }).catch(function (err2) {
+        endOauthUi();
+        noteFirebaseError(err2);
+      });
+      return;
+    }
+    endOauthUi();
+    noteFirebaseError(err);
+  });
+}
+
+function firebaseSignOut() {
+  if (!firebaseSdkReady()) return;
+  firebase.auth().signOut().catch(noteFirebaseError);
+}
+
+function bindFirebaseUi() {
+  const btn = document.getElementById('firebaseAuthBtn');
+  if (!btn || btn._fbBound) return;
+  btn._fbBound = true;
+  btn.addEventListener('click', function () {
+    if (VIEW_ONLY) return;
+    if (!firebaseSdkReady()) {
+      setFirebaseHint('out', 'Firebase 元件尚未載入');
+      return;
+    }
+    if (firebaseAuthUser) {
+      if (window.confirm('要登出 Firebase 嗎？本機列表會保留。')) firebaseSignOut();
+      return;
+    }
+    firebaseSignIn();
+  });
+}
+
+let firebaseAuthReadyPromise = null;
+function startFirebaseSync() {
+  if (VIEW_ONLY) return Promise.resolve();
+  if (firebaseAuthReadyPromise) return firebaseAuthReadyPromise;
+  firebaseStarted = true;
+  bindFirebaseUi();
+  bindFirebaseForegroundSync();
+  firebaseAuthReadyPromise = new Promise(function (resolve) {
+    let settled = false;
+    function ready() {
+      if (settled) return;
+      settled = true;
+      resolve();
+    }
+    // Only if auth never calls back. Do not resolve while the first pull is still
+    // running — that used to lift the curtain and the lists then jumped into place.
+    // The head script uncovers the app at 8s if this wait itself hangs.
+    setTimeout(function () {
+      if (!firebaseAuthBootSeen) ready();
+    }, 7000);
+    if (!firebaseSdkReady()) {
+      setFirebaseHint('out', 'Firebase 元件尚未載入');
+      if (gdriveAccessToken) scheduleGcalSync();
+      ready();
+      return;
+    }
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_WEB_CONFIG);
+      const db = firebase.firestore();
+      try { db.settings({ ignoreUndefinedProperties: true }); } catch (e) {}
+      firebase.auth().getRedirectResult().catch(function (err) {
+        if (err && err.code && err.code !== 'auth/no-auth-event') noteFirebaseError(err);
+      });
+      firebase.auth().onAuthStateChanged(function (user) {
+        firebaseAuthBootSeen = true;
+        firebaseAuthUser = user || null;
+        if (!user) {
+          firebaseAutoPullUid = '';
+          setFirebaseHint('out');
+          if (gdriveAccessToken) scheduleGcalSync();
+          ready();
+          return;
+        }
+        setFirebaseHint('in');
+        // Page open and a later sign-in. Token refresh does not change uid, so
+        // it does not pull again. The first pull finishes before the boot curtain lifts.
+        let pending = Promise.resolve();
+        if (firebaseAutoPullUid !== user.uid) {
+          firebaseAutoPullUid = user.uid;
+          pending = Promise.resolve(pullFirebaseList());
+        }
+        if (firebaseDirtyAt()) queueFirebasePush();
+        Promise.resolve(pending).then(ready, ready);
+      });
+    } catch (e) {
+      noteFirebaseError(e);
+      if (gdriveAccessToken) scheduleGcalSync();
+      ready();
+    }
+  });
+  return firebaseAuthReadyPromise;
+}
+
 /* ===== Google Drive sync (todos + events) ===== */
 const GDRIVE_TOKEN_SESSION_KEY = 'dash-hub-gdrive-token';
 let gdriveAccessToken = null;
 let gdriveTokenClient = null;
 let gdriveFileId = null;
-let gdriveAutoPushTimer = null;
 let gdriveSyncInFlight = false;
 let gcalAccessState = 'unknown'; // unknown | ok | no-scope | api-off | error
-let gcalVisSyncAt = 0;
 // Soft hint only: last token response did not list calendar.events. Not an access verdict.
 let gcalReauthCalendarOnly = false;
 // Fresh token must be probed even if a previous no-scope is still sitting in memory.
 let gcalProbeAfterToken = false;
+let gcalSyncTimer = null;
+let gcalSyncInFlight = false;
+let gcalSyncAgain = false;
+let gcalSyncPromise = null;
+let gcalSilentAuth = false;
+let gcalAutoSyncAt = 0;
+let gcalSilentRefreshNotBefore = 0;
+let gcalSilentAttempted = false;
 
 function gdriveHasClientId() {
   return !!(GDRIVE_OAUTH_CLIENT_ID && String(GDRIVE_OAUTH_CLIENT_ID).trim());
@@ -9610,7 +11169,8 @@ function gdriveIsConnected() {
 
 function setGdriveStatus(text, detail) {
   const el = document.getElementById('gdriveSyncStatus');
-  if (!el) return;
+  if (!el || !ENABLE_DRIVE_SYNC) return;
+  el.hidden = false;
   el.textContent = text || '';
   const tip = detail || '';
   if (tip && tip !== text) el.title = tip;
@@ -9632,11 +11192,11 @@ function syncGcalHint() {
   } else if (gcalAccessState === 'api-off') {
     hint.hidden = false;
     hint.textContent = 'Calendar 未啟用';
-    hint.title = 'Calendar API 未啟用。個人活動仍留喺本機同 Drive。';
+    hint.title = 'Calendar API 未啟用。個人活動仍留喺本機同 Firebase。';
   } else if (gcalAccessState === 'error') {
     hint.hidden = false;
     hint.textContent = 'Calendar 未同步';
-    hint.title = 'Calendar 暫未能同步。個人活動仍留喺本機同 Drive。';
+    hint.title = 'Calendar 暫未能同步。個人活動仍留喺本機同 Firebase。';
   } else {
     hint.hidden = true;
   }
@@ -9645,11 +11205,13 @@ function syncGcalHint() {
 function updateGdriveUiConnected(connected) {
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   const connectBtn = document.getElementById('gdriveConnectBtn');
-  if (syncBtn) syncBtn.hidden = !connected;
+  const status = document.getElementById('gdriveSyncStatus');
+  if (status && !ENABLE_DRIVE_SYNC) status.hidden = true;
+  if (syncBtn) syncBtn.hidden = true;
   if (!connectBtn) return;
-  if (!connected) connectBtn.textContent = '連接 Google';
+  if (!connected) connectBtn.textContent = '連接 Calendar';
   else if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') connectBtn.textContent = '授權 Calendar';
-  else connectBtn.textContent = '已連接';
+  else connectBtn.textContent = 'Calendar 已連';
   syncGcalHint();
 }
 
@@ -9683,6 +11245,11 @@ function gdriveAuthHeaders() {
 
 async function gdriveApi(url, opts) {
   opts = opts || {};
+  if (!ENABLE_DRIVE_SYNC) {
+    const err = new Error('Drive sync is paused');
+    err.status = 0;
+    throw err;
+  }
   if (VIEW_ONLY) {
     const method = String(opts.method || 'GET').toUpperCase();
     if (method !== 'GET' && method !== 'HEAD') {
@@ -9701,7 +11268,7 @@ async function gdriveApi(url, opts) {
 }
 
 async function gdriveVerifyOrFindFileId() {
-  if (VIEW_ONLY) return null;
+  if (VIEW_ONLY || !ENABLE_DRIVE_SYNC) return null;
   const stored = localStorage.getItem(GDRIVE_FILE_ID_KEY) || gdriveFileId;
   if (stored) {
     try {
@@ -9730,7 +11297,7 @@ async function gdriveVerifyOrFindFileId() {
 }
 
 async function gdriveCreateSyncFile() {
-  if (VIEW_ONLY) return null;
+  if (VIEW_ONLY || !ENABLE_DRIVE_SYNC) return null;
   const payload = buildSyncPayload();
   // Sync covers todos + events + busStops + shortcuts (+ categories/theme in payload)
   if (!Array.isArray(payload.todos)) payload.todos = state.todos || [];
@@ -9763,7 +11330,7 @@ async function gdriveCreateSyncFile() {
 }
 
 async function gdrivePull() {
-  if (VIEW_ONLY) return false;
+  if (VIEW_ONLY || !ENABLE_DRIVE_SYNC) return false;
   const fileId = await gdriveVerifyOrFindFileId();
   const res = await gdriveApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media');
   const remote = await res.json();
@@ -9771,14 +11338,14 @@ async function gdrivePull() {
   // Merge todos+events+bus+shortcuts+categories (applyExtras). Theme stays local.
   const changed = mergeSyncPayload(remote, { applyExtras: true });
   if (changed) {
-    saveState({ scheduleSync: false });
+    saveState({ scheduleSync: false, skipPaint: true });
     reRenderAfterSync(true);
   }
   return changed;
 }
 
 async function gdrivePush() {
-  if (VIEW_ONLY) return false;
+  if (VIEW_ONLY || !ENABLE_DRIVE_SYNC) return false;
   const fileId = await gdriveVerifyOrFindFileId();
   const payload = buildSyncPayload();
   // Sync covers todos + events + busStops + shortcuts (+ categories/theme)
@@ -9798,25 +11365,14 @@ async function gdrivePush() {
   return true;
 }
 
-function scheduleGdriveAutoPush() {
-  scheduleCloudSync();
-}
-
 function scheduleCloudSync() {
   if (VIEW_ONLY) return;
-  if (!gdriveAccessToken) return;
-  if (gdriveAutoPushTimer) clearTimeout(gdriveAutoPushTimer);
-  gdriveAutoPushTimer = setTimeout(function () {
-    gdriveAutoPushTimer = null;
-    if (gdriveSyncInFlight) {
-      scheduleCloudSync();
-      return;
-    }
-    // Pull before push so this device applies a remote delete before writing
-    // its copy back. Local tombstones stop that pull from restoring a row
-    // just deleted here.
-    runCloudSync({ pull: true });
-  }, 2500);
+  // Local edits write Firestore. They do not pull Firestore, Drive, or Pages.
+  // Firestore is pulled on sign-in and when the tab returns to the foreground.
+  // Personal Calendar push is scheduled from add / edit / delete, not here,
+  // so a To-Do or theme save does not hit the Calendar API.
+  // 推上線 publishes Pages.
+  scheduleFirebasePush();
 }
 
 function cloudStatusText(driveOk, gcalResult) {
@@ -9839,25 +11395,116 @@ function cloudStatusDetail(driveOk, gcalResult) {
   return 'Drive 已同步 ' + time + ' · Calendar 暫未能同步（個人活動仍留本機同 Drive）';
 }
 
+function noteFirebaseSignInNeeded() {
+  const btn = document.getElementById('firebaseAuthBtn');
+  const label = btn ? String(btn.textContent || '') : '';
+  if (!btn || label.indexOf('未登入') === -1) setFirebaseHint('out', '列表同步要用 Firebase 登入，登入後會自動同步');
+  try { showShareToast('請先登入 Firebase，登入後會自動同步'); } catch (e) {}
+}
+
+function setListSyncBusy(busy) {
+  const btn = document.getElementById('gdriveSyncNowBtn');
+  if (!btn) return;
+  btn.disabled = !!busy;
+  btn.textContent = busy ? '同步中…' : '立即同步';
+  if (busy) btn.setAttribute('aria-busy', 'true');
+  else btn.removeAttribute('aria-busy');
+}
+
+/** Firestore list sync. Drive file sync stays off. */
+async function runFirebaseListSync() {
+  if (VIEW_ONLY) return { driveOk: false, pulled: false, skipped: 'view-only' };
+  if (gdriveSyncInFlight || firebaseSyncInFlight || gcalSyncInFlight) {
+    firebaseForceSyncPending = true;
+    return { driveOk: false, pulled: false, skipped: 'inflight' };
+  }
+  const canFirebase = firebaseCanWrite();
+  if (!canFirebase && !gdriveAccessToken) {
+    noteFirebaseSignInNeeded();
+    return { driveOk: false, pulled: false, skipped: 'nofirebase' };
+  }
+  gdriveSyncInFlight = true;
+  if (canFirebase) firebaseSyncInFlight = true;
+  firebaseAutoPullAt = Date.now();
+  setListSyncBusy(true);
+  let firebaseOk = false;
+  let gcalResult = { ok: false, reason: 'skip' };
+  try {
+    if (canFirebase) {
+      const merged = await mergeFirebaseSnapshot();
+      if (!merged || !merged.ok) throw new Error('firebase merge skipped');
+    }
+    if (gdriveAccessToken) {
+      try {
+        gcalResult = await gcalSync();
+      } catch (e) {
+        console.warn('GCal sync failed', e);
+        const reason = (e && e.gcalReason) || 'error';
+        if (reason === 'api-off' || reason === 'no-scope') gcalAccessState = reason;
+        else if (gcalAccessState === 'ok') gcalAccessState = 'error';
+        gcalResult = { ok: false, reason: reason };
+      }
+    }
+    if (canFirebase) {
+      const pushed = await pushFirebaseSnapshot();
+      if (!pushed) throw new Error('firebase push skipped');
+      firebaseOk = true;
+    }
+  } catch (e) {
+    console.warn('Firebase list sync failed', e);
+    if (canFirebase) noteFirebaseSyncIssue(e);
+    firebaseOk = false;
+  } finally {
+    gdriveSyncInFlight = false;
+    firebaseSyncInFlight = false;
+    setListSyncBusy(false);
+    if (!canFirebase) noteFirebaseSignInNeeded();
+    else if (firebaseOk) {
+      const time = formatGdriveSyncTime();
+      let msg = '已同步 ' + time;
+      if (gcalResult && gcalResult.ok) msg += ' · Calendar 已連';
+      else if ((gcalResult && gcalResult.reason === 'no-scope') || gcalAccessState === 'no-scope') msg += ' · Calendar 未授權';
+      try { showShareToast(msg); } catch (e) {}
+    } else {
+      try { showShareToast('同步失敗'); } catch (e) {}
+    }
+    updateGdriveUiConnected(!!gdriveAccessToken);
+    flushFirebaseFollowUps();
+  }
+  return { driveOk: firebaseOk, pulled: firebaseOk };
+}
+
 async function runCloudSync(opts) {
   opts = opts || {};
+  if (!ENABLE_DRIVE_SYNC) return runFirebaseListSync();
   if (VIEW_ONLY) return { driveOk: false, pulled: false, skipped: 'view-only' };
   if (!gdriveAccessToken) {
     setGdriveStatus('請先連接');
     return { driveOk: false, pulled: false, skipped: 'notoken' };
   }
-  if (gdriveSyncInFlight) return { driveOk: false, pulled: false, skipped: 'inflight' };
+  if (gdriveSyncInFlight) {
+    firebaseForceSyncPending = true;
+    return { driveOk: false, pulled: false, skipped: 'inflight' };
+  }
   gdriveSyncInFlight = true;
+  firebaseAutoPullAt = Date.now();
   setGdriveStatus('同步中…');
   let driveOk = false;
   let pulled = false;
   let gcalResult = { ok: false, reason: '' };
+  let firebaseWritable = true;
   try {
     if (opts.pull !== false) {
       try {
         await gdrivePull();
         pulled = true;
       } catch (e) { console.warn('GDrive pull failed', e); }
+    }
+    try {
+      await mergeFirebaseSnapshot();
+    } catch (e) {
+      firebaseWritable = false;
+      console.warn('Firebase pull failed', e);
     }
     try {
       gcalResult = await gcalSync();
@@ -9874,9 +11521,13 @@ async function runCloudSync(opts) {
     console.warn('cloud sync failed', e);
     driveOk = false;
   } finally {
+    if (firebaseWritable) {
+      try { await pushFirebaseSnapshot(); } catch (eFb) { console.warn('Firebase push failed', eFb); }
+    }
     gdriveSyncInFlight = false;
     setGdriveStatus(cloudStatusText(driveOk, gcalResult), cloudStatusDetail(driveOk, gcalResult));
     updateGdriveUiConnected(!!gdriveAccessToken);
+    flushFirebaseFollowUps();
   }
   return { driveOk: driveOk, pulled: pulled };
 }
@@ -9933,12 +11584,91 @@ function parseGcalReason(body, status) {
   return '';
 }
 
+function gcalAuthFailure(e) {
+  return !!(e && (e.status === 401 || e.status === 403 || e.gcalReason === 'no-scope' || e.gcalReason === 'api-off'));
+}
+
+async function refreshGcalAccessToken() {
+  if (VIEW_ONLY || !gdriveHasClientId()) return false;
+  // A Firebase or Calendar popup is already up, or the last silent popup was dismissed.
+  // Another prompt:'' here is the flash loop.
+  if (oauthPopupOpen) return false;
+  if (Date.now() < gcalSilentRefreshNotBefore) return false;
+  if (refreshGcalAccessToken.inflight) return refreshGcalAccessToken.inflight;
+  refreshGcalAccessToken.inflight = new Promise(function (resolve) {
+    let settled = false;
+    let opened = false;
+    let restore = function () {};
+    function finish(ok) {
+      if (settled) return;
+      settled = true;
+      gcalSilentAuth = false;
+      try { restore(); } catch (e) {}
+      if (opened) endOauthUi();
+      if (!ok && opened) gcalSilentRefreshNotBefore = Date.now() + 30000;
+      refreshGcalAccessToken.inflight = null;
+      refreshGcalAccessToken.finish = null;
+      resolve(!!ok);
+    }
+    refreshGcalAccessToken.finish = finish;
+    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+      finish(false);
+      return;
+    }
+    const client = ensureGdriveTokenClient();
+    if (!client) {
+      finish(false);
+      return;
+    }
+    const prev = client.callback;
+    restore = function () {
+      if (client.callback !== prev) client.callback = prev;
+    };
+    client.callback = function (resp) {
+      restore();
+      if (resp && resp.access_token) {
+        storeGdriveToken(resp.access_token);
+        noteGcalAccessFromToken(resp);
+        updateGdriveUiConnected(true);
+        finish(true);
+      } else {
+        finish(false);
+      }
+    };
+    gcalSilentAuth = true;
+    opened = true;
+    beginOauthUi();
+    try {
+      client.requestAccessToken({
+        prompt: '',
+        login_hint: GCAL_ACCOUNT_EMAIL,
+        scope: GCAL_SCOPE,
+        include_granted_scopes: !!ENABLE_DRIVE_SYNC
+      });
+    } catch (e) {
+      finish(false);
+    }
+    setTimeout(function () { finish(false); }, 8000);
+  });
+  return refreshGcalAccessToken.inflight;
+}
+
 async function gcalApi(url, opts) {
   opts = opts || {};
   if (VIEW_ONLY) {
     const err = new Error('view-only');
     err.status = 0;
     throw err;
+  }
+  if (!gdriveAccessToken) {
+    if (!opts._gcalRetried) {
+      const refreshed = await refreshGcalAccessToken();
+      if (refreshed) return gcalApi(url, Object.assign({}, opts, { _gcalRetried: true }));
+    }
+    const missing = new Error('no calendar token');
+    missing.status = 401;
+    missing.gcalReason = 'no-scope';
+    throw missing;
   }
   const headers = Object.assign({ Authorization: 'Bearer ' + gdriveAccessToken }, opts.headers || {});
   const res = await fetch(url, Object.assign({}, opts, { headers: headers }));
@@ -9949,10 +11679,15 @@ async function gcalApi(url, opts) {
   }
   if (!res.ok) {
     const body = await res.text().catch(function () { return ''; });
+    const reason = parseGcalReason(body, res.status);
+    if (!opts._gcalRetried && (res.status === 401 || reason === 'no-scope')) {
+      const refreshed = await refreshGcalAccessToken();
+      if (refreshed) return gcalApi(url, Object.assign({}, opts, { _gcalRetried: true }));
+    }
     const err = new Error('Calendar API ' + res.status);
     err.status = res.status;
     err.body = body;
-    err.gcalReason = parseGcalReason(body, res.status);
+    err.gcalReason = reason;
     throw err;
   }
   return res;
@@ -10009,7 +11744,8 @@ function gcalDashId(g) {
 function hkWallFromDate(d) {
   if (!d || !Number.isFinite(d.getTime())) return null;
   try {
-    const fmt = new Intl.DateTimeFormat('en-US', {
+    // en-GB is 24-hour. Some phones still return 12-hour parts; fold those in.
+    const fmt = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Hong_Kong',
       year: 'numeric',
       month: '2-digit',
@@ -10020,9 +11756,19 @@ function hkWallFromDate(d) {
     });
     const parts = {};
     fmt.formatToParts(d).forEach(function (p) { parts[p.type] = p.value; });
-    let hour = parts.hour || '00';
-    if (hour === '24') hour = '00';
-    return { date: parts.year + '-' + parts.month + '-' + parts.day, time: hour + ':' + parts.minute };
+    let hour = parseInt(parts.hour, 10);
+    if (!Number.isFinite(hour)) hour = 0;
+    if (hour === 24) hour = 0;
+    const dayPeriod = String(parts.dayPeriod || '').toLowerCase();
+    if (dayPeriod.indexOf('pm') !== -1 && hour < 12) hour += 12;
+    if (dayPeriod.indexOf('am') !== -1 && hour === 12) hour = 0;
+    const minute = parseInt(parts.minute, 10);
+    const month = String(parts.month || '').padStart(2, '0');
+    const day = String(parts.day || '').padStart(2, '0');
+    return {
+      date: parts.year + '-' + month + '-' + day,
+      time: pad2(hour) + ':' + pad2(Number.isFinite(minute) ? minute : 0)
+    };
   } catch (e) {
     return null;
   }
@@ -10035,12 +11781,20 @@ function gcalToPatch(g) {
   if (start.date) date = String(start.date);
   else if (start.dateTime) {
     const wall = hkWallFromDate(new Date(start.dateTime));
-    if (wall) { date = wall.date; time = wall.time; }
+    if (wall && wall.date) { date = wall.date; time = wall.time; }
+    else {
+      const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(String(start.dateTime));
+      if (m) { date = m[1]; time = m[2]; }
+    }
   }
   let title = String((g && g.summary) || '').trim();
   if (title.length > 200) title = title.slice(0, 200);
   let work = String((g && g.description) || '').trim();
   if (work.length > 500) work = work.slice(0, 500);
+  if (time && !/^\d{2}:\d{2}$/.test(time)) {
+    const m = /^(\d{1,2}):(\d{2})/.exec(time);
+    time = m ? pad2(Number(m[1])) + ':' + pad2(Number(m[2])) : '';
+  }
   return { title: title, date: date, time: time, work: work };
 }
 
@@ -10190,6 +11944,19 @@ function localIndexForGcal(g) {
 }
 
 async function gcalSync() {
+  if (gcalSyncPromise) {
+    gcalSyncAgain = true;
+    return gcalSyncPromise;
+  }
+  gcalSyncInFlight = true;
+  gcalSyncPromise = gcalSyncInner().finally(function () {
+    gcalSyncPromise = null;
+    gcalSyncInFlight = false;
+  });
+  return gcalSyncPromise;
+}
+
+async function gcalSyncInner() {
   if (VIEW_ONLY || !gdriveAccessToken) return { ok: false, reason: 'skip' };
   if (gcalProbeAfterToken) {
     gcalProbeAfterToken = false;
@@ -10203,11 +11970,14 @@ async function gcalSync() {
 
   let changed = false;
   (state.events || []).forEach(function (ev) {
-    if (eventKindOf(ev) !== 'personal' && ev.gcalEventId) {
-      queueGcalDelete(ev.gcalEventId);
-      delete ev.gcalEventId;
-      delete ev.gcalUpdated;
-      changed = true;
+    // School rows and seeded school events never stay linked to Calendar.
+    if (String(ev.id || '').indexOf('e_seed_') === 0 || eventKindOf(ev) !== 'personal') {
+      if (ev.gcalEventId) {
+        queueGcalDelete(ev.gcalEventId);
+        delete ev.gcalEventId;
+        delete ev.gcalUpdated;
+        changed = true;
+      }
     }
   });
   await flushGcalDeletes();
@@ -10220,6 +11990,7 @@ async function gcalSync() {
   });
   const now = Date.now();
   let windowItems = [];
+  let windowOk = true;
   try {
     windowItems = await gcalListAll({
       timeMin: new Date(now - 90 * 86400000).toISOString(),
@@ -10231,6 +12002,9 @@ async function gcalSync() {
     });
   } catch (e) {
     console.warn('GCal window list failed', e);
+    // An auth failure must surface. A query error must not block the push below.
+    if (gcalAuthFailure(e)) throw e;
+    windowOk = false;
     windowItems = [];
   }
 
@@ -10319,7 +12093,9 @@ async function gcalSync() {
     }
   }
 
-  const personalIds = state.events.filter(function (e) { return eventKindOf(e) === 'personal'; }).map(function (e) { return e.id; });
+  const personalIds = state.events.filter(function (e) {
+    return eventKindOf(e) === 'personal' && String(e.id || '').indexOf('e_seed_') !== 0;
+  }).map(function (e) { return e.id; });
   for (let p = 0; p < personalIds.length; p++) {
     const ev = state.events.find(function (e) { return e.id === personalIds[p]; });
     if (!ev || !ev.date || !String(ev.title || '').trim()) continue;
@@ -10333,6 +12109,15 @@ async function gcalSync() {
     if (!g) {
       g = remoteList.find(function (item) {
         return item.status !== 'cancelled' && gcalDashId(item) === ev.id;
+      }) || null;
+    }
+    if (!g && windowOk) {
+      const key = eventContentKey(ev);
+      g = remoteList.find(function (item) {
+        if (!item || item.status === 'cancelled' || pending[item.id]) return false;
+        if (gcalContentKey(item) !== key) return false;
+        const did = gcalDashId(item);
+        return !did || did === ev.id;
       }) || null;
     }
     const localMs = eventContentMs(ev);
@@ -10354,6 +12139,9 @@ async function gcalSync() {
         ev.gcalEventId = g.id;
         ev.gcalUpdated = gMs;
         changed = true;
+      }
+      if (!gcalDashId(g)) {
+        try { await gcalStamp(g.id, ev.id, ev.updatedAt || gMs); } catch (e) { console.warn('GCal stamp failed', e); }
       }
       continue;
     }
@@ -10384,13 +12172,108 @@ async function gcalSync() {
 
   if (changed) {
     state.events = dedupeEventsByTitleDate((state.events || []).map(normalizeEvent));
-    saveState({ scheduleSync: false });
-    try { renderEvents(); } catch (e) {}
-    try { updateBlockSummaries(); } catch (e) {}
+    // Metadata-only Calendar stamps must not rebuild the lists.
+    saveState({ scheduleSync: false, skipPaint: true });
+    reRenderAfterSync(false);
   }
   gcalAccessState = 'ok';
   gcalReauthCalendarOnly = false;
   return { ok: true, changed: changed };
+}
+
+let bootPaintHolds = 0;
+let bootPaintWaiters = [];
+let bootGcalHold = null;
+
+function dashBootCovered() {
+  return !dashBootPaintFinished && document.documentElement.classList.contains('dash-booting');
+}
+
+function holdDashBoot(promise) {
+  if (!dashBootCovered()) return promise;
+  bootPaintHolds++;
+  const done = Promise.resolve(promise).then(function () {}, function () {});
+  done.then(function () {
+    bootPaintHolds = Math.max(0, bootPaintHolds - 1);
+    if (bootPaintHolds === 0) {
+      const waiters = bootPaintWaiters;
+      bootPaintWaiters = [];
+      waiters.forEach(function (fn) { fn(); });
+    }
+  });
+  return done;
+}
+
+function waitDashBootHolds(maxMs) {
+  if (!dashBootCovered() || bootPaintHolds <= 0) return Promise.resolve();
+  return new Promise(function (resolve) {
+    let settled = false;
+    function finish() {
+      if (settled) return;
+      settled = true;
+      resolve();
+    }
+    const timer = setTimeout(finish, maxMs);
+    bootPaintWaiters.push(function () {
+      clearTimeout(timer);
+      finish();
+    });
+  });
+}
+
+function releaseBootGcalHold() {
+  if (!bootGcalHold) return;
+  if (gcalSyncTimer || gcalSyncAgain || gcalSyncInFlight || gcalSyncPromise) return;
+  const resolveHold = bootGcalHold;
+  bootGcalHold = null;
+  resolveHold();
+}
+
+function scheduleGcalSync() {
+  if (VIEW_ONLY) return;
+  gcalAutoSyncAt = Date.now();
+  if (gcalSyncInFlight || gcalSyncPromise || gdriveSyncInFlight || firebaseSyncInFlight) gcalSyncAgain = true;
+  if (gcalSyncTimer) clearTimeout(gcalSyncTimer);
+  if (dashBootCovered() && !bootGcalHold) {
+    holdDashBoot(new Promise(function (resolve) { bootGcalHold = resolve; }));
+  }
+  gcalSyncTimer = setTimeout(function () {
+    gcalSyncTimer = null;
+    Promise.resolve(runScheduledGcalSync()).then(releaseBootGcalHold, releaseBootGcalHold);
+  }, 500);
+}
+
+async function runScheduledGcalSync() {
+  gcalSyncTimer = null;
+  try {
+  if (VIEW_ONLY || !gdriveAccessToken) return;
+  if (gcalSyncInFlight || gcalSyncPromise || gdriveSyncInFlight || firebaseSyncInFlight || firebasePushTimer) {
+    gcalSyncAgain = true;
+    if (!gcalSyncTimer) gcalSyncTimer = setTimeout(runScheduledGcalSync, 800);
+    return;
+  }
+  let result = { ok: false, changed: false, reason: 'error' };
+  try {
+    result = await gcalSync() || result;
+  } catch (e) {
+    console.warn('GCal sync failed', e);
+    const reason = (e && e.gcalReason) || 'error';
+    if (reason === 'api-off' || reason === 'no-scope') gcalAccessState = reason;
+    else gcalAccessState = 'error';
+    result = { ok: false, changed: false, reason: reason };
+  }
+  try { updateGdriveUiConnected(!!gdriveAccessToken); } catch (e2) {}
+  if (result && result.ok && result.changed) {
+    try { scheduleFirebasePush(); } catch (e3) {}
+  }
+  if (gcalSyncAgain) {
+    gcalSyncAgain = false;
+    scheduleGcalSync();
+  }
+  try { flushFirebaseFollowUps(); } catch (e4) {}
+  } finally {
+    releaseBootGcalHold();
+  }
 }
 
 function gcalScopeGranted(resp) {
@@ -10407,8 +12290,9 @@ function gcalScopeGranted(resp) {
 function noteGcalAccessFromToken(resp) {
   // hasGrantedAllScopes can be false after Continue even when Calendar is already
   // granted (resp.scope omits calendar.events). Do not treat that as no-scope.
+  // Leave a known-good pill alone so a token refresh does not flip Calendar 已連.
   gcalReauthCalendarOnly = !gcalScopeGranted(resp);
-  gcalAccessState = 'unknown';
+  if (gcalAccessState !== 'ok' && gcalAccessState !== 'api-off') gcalAccessState = 'unknown';
   gcalProbeAfterToken = true;
 }
 
@@ -10425,25 +12309,40 @@ function ensureGdriveTokenClient() {
   gdriveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GDRIVE_OAUTH_CLIENT_ID,
     scope: GOOGLE_OAUTH_SCOPES,
-    include_granted_scopes: true,
+    include_granted_scopes: !!ENABLE_DRIVE_SYNC,
     enable_granular_consent: true,
     login_hint: GCAL_ACCOUNT_EMAIL,
     callback: function (resp) {
+      endOauthUi();
       if (resp && resp.access_token) {
         storeGdriveToken(resp.access_token);
         noteGcalAccessFromToken(resp);
         updateGdriveUiConnected(true);
-        setGdriveStatus('同步中…');
-        runCloudSync({ pull: true });
+        if (ENABLE_DRIVE_SYNC) setGdriveStatus('已連接', '列表由 Firebase 自動同步');
+        scheduleGcalSync();
       } else if (resp && resp.error) {
-        setGdriveStatus('授權失敗');
+        if (ENABLE_DRIVE_SYNC) setGdriveStatus('授權失敗');
+        else { try { showShareToast('Calendar 授權失敗'); } catch (e) {} }
         console.warn('Google auth error', resp);
       }
     },
     error_callback: function (err) {
+      if (gcalSilentAuth) {
+        console.warn('Calendar silent auth skipped', err);
+        if (typeof refreshGcalAccessToken.finish === 'function') refreshGcalAccessToken.finish(false);
+        else endOauthUi();
+        return;
+      }
+      endOauthUi();
       const t = (err && (err.type || err.message)) || '';
-      if (String(t).indexOf('popup_closed') !== -1) setGdriveStatus('已取消授權');
-      else setGdriveStatus('請重新授權', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
+      if (String(t).indexOf('popup_closed') !== -1) {
+        if (ENABLE_DRIVE_SYNC) setGdriveStatus('已取消授權');
+        else { try { showShareToast('已取消 Calendar 授權'); } catch (e) {} }
+      } else if (ENABLE_DRIVE_SYNC) {
+        setGdriveStatus('請重新授權', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
+      } else {
+        try { showShareToast('請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar'); } catch (e) {}
+      }
       console.warn('Google auth error', err);
     }
   });
@@ -10458,10 +12357,17 @@ function requestGdriveToken(opts) {
   const req = { login_hint: GCAL_ACCOUNT_EMAIL };
   if (opts.prompt !== undefined) req.prompt = opts.prompt;
   if (opts.scope) {
-    req.scope = opts.scope;
-    req.include_granted_scopes = true;
+    req.scope = ENABLE_DRIVE_SYNC ? opts.scope : GCAL_SCOPE;
+    req.include_granted_scopes = !!ENABLE_DRIVE_SYNC;
   }
-  client.requestAccessToken(req);
+  gcalSilentRefreshNotBefore = 0;
+  beginOauthUi();
+  try {
+    client.requestAccessToken(req);
+  } catch (e) {
+    endOauthUi();
+    return false;
+  }
   return true;
 }
 
@@ -10469,7 +12375,24 @@ async function gdriveSyncNow() {
   return runCloudSync({ pull: true });
 }
 
+function applyDrivePauseChrome() {
+  const hint = document.getElementById('drivePausedHint');
+  if (hint) hint.hidden = true;
+  const status = document.getElementById('gdriveSyncStatus');
+  if (status && !ENABLE_DRIVE_SYNC) {
+    status.hidden = true;
+    status.textContent = '';
+    status.removeAttribute('title');
+  }
+  if (ENABLE_DRIVE_SYNC || VIEW_ONLY) return;
+  const syncBtn = document.getElementById('gdriveSyncNowBtn');
+  if (syncBtn) syncBtn.hidden = true;
+  const note = document.querySelector('.footer-note');
+  if (note) note.textContent = '本機儲存；列表經 Firebase 自動同步 · 布丁仔';
+}
+
 function bindGdriveUi() {
+  applyDrivePauseChrome();
   const connectBtn = document.getElementById('gdriveConnectBtn');
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   if (connectBtn) {
@@ -10487,8 +12410,9 @@ function bindGdriveUi() {
       const calendarIncremental = gcalWantsCalendarOnlyReauth();
       if (!calendarIncremental) gcalAccessState = 'unknown';
       gdriveTokenClient = null;
-      // Drive-only grant: ask for calendar.events only. include_granted_scopes keeps Drive.
-      requestGdriveToken(calendarIncremental
+      // Drive file sync is off: ask only for calendar.events.
+      // Do not re-attach a previously granted drive.file scope.
+      requestGdriveToken((!ENABLE_DRIVE_SYNC || calendarIncremental)
         ? { prompt: 'consent', scope: GCAL_SCOPE }
         : { prompt: 'consent' });
     });
@@ -10502,49 +12426,45 @@ function bindGdriveUi() {
   if (!gdriveHasClientId()) {
     setGdriveStatus('未設定', '尚未設定 Google OAuth Client ID');
   }
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState !== 'visible' || VIEW_ONLY || !gdriveAccessToken) return;
-    if (gcalAccessState === 'no-scope' || gcalAccessState === 'api-off') return;
-    const now = Date.now();
-    if (now - gcalVisSyncAt < 60000) return;
-    gcalVisSyncAt = now;
-    runCloudSync({ pull: true });
-  });
 }
 
 function tryGdriveSilentRestore() {
   if (VIEW_ONLY) return;
   if (!gdriveHasClientId()) return;
   restoreGdriveTokenFromSession();
-  const hasFileId = !!localStorage.getItem(GDRIVE_FILE_ID_KEY);
-  if (!gdriveAccessToken && !hasFileId) return;
-
+  // A token already in this tab is enough. prompt:'' opens a real popup;
+  // doing that on every load is the login/refresh flash.
+  if (gdriveAccessToken) {
+    updateGdriveUiConnected(true);
+    // Do not sync Calendar here. The first Firestore pull schedules it when the
+    // pull finishes, so the two syncs do not repaint the lists one after another.
+    return;
+  }
+  // No saved token: one silent restore, after any Firebase popup has closed.
+  let tries = 0;
   function attempt() {
-    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+    if (gdriveAccessToken) {
+      updateGdriveUiConnected(true);
+      scheduleGcalSync();
+      return;
+    }
+    if (!gcalSilentAttempted && oauthUiBlockingForeground()) {
       setTimeout(attempt, 400);
       return;
     }
-    ensureGdriveTokenClient();
-    try {
-      const client = gdriveTokenClient;
-      if (!client) return;
-      const prevCb = client.callback;
-      client.callback = function (resp) {
-        client.callback = prevCb;
-        if (resp && resp.access_token) {
-          storeGdriveToken(resp.access_token);
-          noteGcalAccessFromToken(resp);
-          updateGdriveUiConnected(true);
-          runCloudSync({ pull: true });
-        } else if (gdriveAccessToken) {
-          updateGdriveUiConnected(true);
-          setGdriveStatus('已連接', '請用 ' + GCAL_ACCOUNT_EMAIL + ' 重新授權 Calendar');
-        }
-      };
-      client.requestAccessToken({ prompt: '', login_hint: GCAL_ACCOUNT_EMAIL });
-    } catch (e) {
-      /* ignore */
+    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+      if (tries++ > 40) return;
+      setTimeout(attempt, 400);
+      return;
     }
+    if (gcalSilentAttempted) return;
+    gcalSilentAttempted = true;
+    refreshGcalAccessToken().then(function (ok) {
+      if (ok || gdriveAccessToken) {
+        updateGdriveUiConnected(true);
+        scheduleGcalSync();
+      }
+    }).catch(function () {});
   }
   attempt();
 }
@@ -10553,15 +12473,331 @@ function bindSyncUi() {
   /* Export/import buttons removed; Drive sync uses buildExportPayload / applyRemoteSyncPayload. */
 }
 
-/** Owner control: copy origin + pathname + ?view=1&exp=&t= (no password in the URL). */
-function viewOnlyShareUrl(expiresAt, issuedAt) {
+/** Owner control: copy origin + pathname + ?view=1&exp=&t=#s= (no password in the URL).
+ *  #s= is the tap-time snapshot. Friends do not need the Pages file to match.
+ *  iOS Safari keeps only the first 4096 characters when a URL is copied or pasted,
+ *  so the token has to leave the whole link inside that limit. */
+function viewOnlyShareUrl(expiresAt, issuedAt, snapshotToken) {
   const base = location.origin + location.pathname + '?view=1';
   const exp = Number(expiresAt) || 0;
   if (!exp) return base;
   let url = base + '&exp=' + exp;
   const t = Number(issuedAt) || 0;
   if (t) url += '&t=' + t;
+  const snap = String(snapshotToken || '');
+  if (snap) url += '#s=' + snap;
   return url;
+}
+
+function bytesToBase64Url(bytes) {
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < arr.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, arr.subarray(i, i + chunk));
+  }
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlToBytes(text) {
+  let s = String(text || '').replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** True when this Pages file belongs to this link. t and updatedAt are both owner clocks. */
+function pagesSnapshotMatchesLink(remote) {
+  if (!VIEW_ONLY) return true;
+  const issued = shareLinkIssuedAt();
+  if (!issued) return true;
+  return Number(remote && remote.updatedAt) >= issued;
+}
+
+function shareLinkSnapshotToken() {
+  let raw = '';
+  try {
+    const hash = String(location.hash || '');
+    if (hash.indexOf('#s=') === 0) raw = hash.slice(3);
+  } catch (e) {}
+  if (!raw) {
+    try { raw = new URLSearchParams(location.search).get('s') || ''; } catch (e2) {}
+  }
+  if (!raw) return '';
+  try { return decodeURIComponent(raw); } catch (e3) { return raw; }
+}
+
+/* iOS Safari drops everything past 4096 characters when a URL is copied or pasted
+ * into the address bar. A full sync payload does not fit, so #s= carries todos
+ * plus events that differ from the built-in seeds, compressed in plain JS. */
+const SHARE_URL_MAX = 4096;
+let shareSeedById = null;
+
+function shareSeedEvent(id) {
+  if (!shareSeedById) {
+    shareSeedById = new Map();
+    SEED_EVENTS.forEach(function (e) {
+      const n = normalizeEvent(e);
+      shareSeedById.set(n.id, n);
+    });
+  }
+  return shareSeedById.get(id) || null;
+}
+
+function shareEventUnchanged(event) {
+  const n = normalizeEvent(event);
+  const seed = shareSeedEvent(n.id);
+  if (!seed) return false;
+  return n.title === seed.title && n.date === seed.date && n.time === seed.time &&
+    n.work === seed.work && n.kind === seed.kind && !n.done;
+}
+
+/** Wire form: {u, t:[[id,title,due,done]], e:[[id,title,date,time,done,kind,work?]]}. */
+function buildShareWire(payload, opts) {
+  opts = opts || {};
+  const includeWork = opts.includeWork !== false;
+  const updatedAt = Number(payload && payload.updatedAt) || 0;
+  const todos = [];
+  (payload && payload.todos || []).forEach(function (t) {
+    if (!t || !t.id) return;
+    todos.push([String(t.id), String(t.title || ''), String(t.due || ''), t.done ? 1 : 0]);
+  });
+  const events = [];
+  (payload && payload.events || []).forEach(function (raw) {
+    if (!raw || !raw.id || shareEventUnchanged(raw)) return;
+    const n = normalizeEvent(raw);
+    const seed = shareSeedEvent(n.id);
+    const row = [n.id, n.title, n.date, n.time || '', n.done ? 1 : 0, n.kind];
+    if (includeWork && n.work && (!seed || n.work !== seed.work)) row.push(n.work);
+    events.push(row);
+  });
+  return { u: updatedAt, t: todos, e: events };
+}
+
+function expandShareWire(data) {
+  if (!data || typeof data !== 'object') return null;
+  if (Array.isArray(data.todos)) return data;
+  if (!Array.isArray(data.t)) return null;
+  const updatedAt = Number(data.u) || 0;
+  const todos = data.t.map(function (row) {
+    if (!row || !Array.isArray(row)) return null;
+    const out = {
+      id: String(row[0] || ''),
+      title: String(row[1] || ''),
+      due: String(row[2] || ''),
+      done: !!row[3],
+      createdAt: updatedAt || 1
+    };
+    if (!out.id) return null;
+    if (updatedAt) out.updatedAt = updatedAt;
+    return out;
+  }).filter(Boolean);
+  const events = (Array.isArray(data.e) ? data.e : []).map(function (row) {
+    if (!row || !Array.isArray(row)) return null;
+    const id = String(row[0] || '');
+    if (!id) return null;
+    const seed = shareSeedEvent(id);
+    const out = {
+      id: id,
+      title: String(row[1] || ''),
+      date: String(row[2] || ''),
+      time: String(row[3] || ''),
+      done: !!row[4],
+      kind: row[5] === 'school' || row[5] === 'personal' ? row[5] : eventKindOf({ id: id }),
+      work: row.length >= 7 ? String(row[6] || '') : (seed ? seed.work : '')
+    };
+    if (updatedAt) out.updatedAt = updatedAt;
+    return out;
+  }).filter(Boolean);
+  return {
+    updatedAt: updatedAt,
+    schemaVersion: SCHEMA_VERSION,
+    todos: todos,
+    events: events,
+    share: {
+      enabled: true,
+      salt: '',
+      passwordHash: '',
+      updatedAt: updatedAt,
+      expiresAt: updatedAt ? updatedAt + SHARE_TTL_MS : 0
+    }
+  };
+}
+
+/** LZSS, 4095-byte window, matches of 3–18 bytes. No CompressionStream required. */
+function lzssCompress(bytes) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const n = data.length;
+  if (!n || n > 80000) return null;
+  const out = [];
+  const heads = new Map();
+  let i = 0;
+  function note(p) {
+    if (p + 2 >= n) return;
+    const key = (data[p] << 16) | (data[p + 1] << 8) | data[p + 2];
+    let list = heads.get(key);
+    if (!list) { list = []; heads.set(key, list); }
+    list.push(p);
+    if (list.length > 80) list.splice(0, list.length - 64);
+  }
+  while (i < n) {
+    const flagAt = out.length;
+    out.push(0);
+    let flags = 0;
+    for (let bit = 0; bit < 8 && i < n; bit++) {
+      let bestLen = 0;
+      let bestDist = 0;
+      const maxLen = Math.min(18, n - i);
+      if (maxLen >= 3) {
+        const key = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
+        const cands = heads.get(key);
+        if (cands) {
+          const windowStart = i - 4095;
+          let from = 0;
+          while (from < cands.length && cands[from] < windowStart) from++;
+          if (from) cands.splice(0, from);
+          const start = Math.max(0, cands.length - 64);
+          for (let c = start; c < cands.length; c++) {
+            const j = cands[c];
+            let len = 0;
+            while (len < maxLen && data[j + len] === data[i + len]) len++;
+            if (len > bestLen) {
+              bestLen = len;
+              bestDist = i - j;
+              if (bestLen === maxLen) break;
+            }
+          }
+        }
+      }
+      if (bestLen >= 3 && bestDist >= 1 && bestDist <= 4095) {
+        flags |= 1 << bit;
+        out.push(bestDist & 255);
+        out.push(((bestDist >> 8) << 4) | (bestLen - 3));
+        for (let k = 0; k < bestLen; k++) note(i + k);
+        i += bestLen;
+      } else {
+        out.push(data[i]);
+        note(i);
+        i++;
+      }
+    }
+    out[flagAt] = flags;
+  }
+  return new Uint8Array(out);
+}
+
+function lzssDecompress(bytes) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+  const out = [];
+  let i = 0;
+  const n = data.length;
+  while (i < n) {
+    const flags = data[i++];
+    for (let bit = 0; bit < 8 && i < n; bit++) {
+      if (flags & (1 << bit)) {
+        if (i + 1 >= n) return null;
+        const b0 = data[i++];
+        const b1 = data[i++];
+        const dist = b0 | ((b1 >> 4) << 8);
+        const len = (b1 & 15) + 3;
+        if (dist < 1 || dist > out.length || out.length + len > 2000000) return null;
+        for (let k = 0; k < len; k++) out.push(out[out.length - dist]);
+      } else {
+        if (out.length + 1 > 2000000) return null;
+        out.push(data[i++]);
+      }
+    }
+  }
+  return new Uint8Array(out);
+}
+
+function shareSnapshotTokenFits(token) {
+  const wide = 10000000000000;
+  return viewOnlyShareUrl(wide, wide, token).length <= SHARE_URL_MAX;
+}
+
+async function deflateShareBytes(bytes) {
+  if (typeof CompressionStream !== 'function') return null;
+  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+  return buf.length ? buf : null;
+}
+
+async function encodeShareSnapshot(payload) {
+  const variants = [
+    buildShareWire(payload, { includeWork: true }),
+    buildShareWire(payload, { includeWork: false })
+  ];
+  for (let v = 0; v < variants.length; v++) {
+    const bytes = new TextEncoder().encode(JSON.stringify(variants[v]));
+    const tokens = [];
+    const lz = lzssCompress(bytes);
+    if (lz && lz.length && lz.length < bytes.length) tokens.push('l' + bytesToBase64Url(lz));
+    try {
+      const z = await deflateShareBytes(bytes);
+      if (z) tokens.push('z' + bytesToBase64Url(z));
+    } catch (e) {}
+    tokens.push('j' + bytesToBase64Url(bytes));
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token.length > 20 && shareSnapshotTokenFits(token)) return token;
+    }
+  }
+  return '';
+}
+
+async function decodeShareSnapshot(token) {
+  const text = String(token || '');
+  if (!text || text.length > 150000) return null;
+  const kind = text.charAt(0);
+  const bytes = base64UrlToBytes(text.slice(1));
+  if (!bytes || !bytes.length || bytes.length > 120000) return null;
+  let json = '';
+  if (kind === 'l') {
+    const buf = lzssDecompress(bytes);
+    if (!buf || !buf.length || buf.length > 2000000) return null;
+    json = new TextDecoder().decode(buf);
+  } else if (kind === 'z') {
+    if (typeof DecompressionStream !== 'function') return null;
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+    if (!buf.length || buf.length > 2000000) return null;
+    json = new TextDecoder().decode(buf);
+  } else if (kind === 'j') {
+    json = new TextDecoder().decode(bytes);
+  } else return null;
+  const data = JSON.parse(json);
+  const expanded = expandShareWire(data);
+  if (!expanded || !Array.isArray(expanded.todos)) return null;
+  return expanded;
+}
+
+async function loadEmbeddedShareSnapshot() {
+  const token = shareLinkSnapshotToken();
+  if (!token) return null;
+  let data = null;
+  try { data = await decodeShareSnapshot(token); } catch (e) { data = null; }
+  if (!data || !pagesSnapshotMatchesLink(data)) return null;
+  return data;
+}
+
+async function fetchPagesSnapshotForLink() {
+  const attempts = shareLinkIssuedAt() ? 6 : 1;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch('sync-data.json?_=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const remote = await res.json();
+        if (remote && remote.updatedAt != null && pagesSnapshotMatchesLink(remote)) return remote;
+      }
+    } catch (e) {}
+    if (i + 1 < attempts) {
+      await new Promise(function (resolve) { setTimeout(resolve, 1500); });
+    }
+  }
+  return null;
 }
 
 function copyPlainText(text) {
@@ -10599,31 +12835,38 @@ function initViewOnlyChrome() {
   if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 布丁仔';
 }
 
-/** Lock screen only. Paints rain-cafe and does not write owner localStorage or state.theme. */
+/** Share / ?view=1, lock screen and unlocked dashboard. Always rain-cafe / 雨窗咖啡.
+ *  Does not write localStorage or the owner's theme. */
 function applyShareEntryTheme() {
-  if (!VIEW_ONLY || shareViewUnlocked) return;
+  if (!VIEW_ONLY) return;
+  const t = 'rain-cafe';
   document.documentElement.classList.add('view-only', 'theme-rain-window');
   THEME_PRESETS.forEach(function (p) {
     document.documentElement.classList.remove('theme-' + p);
   });
-  document.documentElement.classList.add('theme-rain-cafe');
+  document.documentElement.classList.add('theme-' + t);
+  document.documentElement.setAttribute('data-dash-theme', t);
   const body = document.getElementById('appBody') || document.body;
-  if (!body) return;
-  THEME_PRESETS.forEach(function (p) { body.classList.remove('theme-' + p); });
-  body.classList.remove('theme-rain-window');
-  body.classList.add('theme-rain-cafe', 'theme-rain-window');
+  if (body) {
+    THEME_PRESETS.forEach(function (p) { body.classList.remove('theme-' + p); });
+    body.classList.remove('theme-rain-window');
+    body.classList.add('theme-' + t, 'theme-rain-window');
+  }
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', '#1E2C3A');
 }
 
 /* ===== Share gate =====
- * 分享 copies a read-only link at once: ?view=1&exp=<ms>&t=<ms>.
+ * 分享 copies a read-only link at once: ?view=1&exp=<ms>&t=<ms>#s=<snapshot>.
+ * #s= is the owner's todos and changed events at the tap (Firebase pull first, when signed in).
+ * The whole URL stays within 4096 characters so iPhone Safari paste keeps #s=.
+ * Friends read that snapshot. They do not paint an older sync-data.json.
+ * If the snapshot cannot be attached, nothing is copied and the owner is told at once.
+ * If a GitHub token is already stored, the same snapshot is also pushed to Pages.
  * Friends can view until exp (3 hours after t). That link has no password.
  * 停止分享 turns the local session off. If dash-hub-pages-token is already
- * stored, the existing Pages push updates share-config.json (and, when the
- * session is on, sync-data.json) with no token field and no prompt.
- * 推上線, at the top-right beside sync, commits the current todos/events
- * snapshot to sync-data.json with that same stored token. No token form.
+ * stored, the existing Pages push updates share-config.json. No token form.
+ * 推上線 commits the current todos/events snapshot to sync-data.json.
  * A disabled gate whose updatedAt is at or after this link's t closes it.
  * updatedAt 0 is not a stop, so a closed file does not block a newer link.
  * Legacy ?view=1 with no exp still asks for the password when the gate has a hash.
@@ -10644,6 +12887,7 @@ let shareStopTimer = null;
 let shareActionBusy = false;
 let shareToastTimer = null;
 let sharePublishChain = Promise.resolve();
+let pendingSharePublish = null;
 
 function hashesEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || !a || a.length !== b.length) return false;
@@ -10800,7 +13044,8 @@ function setShareLock(mode) {
     changed: '分享密碼已更改，請再輸入',
     error: '暫時未能確認分享設定',
     noconfig: '分享未設定密碼',
-    opening: '正在開啟…'
+    opening: '正在開啟…',
+    stale: '分享內容尚未更新，請稍後再試'
   };
   if (msg) msg.textContent = text[mode] || text.error;
   const showForm = mode === 'prompt' || mode === 'wrong' || mode === 'changed';
@@ -10825,6 +13070,21 @@ function lockShareView(mode) {
   setShareLock(mode || 'closed');
 }
 
+let dashBootPaintFinished = false;
+function finishDashBootPaint() {
+  if (dashBootPaintFinished) return;
+  dashBootPaintFinished = true;
+  const root = document.documentElement;
+  const clear = function () {
+    root.classList.remove('dash-booting', 'boot-training-open', 'boot-bus-open');
+  };
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(function () { requestAnimationFrame(clear); });
+  } else {
+    setTimeout(clear, 50);
+  }
+}
+
 function renderDashboardSurfaces() {
   applyTheme(state.theme || 'sunny-beach', false);
   // First paint of this document opens on 今天 / 個人活動.
@@ -10842,58 +13102,154 @@ function renderDashboardSurfaces() {
   renderBus();
   updateBlockSummaries();
   syncShareOwnerUI();
+  dashPaintSig = dashboardVisibleSig();
 }
 
-function finishDashBootPaint() {
-  const root = document.documentElement;
-  const clear = function () {
-    root.classList.remove('dash-booting', 'boot-training-open', 'boot-bus-open');
-  };
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(function () { requestAnimationFrame(clear); });
-  } else {
-    setTimeout(clear, 50);
-  }
+function waitForBootSync(ms) {
+  if (window.__DASH_BOOT_SYNC) return Promise.resolve(window.__DASH_BOOT_SYNC);
+  const pending = window.__DASH_BOOT_SYNC_PROMISE;
+  if (!pending) return Promise.resolve(null);
+  return new Promise(function (resolve) {
+    const timer = setTimeout(function () { resolve(window.__DASH_BOOT_SYNC || null); }, ms);
+    pending.then(function () {
+      clearTimeout(timer);
+      resolve(window.__DASH_BOOT_SYNC || null);
+    }, function () {
+      clearTimeout(timer);
+      resolve(null);
+    });
+  });
 }
 
-function bootDashboard(opts) {
+function waitForBootFonts(ms) {
+  if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+  return Promise.race([
+    document.fonts.ready.catch(function () {}),
+    new Promise(function (resolve) { setTimeout(resolve, ms); })
+  ]);
+}
+
+function markBootSyncApplied(remote) {
+  window.__DASH_BOOT_SYNC_APPLIED = true;
+  window.__DASH_BOOT_SYNC_APPLIED_AT = Number(remote && remote.updatedAt) || 0;
+}
+
+function applyPrefetchedBootSync() {
+  if (VIEW_ONLY && !shareViewUnlocked) return;
+  const embedded = VIEW_ONLY ? window.__DASH_SHARE_SNAPSHOT : null;
+  const remote = embedded || window.__DASH_BOOT_SYNC;
+  if (!remote || remote.updatedAt == null || window.__DASH_BOOT_SYNC_APPLIED) return;
+  if (VIEW_ONLY && !embedded && !pagesSnapshotMatchesLink(remote)) return;
+  markBootSyncApplied(remote);
+  try {
+    if (applyRemoteSyncPayload(remote, { applyExtras: true })) {
+      saveState({ scheduleSync: false, skipPaint: true });
+    }
+  } catch (e) {}
+}
+
+async function bootDashboard(opts) {
   opts = opts || {};
-  initViewOnlyChrome();
-  renderDashboardSurfaces();
-  if (!dashboardBound) {
-    dashboardBound = true;
-    bindExpandableHeaders();
-    bindCalendarControls();
-    bindBusEtaControls();
-    bindSyncUi();
-    bindGdriveUi();
-    bindPushPagesUi();
-    bindShareOwnerUi();
-    bindHdrCatJump();
-    startHeaderInfo();
-    if (!VIEW_ONLY) tryGdriveSilentRestore();
-    scrollToSectionFromHash();
+  let importedBeforePaint = false;
+  try {
+    initViewOnlyChrome();
+    if (!VIEW_ONLY) oauthUiQuietUntil = Math.max(oauthUiQuietUntil, Date.now() + 1500);
+    if (opts.importCloud) {
+      if (!(VIEW_ONLY && window.__DASH_SHARE_SNAPSHOT)) {
+        try { await waitForBootSync(2500); } catch (e) {}
+      }
+      applyPrefetchedBootSync();
+      // Prefetch missed the budget: pull once more before the first visible paint.
+      if (!window.__DASH_BOOT_SYNC_APPLIED) {
+        try { await autoImportFromCloud(); } catch (e) {}
+        importedBeforePaint = true;
+      }
+    }
+    renderDashboardSurfaces();
+    if (!dashboardBound) {
+      dashboardBound = true;
+      bindExpandableHeaders();
+      bindCalendarControls();
+      bindBusEtaControls();
+      bindSyncUi();
+      bindGdriveUi();
+      bindPushPagesUi();
+      bindShareOwnerUi();
+      bindHdrCatJump();
+      startHeaderInfo();
+      if (!VIEW_ONLY) tryGdriveSilentRestore();
+      scrollToSectionFromHash();
+    }
+    if (state.busExpanded) startBusNearbyAndEta(true);
+    dashboardBooted = true;
+    const fontsReady = waitForBootFonts(2000);
+    if (!VIEW_ONLY) {
+      const startFb = function () {
+        try { return Promise.resolve(startFirebaseSync()); }
+        catch (e) { return Promise.resolve(); }
+      };
+      try {
+        if (opts.importCloud && !importedBeforePaint) await Promise.resolve(autoImportFromCloud()).then(startFb, startFb);
+        else await startFb();
+      } catch (e) {}
+      // The pull schedules Calendar when it finishes. Keep the curtain up for that
+      // paint too, so the page does not jump again as soon as it appears.
+      try { await waitDashBootHolds(2500); } catch (e) {}
+    } else if (opts.importCloud && !importedBeforePaint) {
+      autoImportFromCloud();
+    }
+    try { await fontsReady; } catch (e) {}
+  } finally {
+    finishDashBootPaint();
   }
-  if (state.busExpanded) startBusNearbyAndEta(true);
-  dashboardBooted = true;
-  finishDashBootPaint();
-  if (opts.importCloud) return autoImportFromCloud();
-  return Promise.resolve();
 }
 
-async function unlockShareView() {
+async function unlockShareViewNow() {
+  setShareLock('opening');
+  let embedded = null;
+  try { embedded = await loadEmbeddedShareSnapshot(); } catch (e) { embedded = null; }
+  if (embedded) {
+    window.__DASH_SHARE_SNAPSHOT = embedded;
+    window.__DASH_BOOT_SYNC_LOCKED = true;
+  } else if (shareLinkIssuedAt()) {
+    window.__DASH_SHARE_SNAPSHOT = null;
+    const remote = await fetchPagesSnapshotForLink();
+    if (!remote) {
+      shareViewUnlocked = false;
+      window.__DASH_BOOT_SYNC_LOCKED = true;
+      setShareLock('stale');
+      applyShareEntryTheme();
+      return;
+    }
+    window.__DASH_BOOT_SYNC_LOCKED = true;
+    window.__DASH_BOOT_SYNC = remote;
+    window.__DASH_BOOT_SYNC_APPLIED = false;
+  }
   shareViewUnlocked = true;
   state = loadState();
-  setShareLock('opening');
   try {
     await bootDashboard({ importCloud: true });
   } catch (e) {}
   document.documentElement.classList.add('share-unlocked');
-  document.documentElement.classList.remove('theme-rain-window');
-  const body = document.getElementById('appBody') || document.body;
-  if (body) body.classList.remove('theme-rain-window');
+  applyShareEntryTheme();
   const pw = document.getElementById('shareLockPassword');
   if (pw) pw.value = '';
+}
+
+let shareUnlockPromise = null;
+function unlockShareView() {
+  if (shareViewUnlocked && dashboardBooted) {
+    applyShareEntryTheme();
+    return Promise.resolve();
+  }
+  if (shareUnlockPromise) return shareUnlockPromise;
+  shareUnlockPromise = Promise.resolve().then(unlockShareViewNow).then(function () {
+    if (!shareViewUnlocked) shareUnlockPromise = null;
+  }, function (err) {
+    shareUnlockPromise = null;
+    throw err;
+  });
+  return shareUnlockPromise;
 }
 
 function applyShareLinkGate(gate, fetched) {
@@ -11015,7 +13371,7 @@ function setShareOwnerStatus(text) {
   if (el) el.textContent = text || '';
 }
 
-function showShareToast(text) {
+function showShareToast(text, ms) {
   const el = document.getElementById('shareToast');
   if (!el) return;
   el.textContent = text || '';
@@ -11023,7 +13379,7 @@ function showShareToast(text) {
   if (shareToastTimer) clearTimeout(shareToastTimer);
   shareToastTimer = setTimeout(function () {
     el.classList.remove('show');
-  }, 2200);
+  }, ms || 2200);
 }
 
 function syncShareOwnerUI() {
@@ -11137,25 +13493,35 @@ function pagesSyncPayload() {
   return payload;
 }
 
-/** Commit sync-data.json on main so ?view=1 guests see this snapshot. */
-async function pushPagesSyncData(message) {
-  const body = JSON.stringify(pagesSyncPayload(), null, 2) + '\n';
-  return pushPagesFile(PAGES_SYNC_PATH, body, message || 'Publish read-only share snapshot');
+/** Commit sync-data.json on main so a link without #s= can still see this snapshot.
+ *  body, when set, is the snapshot captured at the share tap. It is not rebuilt
+ *  from the file already on Pages. */
+async function pushPagesSyncData(message, body) {
+  const text = body || (JSON.stringify(pagesSyncPayload(), null, 2) + '\n');
+  return pushPagesFile(PAGES_SYNC_PATH, text, message || 'Publish read-only share snapshot');
 }
 
 async function publishShareNow() {
   if (VIEW_ONLY || !pagesGateToken()) return;
   const latest = shareConfigFromState(state.share);
-  const wantSnapshot = !!latest.shareEnabled;
+  const issuedAt = Number(latest.updatedAt) || 0;
+  const wantSnapshot = !!latest.shareEnabled && shareSessionActive(latest);
+  const frozen = (wantSnapshot && pendingSharePublish && pendingSharePublish.issuedAt === issuedAt)
+    ? pendingSharePublish.body
+    : '';
   let pushed = null;
   try { pushed = await pushPagesShareGate(latest); } catch (e) { return; }
   if (!pushed || !pushed.ok) {
     if (pushed && pushed.reason === 'auth') rememberPagesGateToken('');
     return;
   }
-  if (!wantSnapshot || !shareSessionActive(state.share) || !pagesGateToken()) return;
+  // Stop, or a newer 分享, may have landed while the gate file was uploading.
+  if (!frozen || !shareSessionActive(state.share) || Number(state.share.updatedAt) !== issuedAt || !pagesGateToken()) return;
   let snap = null;
-  try { snap = await pushPagesSyncData(); } catch (e) { return; }
+  try { snap = await pushPagesSyncData('Publish read-only share snapshot', frozen); } catch (e) { return; }
+  if (snap && !snap.ok && snap.reason === 'http' && (snap.status === 409 || snap.status === 422)) {
+    try { snap = await pushPagesSyncData('Publish read-only share snapshot', frozen); } catch (e2) { return; }
+  }
   if (snap && snap.reason === 'auth') rememberPagesGateToken('');
 }
 
@@ -11228,8 +13594,66 @@ function bindPushPagesUi() {
   });
 }
 
+/** Wait until the list on screen has caught a Firestore pull, then read that list.
+ *  Does not read sync-data.json. */
+async function refreshLiveStateForShare() {
+  function syncBusy() {
+    return !!(firebaseSyncInFlight || gdriveSyncInFlight || gcalSyncInFlight || gcalSyncPromise);
+  }
+  async function waitIdle(ms) {
+    const deadline = Date.now() + ms;
+    while (syncBusy() && Date.now() < deadline) {
+      await new Promise(function (resolve) { setTimeout(resolve, 40); });
+    }
+  }
+  await waitIdle(8000);
+  // A Firestore pull queues Calendar at the end. Let that start before we snapshot.
+  await new Promise(function (resolve) { setTimeout(resolve, 80); });
+  await waitIdle(8000);
+  if (syncBusy()) return;
+  if (firebaseAutoPullAt && Date.now() - firebaseAutoPullAt < 20000) return;
+  if (!firebaseCanWrite()) return;
+  try { await mergeFirebaseSnapshot(); } catch (e) {}
+  await new Promise(function (resolve) { setTimeout(resolve, 80); });
+  await waitIdle(4000);
+}
+
+function shareSnapshotMatchesPayload(decoded, payload, now) {
+  if (!decoded || Number(decoded.updatedAt) !== now) return false;
+  if (!Array.isArray(decoded.todos) || !Array.isArray(decoded.events)) return false;
+  const todos = payload.todos || [];
+  const byTodo = {};
+  decoded.todos.forEach(function (t) { if (t && t.id) byTodo[t.id] = t; });
+  let todoCount = 0;
+  for (let i = 0; i < todos.length; i++) {
+    const t = todos[i];
+    if (!t || !t.id) continue;
+    todoCount++;
+    const got = byTodo[t.id];
+    if (!got || got.title !== String(t.title || '') || !!got.done !== !!t.done) return false;
+    if (String(got.due || '') !== String(t.due || '')) return false;
+  }
+  if (decoded.todos.length !== todoCount) return false;
+  const byEvent = {};
+  decoded.events.forEach(function (e) { if (e && e.id) byEvent[e.id] = e; });
+  const events = payload.events || [];
+  for (let j = 0; j < events.length; j++) {
+    const raw = events[j];
+    if (!raw || !raw.id || shareEventUnchanged(raw)) continue;
+    const n = normalizeEvent(raw);
+    const got = byEvent[n.id];
+    if (!got || got.title !== n.title || got.date !== n.date || !!got.done !== !!n.done) return false;
+  }
+  return true;
+}
+
+/** Build a paste-safe read-only URL. Does not copy. Leaves share off when #s= cannot fit. */
 async function startShareSession() {
-  if (VIEW_ONLY) return;
+  if (VIEW_ONLY) return { ok: false, url: '' };
+  const btn = document.getElementById('btnShareToggle');
+  if (btn) btn.textContent = '分享中…';
+  const prev = normalizeShare(state.share);
+  await refreshLiveStateForShare();
   const now = Date.now();
   state.share = {
     enabled: true,
@@ -11238,13 +13662,75 @@ async function startShareSession() {
     updatedAt: now,
     expiresAt: now + SHARE_TTL_MS
   };
+  let payload = null;
+  let token = '';
+  try {
+    payload = pagesSyncPayload();
+    payload.updatedAt = now;
+    payload.share = normalizeShare(state.share);
+    token = await encodeShareSnapshot(payload);
+  } catch (e) {
+    token = '';
+  }
+  const url = token ? viewOnlyShareUrl(state.share.expiresAt, now, token) : '';
+  let decoded = null;
+  if (url && url.length <= SHARE_URL_MAX && url.indexOf('#s=') > 0) {
+    try { decoded = await decodeShareSnapshot(token); } catch (e2) { decoded = null; }
+  }
+  if (!payload || !url || url.length > SHARE_URL_MAX || !shareSnapshotMatchesPayload(decoded, payload, now)) {
+    state.share = prev;
+    if (btn) btn.textContent = shareSessionActive(prev) ? '停止分享' : '分享';
+    return { ok: false, url: '' };
+  }
+  pendingSharePublish = {
+    issuedAt: now,
+    body: JSON.stringify(payload, null, 2) + '\n'
+  };
   saveState();
   syncShareOwnerUI();
-  const url = viewOnlyShareUrl(state.share.expiresAt, state.share.updatedAt);
-  const copied = await copyPlainText(url);
-  showShareToast(copied ? '已複製連結' : '未能複製連結');
-  setShareOwnerStatus(copied ? '' : url);
   publishShareQuietly();
+  return { ok: true, url: url };
+}
+
+/** Clipboard write starts inside the tap, before the snapshot promise settles. */
+function copyShareLinkDuringGesture(linkPromise) {
+  const urlPromise = Promise.resolve(linkPromise).then(function (built) {
+    return built && built.url ? String(built.url) : '';
+  }, function () { return ''; });
+  function fallback() {
+    return urlPromise.then(function (url) {
+      if (!url || url.indexOf('#s=') < 0 || url.length > SHARE_URL_MAX) return { ok: false, url: '' };
+      return copyPlainText(url).then(function (ok) { return { ok: !!ok, url: url }; });
+    });
+  }
+  if (!navigator.clipboard || typeof ClipboardItem !== 'function' || !navigator.clipboard.write) return fallback();
+  let url = '';
+  const blobPromise = urlPromise.then(function (value) {
+    url = value || '';
+    if (!url || url.indexOf('#s=') < 0 || url.length > SHARE_URL_MAX) return Promise.reject(new Error('empty-share-url'));
+    return new Blob([url], { type: 'text/plain' });
+  });
+  let item = null;
+  try { item = new ClipboardItem({ 'text/plain': blobPromise }); } catch (e) { return fallback(); }
+  return navigator.clipboard.write([item]).then(function () {
+    return { ok: true, url: url };
+  }, function () { return fallback(); });
+}
+
+function finishShareCopy(result) {
+  result = result || {};
+  if (!result.url) {
+    showShareToast('未能帶上待辦，未有複製連結', 5000);
+    setShareOwnerStatus('分享內容放唔入連結，所以冇複製。請再試一次。');
+    return;
+  }
+  if (result.ok) {
+    showShareToast('已複製連結');
+    setShareOwnerStatus('');
+    return;
+  }
+  showShareToast('未能自動複製，請長按下面的連結', 5000);
+  setShareOwnerStatus(result.url);
 }
 
 async function stopShareSession(opts) {
@@ -11263,6 +13749,7 @@ async function stopShareSession(opts) {
     updatedAt: now > prev.updatedAt ? now : prev.updatedAt + 1,
     expiresAt: 0
   };
+  pendingSharePublish = null;
   saveState();
   syncShareOwnerUI();
   showShareToast(opts.reason === 'expired' ? '分享已自動停止' : '已停止分享');
@@ -11281,18 +13768,25 @@ function bindShareOwnerUi() {
   const btn = document.getElementById('btnShareToggle');
   if (btn && !btn._shareBound) {
     btn._shareBound = true;
-    btn.addEventListener('click', async function () {
+    btn.addEventListener('click', function () {
       if (shareActionBusy) return;
       shareActionBusy = true;
       btn.disabled = true;
-      try {
-        if (shareSessionActive(state.share)) await stopShareSession({});
-        else await startShareSession();
-      } finally {
+      const stopping = shareSessionActive(state.share);
+      const job = stopping
+        ? stopShareSession({})
+        : Promise.resolve(copyShareLinkDuringGesture(startShareSession())).then(finishShareCopy, function () {
+          finishShareCopy({ ok: false, url: '' });
+        });
+      Promise.resolve(job).then(function () {
         shareActionBusy = false;
         btn.disabled = false;
         syncShareOwnerUI();
-      }
+      }, function () {
+        shareActionBusy = false;
+        btn.disabled = false;
+        syncShareOwnerUI();
+      });
     });
   }
   syncShareOwnerUI();
@@ -11303,7 +13797,7 @@ function bindShareOwnerUi() {
 if (VIEW_ONLY) {
   bootShareGate();
 } else {
-  bootDashboard({ importCloud: true });
+  bootDashboard({ importCloud: false });
 }
 </script>
 </body>
