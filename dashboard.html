@@ -353,7 +353,8 @@
     body.theme-rain-cafe .event-item,
     body.theme-rain-cafe .course-card,
     body.theme-rain-cafe .chip:not(.active):not(.cat-manage),
-    body.theme-rain-cafe .subtabs {
+    body.theme-rain-cafe .subtabs,
+    body.theme-rain-cafe .events-search {
       background: rgba(255, 255, 255, 0.3);
       backdrop-filter: blur(18px) saturate(1.25);
       -webkit-backdrop-filter: blur(18px) saturate(1.25);
@@ -495,7 +496,8 @@
     body.theme-sunny-beach .event-item,
     body.theme-sunny-beach .course-card,
     body.theme-sunny-beach .chip:not(.active):not(.cat-manage),
-    body.theme-sunny-beach .subtabs {
+    body.theme-sunny-beach .subtabs,
+    body.theme-sunny-beach .events-search {
       background: rgba(255, 255, 255, 0.4);
       backdrop-filter: blur(18px) saturate(1.25);
       -webkit-backdrop-filter: blur(18px) saturate(1.25);
@@ -1897,6 +1899,94 @@
       font-size: 13px;
       min-height: 36px;
     }
+    /* Compact glass search under the day filters. Same frost tokens as the pills. */
+    .events-search {
+      position: relative;
+      display: flex;
+      align-items: center;
+      margin: 0 0 8px;
+      min-width: 0;
+      min-height: 36px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: var(--row-bg, rgba(255, 255, 255, 0.28));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(18px) saturate(1.25);
+      -webkit-backdrop-filter: blur(18px) saturate(1.25);
+    }
+    .events-search:focus-within,
+    body.theme-rain-cafe .events-search:focus-within,
+    body.theme-sunny-beach .events-search:focus-within {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+    .events-search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .events-search input[type="search"] {
+      width: 100%;
+      min-height: 34px;
+      height: 34px;
+      margin: 0;
+      padding: 0 34px 0 32px;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 16px;
+      line-height: 1.2;
+      outline: none;
+      box-shadow: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .events-search input[type="search"]::-webkit-search-cancel-button,
+    .events-search input[type="search"]::-webkit-search-decoration {
+      -webkit-appearance: none;
+      appearance: none;
+      display: none;
+    }
+    .events-search input[type="search"]::placeholder {
+      color: var(--muted);
+      opacity: 0.9;
+    }
+    .events-search input[type="search"]:focus {
+      border-color: transparent;
+      box-shadow: none;
+      background: transparent;
+    }
+    .events-search-clear {
+      position: absolute;
+      right: 3px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      min-height: 28px;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .events-search-clear:hover,
+    .events-search-clear:focus-visible {
+      background: var(--accent-light);
+      color: var(--text-strong, var(--text));
+    }
+    .events-search-clear[hidden] { display: none !important; }
     .event-kind-picker { margin-bottom: 0; }
     .event-item.kind-personal { box-shadow: inset 3px 0 0 #2dd4bf; }
     .event-item.kind-school { box-shadow: inset 3px 0 0 #f59e0b; }
@@ -3251,6 +3341,16 @@
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnAddEvent">＋ 新增</button>
         </div>
+        <div class="events-search">
+          <span class="events-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.25" fill="none" stroke="currentColor" stroke-width="2"></circle>
+              <path d="M16.2 16.2L20.5 20.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+            </svg>
+          </span>
+          <input type="search" id="eventsSearchInput" aria-label="搜尋活動" placeholder="搜尋活動名稱或備註" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" inputmode="search" maxlength="80" />
+          <button type="button" class="events-search-clear" id="eventsSearchClear" hidden aria-label="清除搜尋">×</button>
+        </div>
         <p class="meta" id="eventsViewHint" style="margin-bottom:8px">顯示今天的個人活動</p>
         <div class="event-list" id="eventList"></div>
       </div>
@@ -4462,8 +4562,43 @@ function countEventsToday() {
   return (state.events || []).filter(ev => eventKindOf(ev) === kind && eventOnDate(ev, today)).length;
 }
 
+/** Session-only. Never written to localStorage, Firebase, Drive, or Pages. */
+let sessionEventsQuery = '';
+
+function normalizeEventsQuery(raw) {
+  return String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+}
+
+function currentEventsQuery() {
+  return normalizeEventsQuery(sessionEventsQuery);
+}
+
+/** Case-insensitive substring. Chinese matches as-is. Title, 工作/備註, and location when present. */
+function eventMatchesQuery(ev, query) {
+  const q = normalizeEventsQuery(query).toLowerCase();
+  if (!q) return true;
+  if (!ev) return false;
+  const parts = [ev.title, ev.work, ev.notes, ev.location, ev.place];
+  for (let i = 0; i < parts.length; i++) {
+    if (String(parts[i] == null ? '' : parts[i]).toLowerCase().indexOf(q) !== -1) return true;
+  }
+  return false;
+}
+
+/**
+ * Kind is always applied. A non-empty query ignores the day window and
+ * searches every date of that kind, so a search started on 今天 can still
+ * find a later activity. An empty query uses the day filter again.
+ */
+function eventPassesEventsView(ev, kind, filter, query) {
+  if (!ev || eventKindOf(ev) !== normalizeEventsKind(kind)) return false;
+  if (normalizeEventsQuery(query)) return eventMatchesQuery(ev, query);
+  return eventInFilter(ev, filter);
+}
+
 function eventsFilterHintText() {
   const kind = eventsKindLabel(state.eventsKind);
+  if (currentEventsQuery()) return '搜尋全部' + kind + '（不限日期）';
   if (normalizeEventsFilter(state.eventsFilter) === 'all') return '顯示全部' + kind;
   const win = getEventsFilterRange(state.eventsFilter);
   return '顯示' + win.label + '的' + kind;
@@ -4471,6 +4606,11 @@ function eventsFilterHintText() {
 
 function eventsFilterEmptyText() {
   const kind = eventsKindLabel(state.eventsKind);
+  const q = currentEventsQuery();
+  if (q) {
+    const shown = q.length > 24 ? q.slice(0, 24) + '…' : q;
+    return '找不到符合「' + shown + '」的' + kind;
+  }
   if (normalizeEventsFilter(state.eventsFilter) === 'all') return '暫無' + kind;
   const win = getEventsFilterRange(state.eventsFilter);
   return win.label + '暫無' + kind;
@@ -6430,6 +6570,58 @@ function syncEventsFilterUI() {
   if (hint) hint.textContent = eventsFilterHintText();
 }
 
+function syncEventsSearchUI() {
+  const q = currentEventsQuery();
+  const clearBtn = document.getElementById('eventsSearchClear');
+  if (clearBtn) clearBtn.hidden = !q;
+  const input = document.getElementById('eventsSearchInput');
+  if (input && document.activeElement !== input && input.value !== sessionEventsQuery) {
+    input.value = sessionEventsQuery;
+  }
+}
+
+function clearEventsQuery() {
+  sessionEventsQuery = '';
+  const input = document.getElementById('eventsSearchInput');
+  if (input) input.value = '';
+  syncEventsSearchUI();
+  syncEventsFilterUI();
+  renderEvents();
+}
+
+(function bindEventsSearch() {
+  const input = document.getElementById('eventsSearchInput');
+  const clearBtn = document.getElementById('eventsSearchClear');
+  if (!input) return;
+  let composing = false;
+  function applyQuery() {
+    sessionEventsQuery = input.value;
+    syncEventsSearchUI();
+    if (composing) return;
+    syncEventsFilterUI();
+    renderEvents();
+  }
+  input.addEventListener('compositionstart', function () { composing = true; });
+  input.addEventListener('compositionend', function () {
+    composing = false;
+    applyQuery();
+  });
+  input.addEventListener('input', applyQuery);
+  input.addEventListener('search', applyQuery);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && input.value) {
+      e.preventDefault();
+      clearEventsQuery();
+    }
+  });
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function () {
+      clearEventsQuery();
+      input.focus();
+    });
+  }
+})();
+
 document.querySelectorAll('#eventsFilterTabs .subtab').forEach(btn => {
   btn.addEventListener('click', () => {
     sessionEventsFilter = normalizeEventsFilter(btn.getAttribute('data-events-filter'));
@@ -6690,10 +6882,13 @@ function sortEventsForDisplay(list) {
 
 function reorderEvents(fromId, toId) {
   if (VIEW_ONLY || !state || !Array.isArray(state.events)) return;
+  // Search shows a cross-date subset. Reordering it would stamp sortOrder on
+  // only the matches and scramble the day list when the query is cleared.
+  if (currentEventsQuery()) return;
   const filter = normalizeEventsFilter(state.eventsFilter);
   const kind = normalizeEventsKind(state.eventsKind);
   const all = sortEventsForDisplay(
-    state.events.filter(function (ev) { return eventKindOf(ev) === kind && eventInFilter(ev, filter); })
+    state.events.filter(function (ev) { return eventPassesEventsView(ev, kind, filter, ''); })
   );
   const open = all.filter(function (ev) { return !ev.done; });
   const done = all.filter(function (ev) { return ev.done; });
@@ -6887,10 +7082,12 @@ function renderEvents() {
   });
   if (dirty) saveState();
 
+  syncEventsSearchUI();
   const filter = normalizeEventsFilter(state.eventsFilter);
   const kind = normalizeEventsKind(state.eventsKind);
+  const query = currentEventsQuery();
   const visible = sortEventsForDisplay(
-    state.events.filter(ev => eventKindOf(ev) === kind && eventInFilter(ev, filter))
+    state.events.filter(ev => eventPassesEventsView(ev, kind, filter, query))
   );
 
   if (!visible.length) {
@@ -6907,7 +7104,7 @@ function renderEvents() {
       ? '<div class="todo-title">' + escapeHtml(ev.title) + '</div>'
       : '<button type="button" class="todo-title event-title-toggle" aria-pressed="' + (ev.done ? 'true' : 'false') + '" aria-label="' + escapeHtml(ev.done ? '標為未完成' : '標為完成') + '">' + escapeHtml(ev.title) + '</button>';
     return (
-      '<div class="event-item kind-' + (eventKindOf(ev) === 'personal' ? 'personal' : 'school') + (ev.done ? ' done' : '') + ((VIEW_ONLY || ev.done) ? '' : ' event-draggable') + '" data-id="' + escapeHtml(ev.id) + '">' +
+      '<div class="event-item kind-' + (eventKindOf(ev) === 'personal' ? 'personal' : 'school') + (ev.done ? ' done' : '') + ((VIEW_ONLY || ev.done || query) ? '' : ' event-draggable') + '" data-id="' + escapeHtml(ev.id) + '">' +
         '<div class="todo-body">' +
           titleHtml +
           '<div class="meta">' +
