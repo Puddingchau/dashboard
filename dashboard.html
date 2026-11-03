@@ -2036,6 +2036,102 @@
       color: var(--text-strong, var(--text));
     }
     .events-search-clear[hidden] { display: none !important; }
+    /* Recent searches sit under the field. JS anchors the panel to the box. */
+    .events-search-history {
+      position: fixed;
+      z-index: 35;
+      margin: 0;
+      padding: 6px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      /* Solid sheet, same as the header popover: glass behind it stays readable. */
+      background: #fffaf3;
+      color: var(--text, #1e293b);
+      backdrop-filter: blur(18px) saturate(1.25);
+      -webkit-backdrop-filter: blur(18px) saturate(1.25);
+      box-shadow:
+        0 14px 32px -14px rgba(20, 35, 55, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.75);
+      max-height: min(320px, 52vh);
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .events-search-history[hidden] { display: none !important; }
+    .events-search-history-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 1px 4px 4px 8px;
+    }
+    .events-search-history-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--muted, #5A6A78);
+    }
+    .events-search-history-clearall,
+    .events-search-history-use,
+    .events-search-history-remove {
+      font-family: inherit;
+      border: none;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .events-search-history-clearall {
+      min-height: 28px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted, #5A6A78);
+    }
+    .events-search-history-row {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .events-search-history-use {
+      flex: 1;
+      min-width: 0;
+      min-height: 36px;
+      padding: 8px;
+      border-radius: 10px;
+      text-align: left;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .events-search-history-remove {
+      flex: 0 0 32px;
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      font-size: 16px;
+      line-height: 1;
+      color: var(--muted, #5A6A78);
+    }
+    .events-search-history-clearall:hover,
+    .events-search-history-clearall:focus-visible,
+    .events-search-history-use:hover,
+    .events-search-history-use:focus-visible,
+    .events-search-history-remove:hover,
+    .events-search-history-remove:focus-visible,
+    .events-search-history-clearall:active,
+    .events-search-history-use:active,
+    .events-search-history-remove:active {
+      background: var(--accent-light);
+      color: var(--text-strong, var(--text));
+    }
     .event-kind-picker { margin-bottom: 0; }
     .event-item.kind-personal { box-shadow: inset 3px 0 0 #2dd4bf; }
     .event-item.kind-school { box-shadow: inset 3px 0 0 #f59e0b; }
@@ -3400,15 +3496,16 @@
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnAddEvent">＋ 新增</button>
         </div>
-        <div class="events-search">
+        <div class="events-search" id="eventsSearch">
           <span class="events-search-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="15" height="15" focusable="false" aria-hidden="true">
               <circle cx="11" cy="11" r="6.25" fill="none" stroke="currentColor" stroke-width="2"></circle>
               <path d="M16.2 16.2L20.5 20.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
             </svg>
           </span>
-          <input type="search" id="eventsSearchInput" aria-label="搜尋活動" placeholder="搜尋活動名稱或備註" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" inputmode="search" maxlength="80" />
+          <input type="search" id="eventsSearchInput" aria-label="搜尋活動" aria-autocomplete="list" aria-controls="eventsSearchHistory" aria-expanded="false" placeholder="搜尋活動名稱或備註" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" inputmode="search" maxlength="80" />
           <button type="button" class="events-search-clear" id="eventsSearchClear" hidden aria-label="清除搜尋">×</button>
+          <div class="events-search-history" id="eventsSearchHistory" hidden role="region" aria-label="最近搜尋"></div>
         </div>
         <p class="meta" id="eventsViewHint" style="margin-bottom:8px">顯示今天的個人活動</p>
         <div class="event-list" id="eventList"></div>
@@ -4906,7 +5003,8 @@ function countEventsToday() {
   return (state.events || []).filter(ev => eventKindOf(ev) === kind && eventOnDate(ev, today)).length;
 }
 
-/** Session-only. Never written to localStorage, Firebase, Drive, or Pages. */
+/** Active query for this page session. Not written to dash-hub-v1, Firebase, Drive, or Pages.
+ *  Recent searches use dash-events-search-history-v1 on this browser only. */
 let sessionEventsQuery = '';
 
 function normalizeEventsQuery(raw) {
@@ -4915,6 +5013,201 @@ function normalizeEventsQuery(raw) {
 
 function currentEventsQuery() {
   return normalizeEventsQuery(sessionEventsQuery);
+}
+
+/** One search box covers 個人活動 and 學校活動, so history is one shared list.
+ *  This key is not dash-hub-v1 and is never synced. */
+function eventsSearchHistoryStorageKey() {
+  return 'dash-events-search-history-v1';
+}
+
+let eventsSearchHistoryBurst = '';
+let eventsSearchHistoryTimer = null;
+let eventsSearchHistoryHoldFocus = false;
+let eventsSearchHistoryPressX = 0;
+let eventsSearchHistoryPressY = 0;
+let eventsSearchHistoryIgnoreClick = false;
+
+function readEventsSearchHistory() {
+  try {
+    const raw = localStorage.getItem(eventsSearchHistoryStorageKey());
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.items) ? parsed.items : []);
+    const out = [];
+    const seen = Object.create(null);
+    for (let i = 0; i < items.length; i++) {
+      if (typeof items[i] !== 'string') continue;
+      const q = normalizeEventsQuery(items[i]).slice(0, 80);
+      const key = q.toLowerCase();
+      if (!q || seen[key]) continue;
+      seen[key] = 1;
+      out.push(q);
+      if (out.length >= 10) break;
+    }
+    return out;
+  } catch (e) {
+    return [];
+  }
+}
+
+function writeEventsSearchHistory(items) {
+  const list = [];
+  const seen = Object.create(null);
+  const src = Array.isArray(items) ? items : [];
+  for (let i = 0; i < src.length; i++) {
+    if (typeof src[i] !== 'string') continue;
+    const q = normalizeEventsQuery(src[i]).slice(0, 80);
+    const key = q.toLowerCase();
+    if (!q || seen[key]) continue;
+    seen[key] = 1;
+    list.push(q);
+    if (list.length >= 10) break;
+  }
+  try {
+    localStorage.setItem(eventsSearchHistoryStorageKey(), JSON.stringify({ items: list }));
+  } catch (e) {}
+  return list;
+}
+
+function rememberEventsSearchQuery(raw) {
+  const q = normalizeEventsQuery(raw).slice(0, 80);
+  if (!q) return readEventsSearchHistory();
+  const key = q.toLowerCase();
+  const rest = readEventsSearchHistory().filter(function (item) {
+    return item.toLowerCase() !== key;
+  });
+  return writeEventsSearchHistory([q].concat(rest));
+}
+
+function forgetEventsSearchQuery(raw) {
+  const key = normalizeEventsQuery(raw).toLowerCase();
+  if (!key) return readEventsSearchHistory();
+  return writeEventsSearchHistory(readEventsSearchHistory().filter(function (item) {
+    return item.toLowerCase() !== key;
+  }));
+}
+
+function clearEventsSearchHistory() {
+  return writeEventsSearchHistory([]);
+}
+
+/** Newest first, max 10. previousBurst is the query still being typed:
+ *  a shorter or longer version of it is replaced, so pauses do not fill the list. */
+function commitEventsSearchHistory(raw, previousBurst) {
+  const q = normalizeEventsQuery(raw).slice(0, 80);
+  const prev = normalizeEventsQuery(previousBurst).slice(0, 80);
+  if (!q) return { items: readEventsSearchHistory(), burst: prev };
+  if (prev && prev.toLowerCase() !== q.toLowerCase()) {
+    const a = prev.toLowerCase();
+    const b = q.toLowerCase();
+    if (b.indexOf(a) === 0 || a.indexOf(b) === 0) {
+      writeEventsSearchHistory(readEventsSearchHistory().filter(function (item) {
+        return item.toLowerCase() !== a;
+      }));
+    }
+  }
+  return { items: rememberEventsSearchQuery(q), burst: q };
+}
+
+function commitActiveEventsSearch(raw) {
+  clearTimeout(eventsSearchHistoryTimer);
+  eventsSearchHistoryTimer = null;
+  const result = commitEventsSearchHistory(raw, eventsSearchHistoryBurst);
+  eventsSearchHistoryBurst = result.burst;
+  return result.items;
+}
+
+function hideEventsSearchHistory() {
+  const panel = document.getElementById('eventsSearchHistory');
+  const input = document.getElementById('eventsSearchInput');
+  if (panel) panel.hidden = true;
+  if (input) input.setAttribute('aria-expanded', 'false');
+}
+
+function placeEventsSearchHistory() {
+  const wrap = document.getElementById('eventsSearch');
+  const panel = document.getElementById('eventsSearchHistory');
+  if (!wrap || !panel || panel.hidden) return;
+  const rect = wrap.getBoundingClientRect();
+  const gap = 6;
+  const width = Math.max(160, rect.width);
+  let left = rect.left;
+  if (left + width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - 8 - width);
+  if (left < 8) left = 8;
+  const spaceBelow = window.innerHeight - rect.bottom - gap - 8;
+  const spaceAbove = rect.top - gap - 8;
+  let top = rect.bottom + gap;
+  let maxH = Math.min(360, Math.max(96, spaceBelow));
+  if (spaceBelow < 160 && spaceAbove > spaceBelow) {
+    maxH = Math.min(360, Math.max(96, spaceAbove));
+    top = Math.max(8, rect.top - gap - maxH);
+  }
+  panel.style.left = left + 'px';
+  panel.style.top = top + 'px';
+  panel.style.width = width + 'px';
+  panel.style.maxHeight = maxH + 'px';
+}
+
+function renderEventsSearchHistory() {
+  const panel = document.getElementById('eventsSearchHistory');
+  const input = document.getElementById('eventsSearchInput');
+  if (!panel || !input) return;
+  const focused = document.activeElement === input || eventsSearchHistoryHoldFocus;
+  const show = focused && !normalizeEventsQuery(input.value) && readEventsSearchHistory().length > 0;
+  if (!show) {
+    panel.innerHTML = '';
+    hideEventsSearchHistory();
+    return;
+  }
+  const items = readEventsSearchHistory();
+  let html = '<div class="events-search-history-head">' +
+    '<span class="events-search-history-label">最近搜尋</span>' +
+    '<button type="button" class="events-search-history-clearall" data-history-clear-all>清除全部</button>' +
+    '</div>';
+  for (let i = 0; i < items.length; i++) {
+    const q = items[i];
+    const safe = escapeHtml(q);
+    html += '<div class="events-search-history-row">' +
+      '<button type="button" class="events-search-history-use" data-history-use="' + safe + '">' + safe + '</button>' +
+      '<button type="button" class="events-search-history-remove" data-history-remove="' + safe + '" aria-label="刪除「' + safe + '」">×</button>' +
+      '</div>';
+  }
+  panel.innerHTML = html;
+  panel.hidden = false;
+  input.setAttribute('aria-expanded', 'true');
+  placeEventsSearchHistory();
+}
+
+function handleEventsSearchHistoryActivate(node) {
+  if (!node || !node.closest) return;
+  const removeBtn = node.closest('[data-history-remove]');
+  const useBtn = node.closest('[data-history-use]');
+  const clearAll = node.closest('[data-history-clear-all]');
+  if (!removeBtn && !useBtn && !clearAll) return;
+  const input = document.getElementById('eventsSearchInput');
+  if (removeBtn) {
+    const q = removeBtn.getAttribute('data-history-remove') || '';
+    forgetEventsSearchQuery(q);
+    if (normalizeEventsQuery(eventsSearchHistoryBurst).toLowerCase() === normalizeEventsQuery(q).toLowerCase()) {
+      eventsSearchHistoryBurst = '';
+    }
+  } else if (clearAll) {
+    clearEventsSearchHistory();
+    eventsSearchHistoryBurst = '';
+  } else {
+    const q = normalizeEventsQuery(useBtn.getAttribute('data-history-use') || '').slice(0, 80);
+    eventsSearchHistoryBurst = '';
+    if (input) input.value = q;
+    sessionEventsQuery = q;
+    if (q) rememberEventsSearchQuery(q);
+    syncEventsSearchUI();
+    syncEventsFilterUI();
+    renderEvents();
+  }
+  eventsSearchHistoryHoldFocus = false;
+  if (input && readEventsSearchHistory().length && !normalizeEventsQuery(input.value)) input.focus();
+  renderEventsSearchHistory();
 }
 
 /** Case-insensitive substring. Chinese matches as-is. Title, 工作/備註, and location when present. */
@@ -6961,25 +7254,46 @@ function syncEventsSearchUI() {
 }
 
 function clearEventsQuery() {
-  sessionEventsQuery = '';
   const input = document.getElementById('eventsSearchInput');
+  commitActiveEventsSearch(input ? input.value : sessionEventsQuery);
+  eventsSearchHistoryBurst = '';
+  sessionEventsQuery = '';
   if (input) input.value = '';
   syncEventsSearchUI();
   syncEventsFilterUI();
   renderEvents();
+  renderEventsSearchHistory();
 }
 
 (function bindEventsSearch() {
   const input = document.getElementById('eventsSearchInput');
   const clearBtn = document.getElementById('eventsSearchClear');
+  const panel = document.getElementById('eventsSearchHistory');
   if (!input) return;
+  const host = document.querySelector('.app') || document.body;
+  if (panel && host && panel.parentNode !== host) host.appendChild(panel);
   let composing = false;
+  function scheduleEventsSearchHistoryCommit() {
+    clearTimeout(eventsSearchHistoryTimer);
+    eventsSearchHistoryTimer = null;
+    const q = normalizeEventsQuery(input.value);
+    if (!q || composing) return;
+    eventsSearchHistoryTimer = setTimeout(function () {
+      eventsSearchHistoryTimer = null;
+      if (composing) return;
+      if (normalizeEventsQuery(input.value) !== q) return;
+      commitActiveEventsSearch(q);
+    }, 800);
+  }
   function applyQuery() {
     sessionEventsQuery = input.value;
     syncEventsSearchUI();
+    if (normalizeEventsQuery(input.value)) hideEventsSearchHistory();
+    else renderEventsSearchHistory();
     if (composing) return;
     syncEventsFilterUI();
     renderEvents();
+    scheduleEventsSearchHistoryCommit();
   }
   input.addEventListener('compositionstart', function () { composing = true; });
   input.addEventListener('compositionend', function () {
@@ -6988,10 +7302,30 @@ function clearEventsQuery() {
   });
   input.addEventListener('input', applyQuery);
   input.addEventListener('search', applyQuery);
+  input.addEventListener('focus', function () {
+    renderEventsSearchHistory();
+  });
+  input.addEventListener('blur', function (e) {
+    if (eventsSearchHistoryHoldFocus) return;
+    if (panel && e.relatedTarget && panel.contains(e.relatedTarget)) return;
+    commitActiveEventsSearch(input.value);
+    eventsSearchHistoryBurst = '';
+    hideEventsSearchHistory();
+  });
   input.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && input.value) {
-      e.preventDefault();
-      clearEventsQuery();
+    if (e.isComposing || composing) return;
+    if (e.key === 'Escape') {
+      if (!normalizeEventsQuery(input.value) && panel && !panel.hidden) {
+        e.preventDefault();
+        hideEventsSearchHistory();
+        return;
+      }
+      if (input.value) {
+        e.preventDefault();
+        clearEventsQuery();
+      }
+    } else if (e.key === 'Enter') {
+      commitActiveEventsSearch(input.value);
     }
   });
   if (clearBtn) {
@@ -7000,6 +7334,63 @@ function clearEventsQuery() {
       input.focus();
     });
   }
+  if (panel) {
+    panel.addEventListener('pointerdown', function (e) {
+      eventsSearchHistoryHoldFocus = true;
+      eventsSearchHistoryPressX = e.clientX;
+      eventsSearchHistoryPressY = e.clientY;
+      if (e.pointerType === 'mouse') e.preventDefault();
+    });
+    panel.addEventListener('touchstart', function (e) {
+      eventsSearchHistoryHoldFocus = true;
+      if (e.touches && e.touches[0]) {
+        eventsSearchHistoryPressX = e.touches[0].clientX;
+        eventsSearchHistoryPressY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+    panel.addEventListener('click', function (e) {
+      if (eventsSearchHistoryIgnoreClick) {
+        eventsSearchHistoryIgnoreClick = false;
+        return;
+      }
+      handleEventsSearchHistoryActivate(e.target);
+    });
+  }
+  document.addEventListener('pointerup', function (e) {
+    if (!eventsSearchHistoryHoldFocus) return;
+    const moved = Math.abs(e.clientX - eventsSearchHistoryPressX) > 12 || Math.abs(e.clientY - eventsSearchHistoryPressY) > 12;
+    const hit = document.elementFromPoint(e.clientX, e.clientY);
+    const inside = !!(panel && hit && panel.contains(hit));
+    eventsSearchHistoryHoldFocus = false;
+    if (inside && !moved) {
+      eventsSearchHistoryIgnoreClick = true;
+      setTimeout(function () { eventsSearchHistoryIgnoreClick = false; }, 0);
+      handleEventsSearchHistoryActivate(hit);
+      return;
+    }
+    if (inside && moved) {
+      input.focus();
+      renderEventsSearchHistory();
+      return;
+    }
+    commitActiveEventsSearch(input.value);
+    eventsSearchHistoryBurst = '';
+    hideEventsSearchHistory();
+  });
+  window.addEventListener('resize', function () {
+    if (panel && !panel.hidden) placeEventsSearchHistory();
+  });
+  document.addEventListener('scroll', function () {
+    if (!panel || panel.hidden) return;
+    const wrap = document.getElementById('eventsSearch');
+    if (!wrap) return;
+    const box = wrap.getBoundingClientRect();
+    if (box.bottom < 0 || box.top > window.innerHeight) {
+      hideEventsSearchHistory();
+      return;
+    }
+    placeEventsSearchHistory();
+  }, true);
 })();
 
 document.querySelectorAll('#eventsFilterTabs .subtab').forEach(btn => {

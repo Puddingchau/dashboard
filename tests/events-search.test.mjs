@@ -26,6 +26,18 @@ function extractFn(html, name) {
 const FNS = [
   'normalizeEventsQuery',
   'currentEventsQuery',
+  'eventsSearchHistoryStorageKey',
+  'readEventsSearchHistory',
+  'writeEventsSearchHistory',
+  'rememberEventsSearchQuery',
+  'forgetEventsSearchQuery',
+  'clearEventsSearchHistory',
+  'commitEventsSearchHistory',
+  'commitActiveEventsSearch',
+  'hideEventsSearchHistory',
+  'placeEventsSearchHistory',
+  'renderEventsSearchHistory',
+  'handleEventsSearchHistoryActivate',
   'eventMatchesQuery',
   'eventPassesEventsView',
   'eventsFilterHintText',
@@ -45,11 +57,25 @@ test('index.html and dashboard.html share the events search helpers', () => {
     assert.match(html, /if \(currentEventsQuery\(\)\) return;/);
     assert.match(html, /ENABLE_DRIVE_SYNC = false/);
     assert.match(html, /確定刪除此活動/);
-    assert.doesNotMatch(extractFn(html, 'saveState'), /eventsQuery|sessionEventsQuery/);
-    assert.doesNotMatch(extractFn(html, 'buildExportPayload'), /eventsQuery|sessionEventsQuery/);
+    assert.doesNotMatch(extractFn(html, 'saveState'), /eventsQuery|sessionEventsQuery|dash-events-search-history/);
+    assert.doesNotMatch(extractFn(html, 'buildExportPayload'), /eventsQuery|sessionEventsQuery|dash-events-search-history/);
+    assert.doesNotMatch(extractFn(html, 'buildSyncPayload'), /eventsQuery|sessionEventsQuery|dash-events-search-history/);
     assert.doesNotMatch(html, /id="todosSearchInput"/);
+    assert.match(html, /id="eventsSearchHistory"/);
+    assert.match(html, /最近搜尋/);
+    assert.match(html, /清除全部/);
+    assert.equal(extractFn(html, 'eventsSearchHistoryStorageKey').includes('dash-events-search-history-v1'), true);
   }
 });
+
+function memoryStorage() {
+  const data = Object.create(null);
+  return {
+    getItem(k) { return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
+    setItem(k, v) { data[k] = String(v); },
+    removeItem(k) { delete data[k]; }
+  };
+}
 
 function loadSearch(html) {
   const context = {
@@ -60,7 +86,10 @@ function loadSearch(html) {
     normalizeEventsFilter(raw) { return raw || 'today'; },
     getEventsFilterRange() { return { label: '今天' }; },
     state: { eventsKind: 'personal', eventsFilter: 'today' },
-    sessionEventsQuery: ''
+    sessionEventsQuery: '',
+    localStorage: memoryStorage(),
+    saveState() { throw new Error('saveState'); },
+    scheduleCloudSync() { throw new Error('scheduleCloudSync'); }
   };
   vm.createContext(context);
   vm.runInContext(
@@ -114,5 +143,55 @@ for (const [file, html] of [['index.html', indexHtml], ['dashboard.html', dashHt
     api.state.eventsKind = 'personal';
     assert.equal(api.eventsFilterHintText(), '顯示今天的個人活動');
     assert.equal(api.eventsFilterEmptyText(), '今天暫無個人活動');
+  });
+
+  test(file + ' keeps the newest 10 searches and moves a repeat to the top', () => {
+    const api = loadSearch(html);
+    assert.equal(api.eventsSearchHistoryStorageKey(), 'dash-events-search-history-v1');
+    assert.equal(JSON.stringify(api.rememberEventsSearchQuery('   ')), '[]');
+    assert.equal(JSON.stringify(api.rememberEventsSearchQuery('  生態   閣保養  ')), '["生態 閣保養"]');
+
+    api.rememberEventsSearchQuery('魚缸');
+    api.rememberEventsSearchQuery('生態閣保養');
+    api.rememberEventsSearchQuery('eco');
+    api.rememberEventsSearchQuery('ECO');
+    const topped = JSON.parse(JSON.stringify(api.readEventsSearchHistory()));
+    assert.equal(topped[0], 'ECO');
+    assert.equal(topped.filter(item => item.toLowerCase() === 'eco').length, 1);
+    assert.deepEqual(topped.slice(1), ['生態閣保養', '魚缸', '生態 閣保養']);
+
+    for (let i = 1; i <= 12; i++) api.rememberEventsSearchQuery('q' + i);
+    const capped = api.readEventsSearchHistory();
+    assert.equal(capped.length, 10);
+    assert.equal(capped[0], 'q12');
+    assert.equal(capped[9], 'q3');
+    assert.equal(capped.includes('q1'), false);
+    assert.equal(capped.includes('q2'), false);
+    assert.equal(capped.includes('生態閣保養'), false);
+
+    const dropped = JSON.parse(JSON.stringify(api.forgetEventsSearchQuery('Q12')));
+    assert.equal(dropped[0], 'q11');
+    assert.equal(dropped.includes('q12'), false);
+    assert.equal(JSON.stringify(api.clearEventsSearchHistory()), '[]');
+    assert.equal(api.localStorage.getItem('dash-hub-v1'), null);
+    const stored = JSON.parse(api.localStorage.getItem('dash-events-search-history-v1'));
+    assert.deepEqual(stored, { items: [] });
+  });
+
+  test(file + ' replaces an in-progress prefix instead of storing every pause', () => {
+    const api = loadSearch(html);
+    let step = api.commitEventsSearchHistory('生', '');
+    assert.equal(JSON.stringify(step.items), '["生"]');
+    step = api.commitEventsSearchHistory('生態閣保養', step.burst);
+    assert.equal(JSON.stringify(step.items), '["生態閣保養"]');
+    assert.equal(step.burst, '生態閣保養');
+    step = api.commitEventsSearchHistory('魚缸', step.burst);
+    assert.equal(JSON.stringify(step.items), '["魚缸","生態閣保養"]');
+    step = api.commitEventsSearchHistory('   ', step.burst);
+    assert.equal(JSON.stringify(step.items), '["魚缸","生態閣保養"]');
+    api.localStorage.setItem('dash-events-search-history-v1', JSON.stringify({
+      items: ['生態閣保養', '生態閣保養', 12, '  ', '魚缸']
+    }));
+    assert.equal(JSON.stringify(api.readEventsSearchHistory()), '["生態閣保養","魚缸"]');
   });
 }
