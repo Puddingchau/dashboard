@@ -2,7 +2,7 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>三年級「時間」大冒險 - 天水圍官立小學</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -175,6 +175,315 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+    
+        /* ========== MOBILE ADAPTATION: keep 3 columns always ========== */
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+
+        @media (max-width: 1023px) {
+            body {
+                height: 100dvh;
+                width: 100vw;
+                max-width: 100vw;
+                padding-top: env(safe-area-inset-top, 0px);
+                padding-right: env(safe-area-inset-right, 0px);
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+                padding-left: env(safe-area-inset-left, 0px);
+                box-sizing: border-box;
+            }
+
+            header.glass-panel {
+                height: auto !important;
+                min-height: 44px;
+                max-height: none;
+                padding: 0.35rem 0.5rem !important;
+                gap: 0.35rem;
+                flex-wrap: wrap;
+            }
+            header .bg-amber-400 {
+                font-size: 0.65rem;
+                padding: 0.15rem 0.45rem;
+            }
+            header h1 {
+                font-size: 0.75rem !important;
+                line-height: 1.2;
+                flex-wrap: wrap;
+                gap: 0.25rem !important;
+            }
+            header #stage-badge {
+                font-size: 0.6rem !important;
+                padding: 0.1rem 0.4rem !important;
+            }
+            #timer-container {
+                padding: 0.15rem 0.55rem !important;
+                gap: 0.25rem !important;
+            }
+            #timer-container .text-2xl { font-size: 0.95rem; }
+            #timer-display {
+                font-size: 1.15rem !important;
+            }
+            header .wii-btn {
+                min-height: 36px !important;
+                padding: 0.35rem 0.55rem !important;
+                font-size: 0.7rem !important;
+            }
+            header #sound-icon { font-size: 1rem; }
+
+            /* HARD RULE: always 3 team columns on phone (override grid-cols-1) */
+            #game-arena {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 0.35rem !important;
+                padding: 0.35rem !important;
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #team-col-0,
+            #team-col-1,
+            #team-col-2 {
+                min-width: 0;
+                padding: 0.35rem !important;
+                border-radius: 0.85rem !important;
+            }
+
+            [id^="mascot-"] {
+                width: 1.75rem !important;
+                height: 1.75rem !important;
+                font-size: 0.95rem !important;
+            }
+            [id^="team-name-"] {
+                font-size: 0.65rem !important;
+                line-height: 1.15;
+            }
+            [id^="team-role-"] {
+                font-size: 0.55rem !important;
+            }
+            [id^="score-"] {
+                font-size: 1rem !important;
+            }
+            [id^="acc-"] {
+                font-size: 0.65rem !important;
+            }
+            #team-col-0 > div:first-child,
+            #team-col-1 > div:first-child,
+            #team-col-2 > div:first-child {
+                padding: 0.3rem !important;
+                border-radius: 0.65rem !important;
+                gap: 0.25rem;
+            }
+            #team-col-0 > div:first-child .text-xs,
+            #team-col-1 > div:first-child .text-xs,
+            #team-col-2 > div:first-child .text-xs {
+                font-size: 0.55rem !important;
+            }
+
+            [id^="visual-track-"] {
+                height: 56px !important;
+                margin-bottom: 0.25rem !important;
+                border-radius: 0.65rem !important;
+            }
+
+            [id^="combo-badge-"],
+            [id^="streak-fire-"] {
+                font-size: 0.55rem !important;
+            }
+
+            [id^="q-box-"] {
+                padding: 0.4rem !important;
+                border-radius: 0.65rem !important;
+                border-width: 2px !important;
+            }
+            [id^="q-box-"] .text-4xl { font-size: 1.25rem !important; }
+            [id^="q-box-"] .text-lg { font-size: 0.7rem !important; line-height: 1.25; }
+            [id^="q-box-"] .text-sm { font-size: 0.6rem !important; }
+            [id^="q-box-"] .text-base { font-size: 0.7rem !important; }
+            [id^="q-box-"] .text-xl { font-size: 0.8rem !important; }
+            [id^="q-box-"] .text-2xl { font-size: 0.9rem !important; }
+            [id^="q-box-"] .text-3xl { font-size: 1rem !important; }
+
+            [id^="options-"] {
+                gap: 0.25rem !important;
+                margin-top: 0.25rem !important;
+            }
+            [id^="options-"] .wii-btn {
+                min-height: 40px !important;
+                padding: 0.3rem 0.25rem !important;
+                font-size: 0.625rem !important; /* ~text-[10px] */
+                line-height: 1.15;
+                border-radius: 0.55rem !important;
+                border-width: 1.5px !important;
+            }
+
+            .wii-btn {
+                min-height: 40px;
+                box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.55);
+            }
+            .wii-btn:active:not(:disabled) {
+                transform: translateY(2px);
+                box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+            }
+
+            .pin {
+                width: 12px;
+                height: 24px;
+                font-size: 7px;
+            }
+            .pin::before {
+                top: 5px;
+                height: 3px;
+            }
+
+            .float-score {
+                font-size: 1.1rem !important;
+            }
+
+            /* Review bar → compact bottom-sheet style; lanes stay 3-col underneath */
+            #central-review-bar {
+                top: auto !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                transform: none !important;
+                width: 100% !important;
+                max-width: none !important;
+                max-height: min(55vh, 420px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                border-radius: 1.25rem 1.25rem 0 0 !important;
+                border-bottom: none !important;
+                padding: 0.65rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom, 0px)) !important;
+                margin: 0;
+            }
+            #central-review-bar .text-3xl { font-size: 1.1rem !important; }
+            #central-review-bar .text-2xl { font-size: 0.9rem !important; }
+            #central-review-bar #review-timer-display {
+                font-size: 1.75rem !important;
+            }
+            #central-review-bar #review-answer-text {
+                font-size: 0.95rem !important;
+                margin-bottom: 0.25rem !important;
+            }
+            #central-review-bar #review-tip-text {
+                font-size: 0.7rem !important;
+            }
+            #central-review-bar #review-visual-container {
+                min-height: 72px !important;
+                margin: 0.25rem 0 !important;
+            }
+            #central-review-bar .wii-btn,
+            #btn-review-next,
+            #btn-review-hold {
+                min-height: 44px !important;
+                font-size: 0.8rem !important;
+                gap: 0.35rem !important;
+                border-radius: 0.75rem !important;
+            }
+            #central-review-bar .grid {
+                gap: 0.5rem !important;
+                margin-top: 0.5rem !important;
+            }
+
+            /* Setup / victory: scrollable + full width + safe area */
+            #setup-modal,
+            #victory-modal {
+                padding: env(safe-area-inset-top, 0.5rem) env(safe-area-inset-right, 0.5rem) env(safe-area-inset-bottom, 0.5rem) env(safe-area-inset-left, 0.5rem) !important;
+                align-items: flex-start !important;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            #setup-modal > .glass-panel,
+            #victory-modal > .glass-panel {
+                max-width: 100% !important;
+                width: 100% !important;
+                max-height: none;
+                margin: 0.25rem 0 1rem;
+                padding: 0.85rem !important;
+                border-radius: 1rem !important;
+            }
+            #setup-modal h2,
+            #victory-modal h2 {
+                font-size: 1.15rem !important;
+            }
+            #setup-modal .space-y-5 > * + * {
+                margin-top: 0.75rem !important;
+            }
+            #setup-modal .wii-btn {
+                min-height: 40px !important;
+            }
+            #setup-modal #mode-race,
+            #setup-modal #mode-indep {
+                padding: 0.55rem !important;
+                gap: 0.4rem !important;
+            }
+            #setup-modal #mode-race .text-base,
+            #setup-modal #mode-indep .text-base {
+                font-size: 0.75rem !important;
+            }
+            #setup-modal #mode-race .text-xs,
+            #setup-modal #mode-indep .text-xs {
+                font-size: 0.55rem !important;
+            }
+            #char-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 0.35rem !important;
+            }
+            .char-card {
+                border-radius: 0.65rem !important;
+                padding: 0.35rem !important;
+            }
+            #podium-container {
+                height: 10rem !important;
+                gap: 0.35rem !important;
+                margin-bottom: 0.75rem !important;
+            }
+            #tab-team-0, #tab-team-1, #tab-team-2 {
+                padding: 0.25rem 0.4rem !important;
+                font-size: 0.6rem !important;
+            }
+        }
+
+        /* Extra-narrow phones: keep 3 cols, allow slight arena scroll if needed */
+        @media (max-width: 360px) {
+            #game-arena {
+                gap: 0.25rem !important;
+                padding: 0.25rem !important;
+            }
+            #team-col-0,
+            #team-col-1,
+            #team-col-2 {
+                min-width: 96px;
+                padding: 0.25rem !important;
+            }
+            [id^="visual-track-"] {
+                height: 48px !important;
+            }
+            [id^="options-"] .wii-btn {
+                min-height: 36px !important;
+                font-size: 0.55rem !important;
+            }
+            [id^="team-name-"] {
+                font-size: 0.55rem !important;
+            }
+            [id^="score-"] {
+                font-size: 0.85rem !important;
+            }
+        }
+
+        @media (max-width: 320px) {
+            #game-arena {
+                overflow-x: auto;
+            }
+            #team-col-0,
+            #team-col-1,
+            #team-col-2 {
+                min-width: 100px;
+            }
+        }
+
     </style>
 </head>
 <body class="flex flex-col h-screen w-screen overflow-hidden select-none">
