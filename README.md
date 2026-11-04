@@ -32,3 +32,4 @@
 - [小學數學科三年級 - 乘法大對決](https://puddingchau.github.io/dashboard/games/p3-multiply/)
 - [天水圍官立小學 - 虛擬顯微鏡實驗室 (6LF2)](https://puddingchau.github.io/dashboard/games/p6-microscope/)
 - [六年級 科學科 辨識動植物細胞 (6LF3)](https://puddingchau.github.io/dashboard/games/p6-cell-id/)
+- [六年級 科學科 使用顯微鏡觀察動植物的細胞 (6LF2)](https://puddingchau.github.io/dashboard/games/p6-observe-cells/)
