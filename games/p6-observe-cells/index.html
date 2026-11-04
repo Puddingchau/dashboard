@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>六年級 科學科 使用顯微鏡觀察動植物的細胞 (6LF2) - 天水圍官立小學</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Glass Eyepiece Vignette Overlay */
+    .eyepiece-overlay {
+      background: radial-gradient(circle, rgba(255,255,255,0) 58%, rgba(15,23,42,0.5) 82%, rgba(2,6,23,0.95) 100%);
+      pointer-events: none;
+    }
+
+    /* Custom Focus Knob rotation animation */
+    .knob-indicator {
+      transition: transform 0.08s ease-out;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header Bar styled exactly as specified -->
+  <header class="bg-[#0b132b] border-b border-slate-800/80 px-4 py-3.5 sticky top-0 z-30 shadow-2xl">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      
+      <!-- Primary Title & Subtitle Area -->
+      <div class="flex flex-col gap-0.5">
+        <div class="flex items-center gap-2 text-lg sm:text-2xl font-extrabold tracking-wide" style="color: #FFC107;">
+          <span class="text-xl sm:text-2xl">🔬</span>
+          <span>六年級 科學科 使用顯微鏡觀察動植物的細胞 (6LF2)</span>
+        </div>
+        <div class="text-xs sm:text-sm font-normal tracking-wide pl-8" style="color: #7DD3FC;">
+          天水圍官立小學
+        </div>
+      </div>
+
+      <!-- Header Quick Concept Badges & Quiz Trigger -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-950/90 border border-indigo-500/40 text-indigo-300 flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-rotate-180 text-amber-400"></i>成像：180°旋轉倒立像
+        </span>
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-arrows-up-down-left-right text-emerald-400"></i>移動：完全相反規律
+        </span>
+        <button onclick="toggleQuizModal()" class="px-3.5 py-1.5 rounded-xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-950 transition-all duration-200 shadow-lg shadow-amber-500/20 active:scale-95 flex items-center gap-1.5">
+          <i class="fa-solid fa-graduation-cap text-sm"></i>隨堂測驗
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- LEFT COLUMN: Eyepiece Viewport & Lens Controls -->
+    <section class="lg:col-span-7 flex flex-col items-center bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl relative backdrop-blur-md">
+      
+      <!-- Top Status & Specimen Info Bar -->
+      <div class="w-full flex items-center justify-between mb-4 border-b border-slate-800 pb-3 gap-2">
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs sm:text-sm font-semibold text-slate-400">觀察玻片：</span>
+          <span id="currentSpecimenTitle" class="text-sm sm:text-base font-bold text-indigo-300">英文字母 "F" 玻片</span>
+        </div>
+        
+        <!-- Objective Lens Display Badge -->
+        <div class="flex items-center gap-1.5 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
+          <span class="text-xs text-slate-400 font-medium">物鏡：</span>
+          <span id="lensMagBadge" class="text-sm font-black text-amber-400">10X</span>
+          <span id="totalMagBadge" class="text-xs text-slate-400 font-medium ml-1">(總放大 100倍)</span>
+        </div>
+      </div>
+
+      <!-- Microscope Eyepiece View (Circular Viewport) -->
+      <div class="relative w-full max-w-[430px] aspect-square my-2 flex items-center justify-center">
+        <!-- Outer Microscope Body -->
+        <div class="absolute inset-0 rounded-full border-[14px] border-slate-950 shadow-[0_0_50px_rgba(0,0,0,0.8)] ring-2 ring-indigo-500/30 bg-slate-950 flex items-center justify-center overflow-hidden">
+          
+          <!-- HTML5 Canvas for Optical Rendering -->
+          <canvas id="microscopeCanvas" width="500" height="500" class="w-full h-full cursor-grab active:cursor-grabbing rounded-full"></canvas>
+
+          <!-- Vignette Overlay -->
+          <div class="eyepiece-overlay absolute inset-0 rounded-full"></div>
+
+          <!-- Crosshairs Grid Overlay -->
+          <div id="crosshairOverlay" class="absolute inset-0 rounded-full pointer-events-none opacity-40 hidden">
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="w-full h-[1px] bg-indigo-400"></div>
+              <div class="h-full w-[1px] bg-indigo-400 absolute"></div>
+            </div>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="w-1/3 h-1/3 rounded-full border border-indigo-400/40"></div>
+              <div class="w-2/3 h-2/3 rounded-full border border-indigo-400/30"></div>
+            </div>
+          </div>
+
+          <!-- Micrometer Scale Overlay -->
+          <div id="micrometerOverlay" class="absolute bottom-10 left-1/2 -translate-x-1/2 bg-slate-950/90 border border-indigo-500/40 rounded-lg px-3 py-1 pointer-events-none flex flex-col items-center hidden shadow-lg">
+            <div class="flex items-center gap-1 h-3 border-b border-indigo-400 w-32 justify-between">
+              <span class="w-[1px] h-full bg-indigo-400"></span>
+              <span class="w-[1px] h-2 bg-indigo-400/60"></span>
+              <span class="w-[1px] h-2 bg-indigo-400/60"></span>
+              <span class="w-[1px] h-2 bg-indigo-400/60"></span>
+              <span class="w-[1px] h-full bg-indigo-400"></span>
+              <span class="w-[1px] h-2 bg-indigo-400/60"></span>
+              <span class="w-[1px] h-2 bg-indigo-400/60"></span>
+              <span class="w-[1px] h-2 bg-indigo-400/60"></span>
+              <span class="w-[1px] h-full bg-indigo-400"></span>
+            </div>
+            <span id="scaleBarLabel" class="text-[10px] font-mono text-indigo-300 font-bold mt-0.5">50 μm (微米)</span>
+          </div>
+
+          <!-- Drag Hint Badge -->
+          <div id="dragHint" class="absolute bottom-6 bg-slate-950/80 backdrop-blur border border-slate-800 text-slate-300 text-xs px-3 py-1 rounded-full opacity-80 pointer-events-none transition duration-300">
+            <i class="fa-solid fa-hand-pointer mr-1 text-indigo-400"></i>直接滑鼠/手指拖拽視野
+          </div>
+        </div>
+
+        <!-- Real-time Movement Vectors Badge -->
+        <div id="vectorFeedback" class="absolute top-3 right-3 bg-slate-900/95 border border-indigo-500/50 rounded-xl p-2.5 text-xs flex flex-col gap-1 shadow-2xl pointer-events-none hidden backdrop-blur">
+          <div class="text-indigo-300 font-bold text-[11px] border-b border-slate-800 pb-1 flex items-center gap-1">
+            <i class="fa-solid fa-arrows-up-down-left-right text-amber-400"></i>實時移動向量:
+          </div>
+          <div class="flex items-center justify-between gap-3 text-slate-300 text-[11px]">
+            <span>載物台（玻片）:</span>
+            <span id="stageMoveVector" class="font-bold text-amber-400">⬅️ 向左</span>
+          </div>
+          <div class="flex items-center justify-between gap-3 text-slate-300 text-[11px]">
+            <span>視野內影像:</span>
+            <span id="viewMoveVector" class="font-bold text-emerald-400">➡️ 向右</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Viewport Tool Bar -->
+      <div class="w-full max-w-[460px] mt-3 flex items-center justify-between gap-2 bg-slate-950/70 p-2.5 rounded-2xl border border-slate-800">
+        <!-- Objective Switcher -->
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs font-semibold text-slate-400 hidden sm:inline">物鏡:</span>
+          <div class="inline-flex rounded-xl bg-slate-900 p-1 border border-slate-800">
+            <button onclick="setMagnification(4)" id="btnMag4" class="px-2.5 py-1 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white">4X</button>
+            <button onclick="setMagnification(10)" id="btnMag10" class="px-2.5 py-1 text-xs font-bold rounded-lg transition bg-indigo-600 text-white shadow">10X</button>
+            <button onclick="setMagnification(40)" id="btnMag40" class="px-2.5 py-1 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white">40X</button>
+          </div>
+        </div>
+
+        <!-- Light Slider -->
+        <div class="flex items-center gap-2 bg-slate-900/90 px-2.5 py-1.5 rounded-xl border border-slate-800">
+          <i class="fa-solid fa-lightbulb text-amber-400 text-xs"></i>
+          <input type="range" id="lightSlider" min="30" max="150" value="100" class="w-16 sm:w-20 accent-amber-500 cursor-pointer" oninput="updateLight(this.value)">
+        </div>
+
+        <!-- Overlay Toggles -->
+        <div class="flex items-center gap-1">
+          <button onclick="toggleCrosshair()" id="btnCrosshairToggle" class="px-2 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition" title="開關十字對焦線">
+            <i class="fa-solid fa-crosshairs"></i>
+          </button>
+          <button onclick="toggleMicrometer()" id="btnMicrometerToggle" class="px-2 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition" title="開關微米尺">
+            <i class="fa-solid fa-ruler-horizontal"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Focal Clarity Meter -->
+      <div class="w-full max-w-[460px] mt-3">
+        <div class="flex justify-between items-center text-xs mb-1">
+          <span class="font-semibold text-slate-400">對焦清晰度 (Focal Clarity):</span>
+          <span id="clarityText" class="font-bold text-amber-400">較模糊 (45%)</span>
+        </div>
+        <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800 p-0.5">
+          <div id="clarityBar" class="bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-400 h-full rounded-full w-[45%] transition-all duration-200"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Specimen Selector, Focus Knobs & Stage Navigation -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+      
+      <!-- 1. Specimen Selection Panel -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h2 class="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+          <span><i class="fa-solid fa-vial mr-2 text-indigo-400"></i>1. 選擇觀察玻片標本</span>
+          <span class="text-[11px] font-normal text-slate-400">共 5 款玻片</span>
+        </h2>
+        <div class="grid grid-cols-5 gap-2" id="specimenGrid"></div>
+      </div>
+
+      <!-- 2. Microscope Focus Knobs Panel -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h2 class="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2.5 flex items-center">
+          <i class="fa-solid fa-sliders mr-2 text-indigo-400"></i>2. 調節對焦 (Focus Control)
+        </h2>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Coarse Focus Knob -->
+          <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 flex flex-col items-center">
+            <div class="flex items-center justify-between w-full mb-1">
+              <span class="text-xs font-bold text-indigo-300">粗調節器</span>
+              <span class="text-[9px] bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-800">大範圍升降</span>
+            </div>
+            <p class="text-[10px] text-slate-400 self-start mb-2">迅速尋找大致焦距</p>
+            
+            <div class="relative w-14 h-14 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border-4 border-slate-700 flex items-center justify-center shadow-lg my-1 ring-1 ring-slate-600">
+              <div id="coarseKnobVisual" class="w-full h-full rounded-full relative flex items-center justify-center knob-indicator">
+                <div class="w-1.5 h-3.5 bg-indigo-400 rounded-full absolute top-0.5"></div>
+              </div>
+              <span class="absolute text-[10px] font-black text-slate-200" id="coarseValText">30</span>
+            </div>
+
+            <input type="range" id="coarseSlider" min="0" max="100" value="30" class="w-full mt-2 accent-indigo-500 cursor-pointer" oninput="onFocusInputChange()">
+          </div>
+
+          <!-- Fine Focus Knob -->
+          <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 flex flex-col items-center">
+            <div class="flex items-center justify-between w-full mb-1">
+              <span class="text-xs font-bold text-emerald-300">微調節器</span>
+              <span class="text-[9px] bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-800">精細對焦</span>
+            </div>
+            <p class="text-[10px] text-slate-400 self-start mb-2">調至最清晰狀態</p>
+            
+            <div class="relative w-14 h-14 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border-4 border-slate-700 flex items-center justify-center shadow-lg my-1 ring-1 ring-slate-600">
+              <div id="fineKnobVisual" class="w-full h-full rounded-full relative flex items-center justify-center knob-indicator">
+                <div class="w-1.5 h-3.5 bg-emerald-400 rounded-full absolute top-0.5"></div>
+              </div>
+              <span class="absolute text-[10px] font-black text-slate-200" id="fineValText">12</span>
+            </div>
+
+            <input type="range" id="fineSlider" min="-25" max="25" value="12" class="w-full mt-2 accent-emerald-500 cursor-pointer" oninput="onFocusInputChange()">
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Stage Navigation Controls -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center">
+            <i class="fa-solid fa-compass mr-2 text-indigo-400"></i>3. 載物台玻片移動操控
+          </h2>
+          <button onclick="resetStagePosition()" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg transition border border-slate-700">
+            <i class="fa-solid fa-rotate-left mr-1"></i>歸位重置
+          </button>
+        </div>
+
+        <div class="flex items-center justify-around gap-2 pt-1">
+          <!-- Stage Movement D-Pad -->
+          <div class="grid grid-cols-3 gap-1.5 w-32 h-32 p-1.5 bg-slate-950 rounded-2xl border border-slate-800 shadow-inner shrink-0">
+            <div></div>
+            <button id="btnPadUp" onclick="moveStage('up')" class="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl flex items-center justify-center text-base shadow active:scale-95 transition" title="載物台向上移動 (鍵盤 ⬆️)">
+              <i class="fa-solid fa-chevron-up"></i>
+            </button>
+            <div></div>
+            <button id="btnPadLeft" onclick="moveStage('left')" class="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl flex items-center justify-center text-base shadow active:scale-95 transition" title="載物台向左移動 (鍵盤 ⬅️)">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="flex items-center justify-center bg-slate-900 rounded-lg text-[9px] text-slate-400 font-bold border border-slate-800 select-none">載物台</div>
+            <button id="btnPadRight" onclick="moveStage('right')" class="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl flex items-center justify-center text-base shadow active:scale-95 transition" title="載物台向右移動 (鍵盤 ➡️)">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <div></div>
+            <button id="btnPadDown" onclick="moveStage('down')" class="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl flex items-center justify-center text-base shadow active:scale-95 transition" title="載物台向下移動 (鍵盤 ⬇️)">
+              <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <div></div>
+          </div>
+
+          <!-- Keyboard Arrow Keys Visual Indicator HUD -->
+          <div class="flex flex-col items-center justify-center p-2 bg-slate-950 rounded-2xl border border-slate-800 shadow-inner shrink-0">
+            <div class="text-[10px] text-indigo-300 font-bold mb-1 flex items-center gap-1">
+              <i class="fa-solid fa-keyboard text-xs"></i>鍵盤方向鍵
+            </div>
+            <div class="grid grid-cols-3 gap-1 w-24">
+              <div></div>
+              <div id="keyIndicatorUp" class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg py-1 text-center font-bold text-xs shadow transition duration-150">⬆️</div>
+              <div></div>
+              <div id="keyIndicatorLeft" class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg py-1 text-center font-bold text-xs shadow transition duration-150">⬅️</div>
+              <div id="keyIndicatorDown" class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg py-1 text-center font-bold text-xs shadow transition duration-150">⬇️</div>
+              <div id="keyIndicatorRight" class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg py-1 text-center font-bold text-xs shadow transition duration-150">➡️</div>
+            </div>
+            <span class="text-[9px] text-slate-400 mt-1 font-medium">按下可持續移動</span>
+          </div>
+
+          <!-- Movement Direction Dynamic Callout Box -->
+          <div class="flex-1 bg-slate-950/90 rounded-xl p-2.5 border border-indigo-500/30 flex flex-col justify-center text-xs gap-1.5">
+            <div class="font-bold text-amber-400 border-b border-slate-800 pb-1 flex items-center gap-1 text-[11px]">
+              <i class="fa-solid fa-compass-drafting"></i>實時移動對照規律：
+            </div>
+            <div class="space-y-1 text-[11px] text-slate-300">
+              <div class="flex items-center justify-between bg-slate-900/80 p-1 rounded border border-slate-800">
+                <span>載物台玻片:</span>
+                <span id="lastStageDir" class="font-bold text-indigo-300">尚未移動</span>
+              </div>
+              <div class="flex items-center justify-between bg-slate-900/80 p-1 rounded border border-slate-800">
+                <span>目鏡視野影像:</span>
+                <span id="lastViewDir" class="font-bold text-emerald-300">反向移動</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Key Educational Summary Box -->
+      <div class="bg-gradient-to-br from-indigo-950/80 to-slate-900 border border-indigo-500/40 rounded-2xl p-3.5 shadow-xl text-xs space-y-2">
+        <h3 class="font-bold text-indigo-300 text-xs sm:text-sm flex items-center justify-between">
+          <span class="flex items-center"><i class="fa-solid fa-book-bookmark text-amber-400 mr-2"></i>六年級學習要點 & 解題口訣</span>
+        </h3>
+        
+        <div id="specimenEducationalNote" class="text-slate-200 bg-slate-950/80 p-2.5 rounded-xl border border-indigo-900/60 leading-relaxed text-[11px] sm:text-xs"></div>
+
+        <div class="bg-amber-950/50 border border-amber-500/30 rounded-xl p-2.5 text-amber-200 text-[11px] sm:text-xs space-y-1">
+          <div class="font-bold text-amber-300 flex items-center gap-1">
+            <i class="fa-solid fa-lightbulb"></i>考題解題必背黃金口訣：
+          </div>
+          <p class="font-bold text-emerald-300 text-xs">「影像偏哪邊，玻片就往哪邊移！」</p>
+          <p class="text-slate-300 text-[10px] leading-tight">理由：要讓視野偏左邊的影像往右移到中央，玻片必須往「左」移動（因為影像移動方向與玻片移動方向完全相反）。</p>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Interactive Quiz Modal -->
+  <div id="quizModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl text-slate-100 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-base sm:text-lg font-black text-indigo-300 flex items-center gap-2">
+          <i class="fa-solid fa-brain text-amber-400"></i>天水圍官立小學 6LF2 隨堂概念測驗
+        </h3>
+        <button onclick="toggleQuizModal()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
+      </div>
+
+      <div id="quizContent" class="space-y-4 text-xs">
+        <div class="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-2">
+          <p class="font-bold text-slate-200">1. 在複式顯微鏡視野中看到英文字母「F」，載物台上玻片真實畫的字母其實是？</p>
+          <div class="space-y-1.5">
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500 cursor-pointer">
+              <input type="radio" name="q1" value="A" class="accent-indigo-500"> A. 正向的英文字母「F」
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500 cursor-pointer">
+              <input type="radio" name="q1" value="B" class="accent-indigo-500"> B. 旋轉180度（上下倒置且左右相反）的倒立像
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500 cursor-pointer">
+              <input type="radio" name="q1" value="C" class="accent-indigo-500"> C. 只有上下顛倒，左右沒有相反
+            </label>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-2">
+          <p class="font-bold text-slate-200">2. 觀察洋蔥表皮細胞時，若目標細胞位於視野的「左上方」，想將它移到視野中央，應該將玻片往哪個方向移動？</p>
+          <div class="space-y-1.5">
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500 cursor-pointer">
+              <input type="radio" name="q2" value="A" class="accent-indigo-500"> A. 往右下方移動
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500 cursor-pointer">
+              <input type="radio" name="q2" value="B" class="accent-indigo-500"> B. 往左上方移動（口訣：影像偏哪邊，玻片就往哪邊移）
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500 cursor-pointer">
+              <input type="radio" name="q2" value="C" class="accent-indigo-500"> C. 往正上方移動
+            </label>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-2">
+          <p class="font-bold text-slate-200">3. 關於顯微鏡粗調節器與微調節器的使用，何者正確？</p>
+          <div class="space-y-1.5">
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500 cursor-pointer">
+              <input type="radio" name="q3" value="A" class="accent-indigo-500"> A. 高倍鏡下可以大幅度隨意轉動粗調節器
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500 cursor-pointer">
+              <input type="radio" name="q3" value="B" class="accent-indigo-500"> B. 先用粗調節器找到大致輪廓，再用微調節器精密調清晰
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500 cursor-pointer">
+              <input type="radio" name="q3" value="C" class="accent-indigo-500"> C. 微調節器用來控制載物台左右移動
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="quizResult" class="hidden p-3 rounded-xl bg-slate-950 border border-indigo-500 text-xs text-center font-bold"></div>
+
+      <div class="flex justify-end gap-3 border-t border-slate-800 pt-3">
+        <button onclick="submitQuiz()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow">提交答案</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SPECIMENS = [
+      {
+        id: 'letter_f',
+        name: '英文字母 "F"',
+        type: 'letter',
+        icon: 'fa-font',
+        bgColor: '#fef3c7',
+        targetFocus: 50,
+        description: '📌 <strong>【6LF2 核心要點】成像倒置規律：</strong> 載物台上繪製的是正向字母「F」（頂端箭頭向上 ⬆️）。但在顯微鏡視野中看到的影像旋轉了 180 度，呈現倒立且左右相反的像（箭頭指向下方 ⬇️），證明複式光學顯微鏡會產生 180° 倒立虛像。'
+      },
+      {
+        id: 'onion',
+        name: '洋葱表皮細胞',
+        type: 'plant_1',
+        icon: 'fa-cubes',
+        bgColor: '#f3e8ff',
+        targetFocus: 45,
+        description: '🌿 <strong>【植物細胞一】洋葱表皮細胞：</strong> 經碘液染色後呈淡紫色。具有長方形且排列緊密的<b>細胞壁</b>與明顯的<b>細胞核</b>。因為洋蔥鱗片葉生於地下不見光，所以沒有葉綠體。'
+      },
+      {
+        id: 'elodea',
+        name: '水蘊草葉片細胞',
+        type: 'plant_2',
+        icon: 'fa-leaf',
+        bgColor: '#dcfce7',
+        targetFocus: 55,
+        description: '🍃 <strong>【植物細胞二】水蘊草葉片細胞：</strong> 鮮綠色的水蘊草葉片細胞，細胞內充滿許多綠色顆粒狀的<b>葉綠體</b>（進行光合作用的場所），外圍有保護與支持作用的<b>細胞壁</b>。'
+      },
+      {
+        id: 'cheek',
+        name: '人類口腔黏膜細胞',
+        type: 'animal_1',
+        icon: 'fa-circle-nodes',
+        bgColor: '#e0f2fe',
+        targetFocus: 50,
+        description: '🧫 <strong>【動物細胞一】人類口腔黏膜細胞：</strong> 經亞甲藍液染色呈淡藍色。形狀不規則且質地柔軟，<b>沒有細胞壁</b>與葉綠體，中央有深藍色的細胞核。'
+      },
+      {
+        id: 'frog_rbc',
+        name: '青蛙紅血球細胞',
+        type: 'animal_2',
+        icon: 'fa-droplet',
+        bgColor: '#ffe4e6',
+        targetFocus: 60,
+        description: '🐸 <strong>【動物細胞二】青蛙紅血球細胞：</strong> 青蛙的紅血球呈扁橢圓形，<b>具有明顯的圓形細胞核</b>（與人類成熟紅血球缺乏細胞核不同），細胞質呈現淺粉紅色。'
+      }
+    ];
+
+    let currentSpecimen = SPECIMENS[0];
+    let magnification = 10;
+    let stageX = 0;
+    let stageY = 0;
+    let coarseVal = 30;
+    let fineVal = 12;
+    let lightBrightness = 100;
+    let showCrosshair = false;
+    let showMicrometer = false;
+
+    let canvas, ctx;
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+
+    window.onload = function() {
+      canvas = document.getElementById('microscopeCanvas');
+      ctx = canvas.getContext('2d');
+
+      buildSpecimenButtons();
+      setupInteractiveCanvas();
+      setupKeyboardNavigation();
+      updateEducationalNotes();
+      renderEyepiece();
+    };
+
+    function buildSpecimenButtons() {
+      const container = document.getElementById('specimenGrid');
+      container.innerHTML = '';
+
+      SPECIMENS.forEach(sp => {
+        const btn = document.createElement('button');
+        const isActive = sp.id === currentSpecimen.id;
+        btn.className = `p-2 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-bold transition duration-200 border ${
+          isActive 
+            ? 'bg-indigo-600 text-white border-indigo-400 shadow-md ring-2 ring-indigo-400/30' 
+            : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white'
+        }`;
+        btn.onclick = () => selectSpecimen(sp);
+        btn.innerHTML = `
+          <div class="w-6 h-6 rounded-lg flex items-center justify-center text-xs ${isActive ? 'bg-indigo-500' : 'bg-slate-800'}">
+            <i class="fa-solid ${sp.icon}"></i>
+          </div>
+          <span class="text-[10px] sm:text-[11px] text-center leading-tight">${sp.name}</span>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    function selectSpecimen(sp) {
+      currentSpecimen = sp;
+      buildSpecimenButtons();
+      document.getElementById('currentSpecimenTitle').innerText = sp.name;
+      updateEducationalNotes();
+      renderEyepiece();
+    }
+
+    function setMagnification(mag) {
+      magnification = mag;
+      document.getElementById('btnMag4').className = mag === 4 ? 'px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow' : 'px-2.5 py-1 text-xs font-bold rounded-lg text-slate-400 hover:text-white';
+      document.getElementById('btnMag10').className = mag === 10 ? 'px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow' : 'px-2.5 py-1 text-xs font-bold rounded-lg text-slate-400 hover:text-white';
+      document.getElementById('btnMag40').className = mag === 40 ? 'px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow' : 'px-2.5 py-1 text-xs font-bold rounded-lg text-slate-400 hover:text-white';
+
+      document.getElementById('lensMagBadge').innerText = mag + 'X';
+      document.getElementById('totalMagBadge').innerText = `(總放大 ${mag * 10}倍)`;
+
+      const scaleLabel = document.getElementById('scaleBarLabel');
+      if (mag === 4) scaleLabel.innerText = '125 μm (微米)';
+      else if (mag === 10) scaleLabel.innerText = '50 μm (微米)';
+      else if (mag === 40) scaleLabel.innerText = '12.5 μm (微米)';
+
+      renderEyepiece();
+    }
+
+    function updateLight(val) {
+      lightBrightness = val;
+      renderEyepiece();
+    }
+
+    function toggleCrosshair() {
+      showCrosshair = !showCrosshair;
+      const overlay = document.getElementById('crosshairOverlay');
+      const btn = document.getElementById('btnCrosshairToggle');
+      if (showCrosshair) {
+        overlay.classList.remove('hidden');
+        btn.classList.add('bg-indigo-600', 'text-white');
+      } else {
+        overlay.classList.add('hidden');
+        btn.classList.remove('bg-indigo-600', 'text-white');
+      }
+    }
+
+    function toggleMicrometer() {
+      showMicrometer = !showMicrometer;
+      const overlay = document.getElementById('micrometerOverlay');
+      const btn = document.getElementById('btnMicrometerToggle');
+      if (showMicrometer) {
+        overlay.classList.remove('hidden');
+        btn.classList.add('bg-indigo-600', 'text-white');
+      } else {
+        overlay.classList.add('hidden');
+        btn.classList.remove('bg-indigo-600', 'text-white');
+      }
+    }
+
+    function onFocusInputChange() {
+      coarseVal = parseFloat(document.getElementById('coarseSlider').value);
+      fineVal = parseFloat(document.getElementById('fineSlider').value);
+
+      document.getElementById('coarseKnobVisual').style.transform = `rotate(${coarseVal * 3.6}deg)`;
+      document.getElementById('fineKnobVisual').style.transform = `rotate(${fineVal * 7.2}deg)`;
+
+      document.getElementById('coarseValText').innerText = coarseVal;
+      document.getElementById('fineValText').innerText = fineVal;
+
+      renderEyepiece();
+    }
+
+    function calculateFocusClarity() {
+      const currentFocalPosition = coarseVal + (fineVal * 0.25);
+      const target = currentSpecimen.targetFocus;
+      const error = Math.abs(currentFocalPosition - target);
+      
+      const clarity = Math.max(0, 100 - error * 4.5);
+      const blurRadius = Math.pow(error * 0.35, 1.2);
+
+      const bar = document.getElementById('clarityBar');
+      const text = document.getElementById('clarityText');
+      bar.style.width = `${clarity}%`;
+
+      if (clarity > 88) {
+        text.innerText = `✨ 完全焦距 (清晰度 ${Math.round(clarity)}%)`;
+        text.className = 'font-bold text-emerald-400';
+      } else if (clarity > 50) {
+        text.innerText = `🔍 接近對焦 (清晰度 ${Math.round(clarity)}%)`;
+        text.className = 'font-bold text-amber-400';
+      } else {
+        text.innerText = `🌫️ 嚴重失焦 (清晰度 ${Math.round(clarity)}%)`;
+        text.className = 'font-bold text-rose-400';
+      }
+
+      return blurRadius;
+    }
+
+    function moveStage(direction) {
+      const step = 22 / (magnification / 10);
+      let stageMoveText = '';
+      let viewMoveText = '';
+
+      switch(direction) {
+        case 'up':
+          stageY -= step;
+          stageMoveText = '⬆️ 向上移動';
+          viewMoveText = '⬇️ 向下移動';
+          break;
+        case 'down':
+          stageY += step;
+          stageMoveText = '⬇️ 向下移動';
+          viewMoveText = '⬆️ 向上移動';
+          break;
+        case 'left':
+          stageX -= step;
+          stageMoveText = '⬅️ 向左移動';
+          viewMoveText = '➡️ 向右移動';
+          break;
+        case 'right':
+          stageX += step;
+          stageMoveText = '➡️ 向右移動';
+          viewMoveText = '⬅️ 向左移動';
+          break;
+      }
+
+      stageX = Math.max(-250, Math.min(250, stageX));
+      stageY = Math.max(-250, Math.min(250, stageY));
+
+      document.getElementById('lastStageDir').innerText = stageMoveText;
+      document.getElementById('lastViewDir').innerText = viewMoveText;
+
+      showVectorFeedback(stageMoveText, viewMoveText);
+      renderEyepiece();
+    }
+
+    function resetStagePosition() {
+      stageX = 0;
+      stageY = 0;
+      document.getElementById('lastStageDir').innerText = '位置歸零';
+      document.getElementById('lastViewDir').innerText = '視野置中';
+      renderEyepiece();
+    }
+
+    function showVectorFeedback(stageText, viewText) {
+      const box = document.getElementById('vectorFeedback');
+      document.getElementById('stageMoveVector').innerText = stageText;
+      document.getElementById('viewMoveVector').innerText = viewText;
+      box.classList.remove('hidden');
+
+      clearTimeout(window.vectorTimeout);
+      window.vectorTimeout = setTimeout(() => {
+        box.classList.add('hidden');
+      }, 2500);
+    }
+
+    function setupInteractiveCanvas() {
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: clientX - rect.left,
+          y: clientY - rect.top
+        };
+      };
+
+      const startDrag = (e) => {
+        isDragging = true;
+        const pos = getPos(e);
+        dragStartX = pos.x;
+        dragStartY = pos.y;
+        document.getElementById('dragHint').style.opacity = '0';
+      };
+
+      const doDrag = (e) => {
+        if (!isDragging) return;
+        const pos = getPos(e);
+        const dx = pos.x - dragStartX;
+        const dy = pos.y - dragStartY;
+
+        const scaleFactor = (magnification / 10);
+        stageX -= (dx * 0.8) / scaleFactor;
+        stageY -= (dy * 0.8) / scaleFactor;
+
+        dragStartX = pos.x;
+        dragStartY = pos.y;
+
+        const stageText = dx > 0 ? '⬅️ 載物台向左' : '➡️ 載物台向右';
+        const viewText = dx > 0 ? '➡️ 視野向右' : '⬅️ 視野向左';
+        document.getElementById('lastStageDir').innerText = stageText;
+        document.getElementById('lastViewDir').innerText = viewText;
+
+        renderEyepiece();
+      };
+
+      const stopDrag = () => { isDragging = false; };
+
+      canvas.addEventListener('mousedown', startDrag);
+      window.addEventListener('mousemove', doDrag);
+      window.addEventListener('mouseup', stopDrag);
+
+      canvas.addEventListener('touchstart', startDrag, {passive: true});
+      window.addEventListener('touchmove', doDrag, {passive: true});
+      window.addEventListener('touchend', stopDrag);
+    }
+
+    function setupKeyboardNavigation() {
+      const activeKeys = {};
+
+      const keyMapping = {
+        'ArrowUp': { dir: 'up', elemId: 'keyIndicatorUp', padId: 'btnPadUp' },
+        'ArrowDown': { dir: 'down', elemId: 'keyIndicatorDown', padId: 'btnPadDown' },
+        'ArrowLeft': { dir: 'left', elemId: 'keyIndicatorLeft', padId: 'btnPadLeft' },
+        'ArrowRight': { dir: 'right', elemId: 'keyIndicatorRight', padId: 'btnPadRight' }
+      };
+
+      window.addEventListener('keydown', (e) => {
+        if (keyMapping[e.code]) {
+          e.preventDefault();
+
+          if (!activeKeys[e.code]) {
+            activeKeys[e.code] = true;
+            
+            const item = keyMapping[e.code];
+            const keyEl = document.getElementById(item.elemId);
+            const padEl = document.getElementById(item.padId);
+
+            if (keyEl) {
+              keyEl.classList.add('bg-indigo-500', 'text-white', 'border-indigo-300', 'scale-95', 'ring-2', 'ring-indigo-400/50');
+              keyEl.classList.remove('bg-slate-800', 'text-slate-300');
+            }
+            if (padEl) {
+              padEl.classList.add('ring-2', 'ring-indigo-400', 'scale-95');
+            }
+
+            moveStage(item.dir);
+          }
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (keyMapping[e.code]) {
+          activeKeys[e.code] = false;
+
+          const item = keyMapping[e.code];
+          const keyEl = document.getElementById(item.elemId);
+          const padEl = document.getElementById(item.padId);
+
+          if (keyEl) {
+            keyEl.classList.remove('bg-indigo-500', 'text-white', 'border-indigo-300', 'scale-95', 'ring-2', 'ring-indigo-400/50');
+            keyEl.classList.add('bg-slate-800', 'text-slate-300');
+          }
+          if (padEl) {
+            padEl.classList.remove('ring-2', 'ring-indigo-400', 'scale-95');
+          }
+        }
+      });
+    }
+
+    function renderEyepiece() {
+      if (!ctx) return;
+
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, width, height);
+
+      const blurRadius = calculateFocusClarity();
+
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, width / 2 - 4, 0, Math.PI * 2);
+      ctx.clip();
+
+      ctx.fillStyle = currentSpecimen.bgColor;
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.filter = `blur(${blurRadius}px) brightness(${lightBrightness}%)`;
+
+      const scaleFactor = (magnification / 10);
+      const imgX = centerX - (stageX * scaleFactor);
+      const imgY = centerY - (stageY * scaleFactor);
+
+      ctx.translate(imgX, imgY);
+      ctx.scale(scaleFactor, scaleFactor);
+
+      // 180 DEGREE OPTICAL INVERSION
+      ctx.rotate(Math.PI); 
+
+      drawSpecimenContent(currentSpecimen.type);
+
+      ctx.restore();
+    }
+
+    function drawSpecimenContent(type) {
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-220, -220, 440, 440);
+
+      switch(type) {
+        case 'letter':
+          drawLetterF();
+          break;
+        case 'plant_1':
+          drawOnionCells();
+          break;
+        case 'plant_2':
+          drawElodeaCells();
+          break;
+        case 'animal_1':
+          drawCheekCells();
+          break;
+        case 'animal_2':
+          drawFrogRBC();
+          break;
+      }
+    }
+
+    function drawLetterF() {
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '900 130px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('F', 0, -5);
+
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(0, -95);
+      ctx.lineTo(-18, -65);
+      ctx.lineTo(18, -65);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('玻片頂端 ⬆️', 0, -112);
+
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.25)';
+      ctx.lineWidth = 1;
+      for (let i = -200; i <= 200; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(i, -200); ctx.lineTo(i, 200);
+        ctx.moveTo(-200, i); ctx.lineTo(200, i);
+        ctx.stroke();
+      }
+    }
+
+    function drawOnionCells() {
+      const cols = 6;
+      const rows = 8;
+      const cellW = 85;
+      const cellH = 48;
+
+      ctx.strokeStyle = '#6b21a8';
+      ctx.lineWidth = 3.5;
+
+      for (let r = -rows; r <= rows; r++) {
+        for (let c = -cols; c <= cols; c++) {
+          const offsetX = (r % 2 === 0) ? 0 : 20;
+          const x = c * cellW + offsetX;
+          const y = r * cellH;
+
+          ctx.fillStyle = '#f3e8ff';
+          ctx.fillRect(x, y, cellW - 2, cellH - 2);
+          ctx.strokeRect(x, y, cellW - 2, cellH - 2);
+
+          ctx.fillStyle = '#581c87';
+          ctx.beginPath();
+          ctx.arc(x + cellW * 0.65, y + cellH * 0.5, 6.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#3b0764';
+          ctx.beginPath();
+          ctx.arc(x + cellW * 0.65, y + cellH * 0.5, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    function drawElodeaCells() {
+      const cellW = 92;
+      const cellH = 52;
+
+      ctx.strokeStyle = '#15803d';
+      ctx.lineWidth = 3.5;
+
+      for (let r = -5; r <= 5; r++) {
+        for (let c = -5; c <= 5; c++) {
+          const x = c * cellW;
+          const y = r * cellH;
+
+          ctx.fillStyle = '#dcfce7';
+          ctx.fillRect(x, y, cellW - 3, cellH - 3);
+          ctx.strokeRect(x, y, cellW - 3, cellH - 3);
+
+          const chloroCount = 15;
+          for (let i = 0; i < chloroCount; i++) {
+            const angle = (i / chloroCount) * Math.PI * 2;
+            const cx = x + cellW/2 + Math.cos(angle) * (cellW * 0.33);
+            const cy = y + cellH/2 + Math.sin(angle) * (cellH * 0.32);
+
+            ctx.fillStyle = '#16a34a';
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, 5.5, 4, angle, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.arc(cx - 1, cy - 1, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    function drawCheekCells() {
+      const cells = [
+        {x: -40, y: -30, r: 58},
+        {x: 65, y: 50, r: 62},
+        {x: -95, y: 75, r: 50},
+        {x: 85, y: -75, r: 54}
+      ];
+
+      cells.forEach(c => {
+        ctx.fillStyle = 'rgba(186, 230, 253, 0.8)';
+        ctx.strokeStyle = '#0284c7';
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        const points = 12;
+        for (let i = 0; i < points; i++) {
+          const a = (i / points) * Math.PI * 2;
+          const varR = c.r + Math.sin(i * 3) * 7;
+          const px = c.x + Math.cos(a) * varR;
+          const py = c.y + Math.sin(a) * varR;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#38bdf8';
+        for (let k = 0; k < 12; k++) {
+          const gx = c.x + (Math.random() - 0.5) * c.r * 1.2;
+          const gy = c.y + (Math.random() - 0.5) * c.r * 1.2;
+          ctx.beginPath();
+          ctx.arc(gx, gy, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = '#1e3a8a';
+        ctx.beginPath();
+        ctx.arc(c.x + 3, c.y - 2, 8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function drawFrogRBC() {
+      const count = 30;
+      for (let i = 0; i < count; i++) {
+        const col = i % 6;
+        const row = Math.floor(i / 6);
+        const x = (col - 2.5) * 65 + (row % 2 ? 15 : 0);
+        const y = (row - 2) * 55;
+        const rot = (i * 40) * Math.PI / 180;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+
+        ctx.fillStyle = '#f43f5e';
+        ctx.strokeStyle = '#be123c';
+        ctx.lineWidth = 2.5;
+
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 23, 14.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#4c0519';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 7.5, 4.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    function updateEducationalNotes() {
+      const container = document.getElementById('specimenEducationalNote');
+      container.innerHTML = currentSpecimen.description;
+    }
+
+    function toggleQuizModal() {
+      const modal = document.getElementById('quizModal');
+      modal.classList.toggle('hidden');
+      document.getElementById('quizResult').classList.add('hidden');
+    }
+
+    function submitQuiz() {
+      const q1 = document.querySelector('input[name="q1"]:checked')?.value;
+      const q2 = document.querySelector('input[name="q2"]:checked')?.value;
+      const q3 = document.querySelector('input[name="q3"]:checked')?.value;
+
+      if (!q1 || !q2 || !q3) {
+        alert('請先完成所有 3 道題目後再提交喔！');
+        return;
+      }
+
+      let score = 0;
+      if (q1 === 'B') score++;
+      if (q2 === 'B') score++;
+      if (q3 === 'B') score++;
+
+      const resBox = document.getElementById('quizResult');
+      resBox.classList.remove('hidden');
+
+      if (score === 3) {
+        resBox.className = 'p-3 rounded-xl bg-emerald-950 border border-emerald-500 text-emerald-200 text-xs text-center font-bold';
+        resBox.innerHTML = `🎉 太厲害了！獲得滿分 (3/3)！你已經完全融會貫通顯微鏡倒立放大成像與反向移動的規律了！`;
+      } else {
+        resBox.className = 'p-3 rounded-xl bg-amber-950 border border-amber-500 text-amber-200 text-xs text-center font-bold';
+        resBox.innerHTML = `👏 得分：${score}/3 分！記住解題口訣「影像偏哪邊，玻片就往哪邊移」，再試試看吧！`;
+      }
+    }
+  </script>
+</body>
+</html>
