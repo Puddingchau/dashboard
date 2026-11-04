@@ -19,8 +19,8 @@
             font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
             color: #f8fafc;
-            overflow: hidden;
-            height: 100vh;
+            overflow-x: hidden; overflow-y: auto;
+            min-height: 100vh; height: auto;
             width: 100vw;
         }
 
@@ -497,51 +497,72 @@
             }
         }
 
+
     
-        /* === SCROLL FIX: phone can reach answer buttons (keep 3 columns) === */
+        /* === SCROLL FIX v2: document + column scroll, keep 3 cols === */
         @media (max-width: 1023px) {
-            html, body {
+            html {
+                height: auto !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+            body, body.flex, body.h-screen, body.w-screen, body.overflow-hidden {
                 height: auto !important;
                 min-height: 100dvh !important;
+                max-height: none !important;
                 overflow-x: hidden !important;
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch !important;
+                position: relative !important;
+                touch-action: pan-y !important;
             }
-            body.h-screen, body.overflow-hidden {
-                height: auto !important;
-                min-height: 100dvh !important;
-                overflow-x: hidden !important;
-                overflow-y: auto !important;
+            #effects-canvas {
+                pointer-events: none !important;
             }
             #game-arena {
-                overflow-x: auto !important;
-                overflow-y: visible !important;
-                min-height: 0 !important;
-                flex: 1 1 auto !important;
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
                 height: auto !important;
+                min-height: calc(100dvh - 5.5rem) !important;
+                overflow: visible !important;
+                align-items: stretch !important;
             }
-            #team-col-0, #team-col-1, #team-col-2,
-            .team-red, .team-blue, .team-green {
-                overflow-x: hidden !important;
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch !important;
+            #team-col-0, #team-col-1, #team-col-2 {
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: visible !important;
+                height: auto !important;
+                min-height: calc(100dvh - 6rem) !important;
                 max-height: none !important;
-                min-height: calc(100dvh - 7rem) !important;
             }
-            [id^="options-"] {
+            [id^="visual-track-"] {
+                height: 40px !important;
+                min-height: 40px !important;
+                max-height: 40px !important;
                 flex-shrink: 0 !important;
-                padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)) !important;
             }
             [id^="q-box-"] {
-                flex: 0 1 auto !important;
+                flex: 0 0 auto !important;
                 overflow: visible !important;
                 max-height: none !important;
+            }
+            [id^="options-"] {
+                display: grid !important;
+                flex: 0 0 auto !important;
+                margin-top: 0.35rem !important;
+                padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)) !important;
+                position: relative !important;
+                z-index: 5 !important;
+            }
+            [id^="options-"] button {
+                min-height: 44px !important;
             }
         }
 
     </style>
 </head>
-<body class="flex flex-col h-screen w-screen overflow-hidden select-none">
+<body class="flex flex-col min-h-screen w-screen select-none mobile-scroll-root">
 
     <!-- Canvas Overlay for Particle Burst Effects -->
     <canvas id="effects-canvas" class="fixed inset-0 pointer-events-none z-40"></canvas>
@@ -612,10 +633,10 @@
     </div>
 
     <!-- Main Game Play Arena (3-Player Column Split) -->
-    <main id="game-arena" class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 p-3 relative overflow-hidden z-10">
+    <main id="game-arena" class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 p-3 relative z-10">
         
         <!-- TEAM 1: RED -->
-        <section id="team-col-0" class="team-red glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-hidden border-2 transition-all duration-300">
+        <section id="team-col-0" class="team-red glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-visible border-2 transition-all duration-300">
             <!-- Team Top Stats -->
             <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-red-500/40">
                 <div class="flex items-center gap-2">
@@ -665,7 +686,7 @@
         </section>
 
         <!-- TEAM 2: BLUE -->
-        <section id="team-col-1" class="team-blue glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-hidden border-2 transition-all duration-300">
+        <section id="team-col-1" class="team-blue glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-visible border-2 transition-all duration-300">
             <!-- Team Top Stats -->
             <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-blue-500/40">
                 <div class="flex items-center gap-2">
@@ -715,7 +736,7 @@
         </section>
 
         <!-- TEAM 3: GREEN -->
-        <section id="team-col-2" class="team-green glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-hidden border-2 transition-all duration-300">
+        <section id="team-col-2" class="team-green glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-visible border-2 transition-all duration-300">
             <!-- Team Top Stats -->
             <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-green-500/40">
                 <div class="flex items-center gap-2">
