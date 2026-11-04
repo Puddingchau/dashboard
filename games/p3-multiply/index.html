@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>小學數學科三年級 - 乘法大對決</title>
+  <style>
+    :root {
+      --p1-color: #2563eb;
+      --p1-light: #60a5fa;
+      --p2-color: #dc2626;
+      --p2-light: #f87171;
+      --bg-dark: #0f172a;
+      --panel-bg: #1e293b;
+      --border-gold: #f59e0b;
+      --text-gold: #fbbf24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif;
+      background: var(--bg-dark);
+      color: #fff;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Bar Header */
+    #header {
+      height: 60px;
+      min-height: 60px;
+      background: #111827;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 3px solid var(--border-gold);
+      z-index: 10;
+    }
+    .school-badge {
+      background: var(--border-gold);
+      color: #000;
+      font-weight: 900;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 1.1rem;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    }
+    .game-title-container {
+      text-align: center;
+    }
+    .game-title-text {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--text-gold);
+      letter-spacing: 2px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .game-subtitle-text {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+    .timer-display {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #38bdf8;
+      font-family: monospace;
+      background: #1e293b;
+      padding: 4px 14px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+    .timer-urgent { color: #ef4444; animation: pulse 0.5s infinite alternate; }
+    @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+    /* Setup / Hero Select Screen */
+    #setup-screen {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.98);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .setup-title { font-size: 2.2rem; color: var(--text-gold); margin-bottom: 4px; text-align: center; font-weight: 900; }
+    .setup-subtitle { font-size: 1.1rem; color: #94a3b8; margin-bottom: 20px; text-align: center; }
+    .option-group { margin-bottom: 16px; text-align: center; width: 100%; max-width: 900px; }
+    .option-title { font-size: 1.05rem; color: #cbd5e1; margin-bottom: 8px; font-weight: bold; }
+    .btn-group { display: flex; justify-content: center; gap: 12px; }
+    .opt-btn {
+      background: #334155; border: 2px solid #64748b; color: #fff;
+      padding: 8px 20px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;
+    }
+    .opt-btn.active { background: #2563eb; border-color: #60a5fa; box-shadow: 0 0 12px rgba(96,165,250,0.6); }
+
+    /* Dual Hero Choice Grid */
+    .hero-select-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 920px;
+    }
+    .player-select-row {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 10px 15px;
+      border: 2px solid #334155;
+    }
+    .player-select-row.p1-row { border-color: rgba(37, 99, 235, 0.5); }
+    .player-select-row.p2-row { border-color: rgba(220, 38, 38, 0.5); }
+    .select-label {
+      font-size: 1rem; font-weight: bold; margin-bottom: 8px; text-align: left;
+    }
+    .hero-cards-flex {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .hero-card {
+      flex: 1;
+      background: #0f172a;
+      border: 2px solid #475569;
+      border-radius: 10px;
+      padding: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .hero-card:hover { border-color: var(--text-gold); transform: translateY(-2px); }
+    .p1-row .hero-card.selected { border-color: var(--p1-light); background: #1e3a8a; box-shadow: 0 0 12px rgba(96,165,250,0.8); }
+    .p2-row .hero-card.selected { border-color: var(--p2-light); background: #881337; box-shadow: 0 0 12px rgba(248,113,113,0.8); }
+    .hero-icon-box { width: 55px; height: 55px; margin-bottom: 4px; }
+    .hero-icon-box svg { width: 100%; height: 100%; }
+    .hero-card-name { font-size: 0.95rem; font-weight: bold; }
+
+    .start-btn {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border: 3px solid #fff;
+      color: #000;
+      font-size: 1.6rem; font-weight: 900;
+      padding: 12px 50px;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(245,158,11,0.5);
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+    .start-btn:hover { transform: scale(1.05); }
+
+    /* Main Battle Arena (Responsive Layout) */
+    #main-arena {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 38%;
+      min-height: 140px;
+      position: relative;
+      background: #090d16;
+    }
+    canvas { width: 100%; height: 100%; display: block; }
+
+    /* Bottom Workspace / Options Grid */
+    #workspace {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      background: #0f172a;
+      border-top: 4px solid #334155;
+    }
+    .player-zone {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      justify-content: space-between;
+    }
+    .p1-zone { border-right: 3px solid #1e293b; background: rgba(37,99,235,0.04); }
+    .p2-zone { background: rgba(220,38,38,0.04); }
+
+    .zone-header {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 1.1rem; font-weight: bold; margin-bottom: 6px;
+    }
+    .p1-tag { color: var(--p1-light); }
+    .p2-tag { color: var(--p2-light); }
+
+    .question-card {
+      background: #1e293b;
+      border: 3px solid #475569;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      font-size: clamp(1.6rem, 4vh, 2.6rem);
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 2px;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .answers-grid {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .ans-btn {
+      background: #334155;
+      border: 3px solid #64748b;
+      border-radius: 12px;
+      color: #fff;
+      font-size: clamp(1.2rem, 3vh, 2rem);
+      font-weight: 900;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.1s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    .ans-btn:active { transform: translateY(2px); }
+    .ans-btn.correct { background: #16a34a !important; border-color: #4ade80 !important; box-shadow: 0 0 15px #4ade80; }
+    .ans-btn.wrong { background: #dc2626 !important; border-color: #f87171 !important; animation: shake 0.3s; }
+    .ans-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+
+    /* MVP Modal Popup */
+    .modal-overlay {
+      position: absolute; top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .mvp-card {
+      background: #1e293b;
+      border: 4px solid var(--border-gold);
+      border-radius: 16px;
+      padding: 25px 30px;
+      width: 90%; max-width: 650px;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(245,158,11,0.5);
+    }
+    .mvp-title { font-size: 2rem; color: var(--text-gold); font-weight: 900; margin-bottom: 8px; }
+    .mvp-avatar { width: 110px; height: 110px; margin: 0 auto 12px; }
+    .mvp-avatar svg { width: 100%; height: 100%; }
+    .stats-table {
+      width: 100%; margin: 15px 0; border-collapse: collapse; text-align: center;
+    }
+    .stats-table th, .stats-table td { padding: 8px 10px; border-bottom: 1px solid #334155; font-size: 1.05rem; }
+    .stats-table th { color: #94a3b8; }
+    .restart-btn {
+      background: var(--border-gold); color: #000; font-size: 1.3rem; font-weight: 900;
+      padding: 10px 36px; border: none; border-radius: 30px; cursor: pointer; margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="header">
+    <div class="school-badge">天水圍官立小學</div>
+    <div class="game-title-container">
+      <div class="game-title-text">乘法大對決</div>
+      <div class="game-subtitle-text">小學數學科三年級</div>
+    </div>
+    <div class="timer-display" id="timer">⏱️ 03:00</div>
+  </div>
+
+  <div id="setup-screen">
+    <h1 class="setup-title">⚔️ 雙人競速拔河 - 乘法大對決 ⚔️</h1>
+    <p class="setup-subtitle">小學數學科三年級 ‧ 5題 K.O. 勝利機制 ‧ Smartboard 觸控對戰版</p>
+
+    <div class="option-group">
+      <div class="option-title">📌 選擇題目難度</div>
+      <div class="btn-group">
+        <button class="opt-btn active" onclick="setDiff('2d', this)">兩位數 × 一位數</button>
+        <button class="opt-btn" onclick="setDiff('3d', this)">三位數 × 一位數</button>
+      </div>
+    </div>
+
+    <div class="option-group">
+      <div class="option-title">⏱️ 選擇比賽時間</div>
+      <div class="btn-group">
+        <button class="opt-btn" onclick="setTime(60, this)">1 分鐘</button>
+        <button class="opt-btn active" onclick="setTime(180, this)">3 分鐘</button>
+        <button class="opt-btn" onclick="setTime(300, this)">5 分鐘</button>
+      </div>
+    </div>
+
+    <div class="option-group">
+      <div class="hero-select-container">
+        <div class="player-select-row p1-row">
+          <div class="select-label" style="color:var(--p1-light)">🔵 藍隊 (P1) 選擇角色：</div>
+          <div class="hero-cards-flex" id="p1-hero-cards"></div>
+        </div>
+        <div class="player-select-row p2-row">
+          <div class="select-label" style="color:var(--p2-light)">🔴 紅隊 (P2) 選擇角色：</div>
+          <div class="hero-cards-flex" id="p2-hero-cards"></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="start-btn" onclick="startGame()">開始對決！</button>
+  </div>
+
+  <div id="main-arena">
+    <div id="canvas-container">
+      <canvas id="gameCanvas"></canvas>
+    </div>
+    <div id="workspace">
+      <div class="player-zone p1-zone">
+        <div class="zone-header">
+          <span class="p1-tag">🔵 藍隊 P1 (<span id="p1-hero-name">壯士</span>)</span>
+          <span id="p1-score-tag">得分: 0</span>
+        </div>
+        <div class="question-card" id="p1-q-box">35 × 4 = ?</div>
+        <div class="answers-grid" id="p1-ans-grid"></div>
+      </div>
+      <div class="player-zone p2-zone">
+        <div class="zone-header">
+          <span class="p2-tag">🔴 紅隊 P2 (<span id="p2-hero-name">武士</span>)</span>
+          <span id="p2-score-tag">得分: 0</span>
+        </div>
+        <div class="question-card" id="p2-q-box">124 × 3 = ?</div>
+        <div class="answers-grid" id="p2-ans-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="mvp-modal">
+    <div class="mvp-card">
+      <div class="mvp-title" id="mvp-winner-title">🏆 藍隊 獲勝！ 🏆</div>
+      <div class="mvp-avatar" id="mvp-avatar-box"></div>
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>統計數據</th>
+            <th style="color:var(--p1-light)">🔵 藍隊 (P1)</th>
+            <th style="color:var(--p2-light)">🔴 紅隊 (P2)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>答對題數</td>
+            <td id="p1-stat-correct">0</td>
+            <td id="p2-stat-correct">0</td>
+          </tr>
+          <tr>
+            <td>答題正確率</td>
+            <td id="p1-stat-acc">0%</td>
+            <td id="p2-stat-acc">0%</td>
+          </tr>
+          <tr>
+            <td>平均答題速度</td>
+            <td id="p1-stat-speed">0s</td>
+            <td id="p2-stat-speed">0s</td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="restart-btn" onclick="location.reload()">再玩一次</button>
+    </div>
+  </div>
+
+<script>
+// 5 Vector SVG Hero Definitions
+const HEROES = [
+  {
+    id: 'hercules', name: '壯士', title: '001',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="35" y="15" width="30" height="25" rx="5" fill="#8d5524"/>
+      <rect x="40" y="25" width="20" height="20" rx="3" fill="#ffdbac"/>
+      <rect x="44" y="32" width="4" height="4" fill="#000"/>
+      <rect x="52" y="32" width="4" height="4" fill="#000"/>
+      <rect x="25" y="42" width="50" height="28" rx="6" fill="#ffdbac"/>
+      <rect x="32" y="70" width="36" height="15" fill="#5c3a21"/>
+      <rect x="32" y="85" width="12" height="12" fill="#ffdbac"/>
+      <rect x="56" y="85" width="12" height="12" fill="#ffdbac"/>
+      <rect x="72" y="45" width="8" height="30" fill="#9ca3af"/>
+      <rect x="70" y="72" width="12" height="6" fill="#f59e0b"/>
+    </svg>`
+  },
+  {
+    id: 'samurai', name: '武士', title: '002',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="32" y="12" width="36" height="30" rx="6" fill="#4b5563"/>
+      <rect x="40" y="26" width="20" height="14" fill="#ffdbac"/>
+      <rect x="43" y="30" width="3" height="3" fill="#000"/>
+      <rect x="54" y="30" width="3" height="3" fill="#000"/>
+      <rect x="38" y="36" width="24" height="6" fill="#5c3a21"/>
+      <path d="M 25 42 L 75 42 L 70 85 L 30 85 Z" fill="#9ca3af"/>
+      <path d="M 22 42 L 32 42 L 28 88 L 18 88 Z" fill="#dc2626"/>
+      <rect x="80" y="10" width="4" height="85" fill="#78350f"/>
+      <path d="M 78 10 L 86 10 L 82 0 Z" fill="#e5e7eb"/>
+    </svg>`
+  },
+  {
+    id: 'ninja', name: '忍者', title: '003',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="30" y="15" width="40" height="35" rx="10" fill="#1e293b"/>
+      <rect x="38" y="28" width="24" height="10" rx="3" fill="#ffdbac"/>
+      <rect x="42" y="31" width="4" height="4" fill="#000"/>
+      <rect x="54" y="31" width="4" height="4" fill="#000"/>
+      <path d="M 25 18 L 10 12 L 20 28 Z" fill="#1e293b"/>
+      <rect x="25" y="48" width="50" height="32" rx="8" fill="#0f172a"/>
+      <rect x="30" y="78" width="16" height="18" fill="#1e293b"/>
+      <rect x="54" y="78" width="16" height="18" fill="#1e293b"/>
+    </svg>`
+  },
+  {
+    id: 'knight', name: '騎士', title: '004',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="32" y="12" width="36" height="32" rx="6" fill="#9ca3af"/>
+      <rect x="36" y="26" width="28" height="5" fill="#000"/>
+      <rect x="25" y="44" width="50" height="36" rx="6" fill="#6b7280"/>
+      <rect x="15" y="46" width="20" height="32" rx="4" fill="#b45309"/>
+      <rect x="17" y="48" width="16" height="28" rx="2" fill="#f59e0b"/>
+      <rect x="76" y="20" width="6" height="55" fill="#e5e7eb"/>
+      <rect x="70" y="65" width="18" height="6" fill="#d97706"/>
+    </svg>`
+  },
+  {
+    id: 'wizard', name: '巫師', title: '005',
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 30 20 Q 50 5 70 20 L 75 45 Q 50 35 25 45 Z" fill="#78350f"/>
+      <rect x="38" y="25" width="24" height="20" fill="#ffdbac"/>
+      <rect x="42" y="32" width="4" height="4" fill="#000"/>
+      <rect x="54" y="32" width="4" height="4" fill="#000"/>
+      <path d="M 25 45 L 75 45 L 85 92 L 15 92 Z" fill="#dc2626"/>
+      <rect x="30" y="62" width="40" height="6" fill="#f59e0b"/>
+      <rect x="82" y="15" width="5" height="78" fill="#78350f"/>
+      <circle cx="84.5" cy="15" r="8" fill="#fbbf24"/>
+    </svg>`
+  }
+];
+
+let selectedDiff = '2d';
+let selectedTime = 180;
+let p1HeroIdx = 0;
+let p2HeroIdx = 1;
+
+let gameTimer = null;
+let timeLeft = 180;
+let ropePos = 0; // -100 to +100 (5 steps = K.O.)
+
+let p1Data = { score: 0, total: 0, correct: 0, times: [], currentQ: null, locked: false };
+let p2Data = { score: 0, total: 0, correct: 0, times: [], currentQ: null, locked: false };
+
+let heroImages = [];
+let particles = [];
+
+// Preload Vector Images for Canvas
+function preloadHeroImages() {
+  HEROES.forEach((h, i) => {
+    const img = new Image();
+    const encoded = encodeURIComponent(h.svg);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encoded;
+    heroImages[i] = img;
+  });
+}
+
+// Sound Synthesis
+let audioCtx = null;
+function playSound(type) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+
+    if (type === 'correct') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.2);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      osc.start(now); osc.stop(now + 0.2);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.linearRampToValueAtTime(100, now + 0.25);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      osc.start(now); osc.stop(now + 0.25);
+    }
+  } catch(e){}
+}
+
+function initSetupUI() {
+  const p1Container = document.getElementById('p1-hero-cards');
+  const p2Container = document.getElementById('p2-hero-cards');
+  p1Container.innerHTML = '';
+  p2Container.innerHTML = '';
+
+  HEROES.forEach((h, idx) => {
+    // P1 Card
+    const c1 = document.createElement('div');
+    c1.className = `hero-card ${idx === p1HeroIdx ? 'selected' : ''}`;
+    c1.innerHTML = `<div class="hero-icon-box">${h.svg}</div><div class="hero-card-name">${h.name}</div>`;
+    c1.onclick = () => { p1HeroIdx = idx; initSetupUI(); };
+    p1Container.appendChild(c1);
+
+    // P2 Card
+    const c2 = document.createElement('div');
+    c2.className = `hero-card ${idx === p2HeroIdx ? 'selected' : ''}`;
+    c2.innerHTML = `<div class="hero-icon-box">${h.svg}</div><div class="hero-card-name">${h.name}</div>`;
+    c2.onclick = () => { p2HeroIdx = idx; initSetupUI(); };
+    p2Container.appendChild(c2);
+  });
+}
+
+function setDiff(d, btn) {
+  selectedDiff = d;
+  btn.parentElement.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setTime(t, btn) {
+  selectedTime = t;
+  btn.parentElement.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function generateQuestion() {
+  let num1, num2;
+  if (selectedDiff === '2d') num1 = Math.floor(Math.random() * 80) + 12;
+  else num1 = Math.floor(Math.random() * 800) + 112;
+  num2 = Math.floor(Math.random() * 8) + 2;
+
+  const ans = num1 * num2;
+  let options = new Set([ans]);
+
+  options.add(ans + 10);
+  options.add(ans - 10);
+  options.add(ans + num2);
+  options.add(ans - num2);
+  options.add((num1 + 1) * num2);
+
+  let optsArray = Array.from(options).filter(v => v > 0 && v !== ans);
+  optsArray.sort(() => Math.random() - 0.5);
+  let finalOpts = [ans, optsArray[0], optsArray[1], optsArray[2]];
+  finalOpts.sort(() => Math.random() - 0.5);
+
+  return { num1, num2, ans, opts: finalOpts, startTime: Date.now() };
+}
+
+function renderPlayerQ(player) {
+  const isP1 = player === 1;
+  const data = isP1 ? p1Data : p2Data;
+  const qBox = document.getElementById(isP1 ? 'p1-q-box' : 'p2-q-box');
+  const grid = document.getElementById(isP1 ? 'p1-ans-grid' : 'p2-ans-grid');
+  
+  data.currentQ = generateQuestion();
+  qBox.innerText = `${data.currentQ.num1} × ${data.currentQ.num2} = ?`;
+  grid.innerHTML = '';
+
+  const labels = ['A', 'B', 'C', 'D'];
+  data.currentQ.opts.forEach((val, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'ans-btn';
+    btn.innerText = `${labels[i]}. ${val}`;
+    btn.onclick = () => submitAns(player, val, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function triggerParticles(isP1, heroIdx) {
+  const w = canvas.width, h = canvas.height;
+  const targetX = isP1 ? w * 0.7 : w * 0.3;
+  const targetY = h * 0.5;
+
+  let color = '#fbbf24';
+  if (heroIdx === 1) color = '#f87171'; // Samurai Red
+  if (heroIdx === 2) color = '#a855f7'; // Ninja Purple
+  if (heroIdx === 3) color = '#38bdf8'; // Knight Blue
+  if (heroIdx === 4) color = '#f59e0b'; // Wizard Gold
+
+  for (let i = 0; i < 20; i++) {
+    particles.push({
+      x: targetX,
+      y: targetY,
+      vx: (Math.random() - 0.5) * 12,
+      vy: (Math.random() - 0.5) * 12,
+      radius: Math.random() * 6 + 2,
+      color: color,
+      life: 1.0
+    });
+  }
+}
+
+function submitAns(player, val, btnEl) {
+  const isP1 = player === 1;
+  const data = isP1 ? p1Data : p2Data;
+  if (data.locked) return;
+
+  const elapsed = (Date.now() - data.currentQ.startTime) / 1000;
+  data.total++;
+  data.times.push(elapsed);
+
+  if (val === data.currentQ.ans) {
+    playSound('correct');
+    btnEl.classList.add('correct');
+    data.score++;
+    data.correct++;
+    ropePos += isP1 ? -20 : 20; // 5 steps KO (-100 or +100)
+    triggerParticles(isP1, isP1 ? p1HeroIdx : p2HeroIdx);
+    document.getElementById(isP1 ? 'p1-score-tag' : 'p2-score-tag').innerText = `得分: ${data.score}`;
+    
+    if (Math.abs(ropePos) >= 100) {
+      endGame(isP1 ? 1 : 2);
+      return;
+    }
+    setTimeout(() => renderPlayerQ(player), 200);
+  } else {
+    playSound('wrong');
+    btnEl.classList.add('wrong');
+    data.locked = true;
+    setTimeout(() => {
+      data.locked = false;
+      renderPlayerQ(player);
+    }, 800);
+  }
+}
+
+// Canvas Visual Engine
+let canvas, ctx;
+function initCanvas() {
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+}
+function resizeCanvas() {
+  if (!canvas) return;
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+}
+
+function drawArena() {
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const w = canvas.width, h = canvas.height;
+  const groundY = h * 0.72;
+  const heroSize = Math.min(h * 0.55, 110);
+
+  // Ground Background
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(0, groundY, w, h - groundY);
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(w, groundY); ctx.stroke();
+
+  // Victory Target Markers
+  ctx.fillStyle = '#ef4444';
+  ctx.fillRect(w * 0.12, groundY - 45, 6, 45);
+  ctx.fillRect(w * 0.88, groundY - 45, 6, 45);
+
+  // Rope Position Calculation
+  const maxRopeOffset = w * 0.35;
+  const ropeShift = (ropePos / 100) * maxRopeOffset;
+  const ropeCenterX = (w / 2) + ropeShift;
+
+  // Clamped Hero Positions (Never leave canvas)
+  const p1BaseX = w * 0.22 + ropeShift * 0.4;
+  const p2BaseX = w * 0.78 + ropeShift * 0.4;
+  const p1X = Math.max(w * 0.05, Math.min(w * 0.38, p1BaseX));
+  const p2X = Math.max(w * 0.62, Math.min(w * 0.95, p2BaseX));
+
+  // Draw Rope
+  ctx.strokeStyle = '#d97706';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(p1X + heroSize * 0.5, groundY - heroSize * 0.3);
+  ctx.lineTo(p2X - heroSize * 0.5, groundY - heroSize * 0.3);
+  ctx.stroke();
+
+  // Center Red Ribbon Marker
+  ctx.fillStyle = '#ef4444';
+  ctx.fillRect(ropeCenterX - 6, groundY - heroSize * 0.3 - 12, 12, 24);
+
+  // Draw P1 Hero (Left)
+  if (heroImages[p1HeroIdx] && heroImages[p1HeroIdx].complete) {
+    ctx.drawImage(heroImages[p1HeroIdx], p1X - heroSize * 0.5, groundY - heroSize, heroSize, heroSize);
+  }
+
+  // Draw P2 Hero (Right, Flipped)
+  if (heroImages[p2HeroIdx] && heroImages[p2HeroIdx].complete) {
+    ctx.save();
+    ctx.translate(p2X, groundY - heroSize * 0.5);
+    ctx.scale(-1, 1);
+    ctx.drawImage(heroImages[p2HeroIdx], -heroSize * 0.5, -heroSize * 0.5, heroSize, heroSize);
+    ctx.restore();
+  }
+
+  // Update and Draw Particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.04;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.life;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+  }
+
+  requestAnimationFrame(drawArena);
+}
+
+function startGame() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('p1-hero-name').innerText = HEROES[p1HeroIdx].name;
+  document.getElementById('p2-hero-name').innerText = HEROES[p2HeroIdx].name;
+
+  ropePos = 0;
+  timeLeft = selectedTime;
+  p1Data = { score: 0, total: 0, correct: 0, times: [], currentQ: null, locked: false };
+  p2Data = { score: 0, total: 0, correct: 0, times: [], currentQ: null, locked: false };
+
+  renderPlayerQ(1);
+  renderPlayerQ(2);
+
+  gameTimer = setInterval(() => {
+    timeLeft--;
+    const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+    const s = String(timeLeft % 60).padStart(2, '0');
+    const timerEl = document.getElementById('timer');
+    timerEl.innerText = `⏱️ ${m}:${s}`;
+
+    if (timeLeft <= 10) timerEl.classList.add('timer-urgent');
+    if (timeLeft <= 0) {
+      clearInterval(gameTimer);
+      if (p1Data.score > p2Data.score) endGame(1);
+      else if (p2Data.score > p1Data.score) endGame(2);
+      else endGame(0);
+    }
+  }, 1000);
+
+  initCanvas();
+  drawArena();
+}
+
+function endGame(winner) {
+  clearInterval(gameTimer);
+  const modal = document.getElementById('mvp-modal');
+  const title = document.getElementById('mvp-winner-title');
+  const avatar = document.getElementById('mvp-avatar-box');
+
+  if (winner === 1) {
+    title.innerText = '🏆 藍隊 (P1) 獲勝！ 🏆';
+    avatar.innerHTML = HEROES[p1HeroIdx].svg;
+  } else if (winner === 2) {
+    title.innerText = '🏆 紅隊 (P2) 獲勝！ 🏆';
+    avatar.innerHTML = HEROES[p2HeroIdx].svg;
+  } else {
+    title.innerText = '🤝 雙方勢均力敵 平手！ 🤝';
+    avatar.innerHTML = '⚖️';
+  }
+
+  document.getElementById('p1-stat-correct').innerText = p1Data.correct;
+  document.getElementById('p2-stat-correct').innerText = p2Data.correct;
+
+  const p1Acc = p1Data.total > 0 ? Math.round((p1Data.correct / p1Data.total) * 100) : 0;
+  const p2Acc = p2Data.total > 0 ? Math.round((p2Data.correct / p2Data.total) * 100) : 0;
+  document.getElementById('p1-stat-acc').innerText = `${p1Acc}%`;
+  document.getElementById('p2-stat-acc').innerText = `${p2Acc}%`;
+
+  const p1Avg = p1Data.times.length > 0 ? (p1Data.times.reduce((a,b)=>a+b,0)/p1Data.times.length).toFixed(1) : 0;
+  const p2Avg = p2Data.times.length > 0 ? (p2Data.times.reduce((a,b)=>a+b,0)/p2Data.times.length).toFixed(1) : 0;
+  document.getElementById('p1-stat-speed').innerText = `${p1Avg}s`;
+  document.getElementById('p2-stat-speed').innerText = `${p2Avg}s`;
+
+  modal.style.display = 'flex';
+}
+
+// Global Key Listeners for Smartboard & Keyboard
+window.addEventListener('keydown', (e) => {
+  if (document.getElementById('setup-screen').style.display !== 'none') return;
+
+  // P1 Controls: Keys 1,2,3,4 or A,B,C,D
+  const p1Grid = document.querySelectorAll('#p1-ans-grid .ans-btn');
+  if (['1','a','A'].includes(e.key) && p1Grid[0]) p1Grid[0].click();
+  if (['2','b','B'].includes(e.key) && p1Grid[1]) p1Grid[1].click();
+  if (['3','c','C'].includes(e.key) && p1Grid[2]) p1Grid[2].click();
+  if (['4','d','D'].includes(e.key) && p1Grid[3]) p1Grid[3].click();
+
+  // P2 Controls: Numpad 1,2,3,4
+  const p2Grid = document.querySelectorAll('#p2-ans-grid .ans-btn');
+  if (['Numpad1'].includes(e.code) && p2Grid[0]) p2Grid[0].click();
+  if (['Numpad2'].includes(e.code) && p2Grid[1]) p2Grid[1].click();
+  if (['Numpad3'].includes(e.code) && p2Grid[2]) p2Grid[2].click();
+  if (['Numpad4'].includes(e.code) && p2Grid[3]) p2Grid[3].click();
+});
+
+window.onload = () => {
+  preloadHeroImages();
+  initSetupUI();
+};
+</script>
+</body>
+</html>
