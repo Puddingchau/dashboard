@@ -543,8 +543,9 @@
                 flex-shrink: 0 !important;
             }
             [id^="q-box-"] {
-                flex: 0 0 auto !important;
-                overflow: visible !important;
+                flex: 1 1 auto !important;
+                min-height: 5.5rem !important;
+                overflow-y: auto !important;
                 max-height: none !important;
             }
             [id^="options-"] {
@@ -557,6 +558,44 @@
             }
             [id^="options-"] button {
                 min-height: 44px !important;
+            }
+        }
+
+    
+        /* === Q VISIBILITY FIX: stop justify-between from crushing q-box === */
+        @media (max-width: 1023px) {
+            #team-col-0, #team-col-1, #team-col-2 {
+                justify-content: flex-start !important;
+                gap: 0.35rem !important;
+            }
+            [id^="q-box-"] {
+                flex: 1 1 auto !important;
+                min-height: 5.5rem !important;
+                max-height: none !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                color: #0f172a !important;
+            }
+            [id^="q-box-"] .my-auto {
+                margin-top: 0.35rem !important;
+                margin-bottom: 0.35rem !important;
+            }
+            [id^="q-box-"] .text-base,
+            [id^="q-box-"] .text-lg,
+            [id^="q-box-"] .text-sm,
+            [id^="q-box-"] .text-xl,
+            [id^="q-box-"] .leading-snug {
+                font-size: 0.78rem !important;
+                line-height: 1.35 !important;
+                color: #0f172a !important;
+            }
+            [id^="q-box-"] b,
+            [id^="q-box-"] span {
+                color: inherit;
+            }
+            [id^="options-"] {
+                flex: 0 0 auto !important;
+                margin-top: auto !important;
             }
         }
 
@@ -636,7 +675,7 @@
     <main id="game-arena" class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 p-3 relative z-10">
         
         <!-- TEAM 1: RED -->
-        <section id="team-col-0" class="team-red glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-visible border-2 transition-all duration-300">
+        <section id="team-col-0" class="team-red glass-panel rounded-3xl p-3 flex flex-col justify-start relative overflow-visible border-2 transition-all duration-300">
             <!-- Team Top Stats -->
             <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-red-500/40">
                 <div class="flex items-center gap-2">
@@ -686,7 +725,7 @@
         </section>
 
         <!-- TEAM 2: BLUE -->
-        <section id="team-col-1" class="team-blue glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-visible border-2 transition-all duration-300">
+        <section id="team-col-1" class="team-blue glass-panel rounded-3xl p-3 flex flex-col justify-start relative overflow-visible border-2 transition-all duration-300">
             <!-- Team Top Stats -->
             <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-blue-500/40">
                 <div class="flex items-center gap-2">
@@ -736,7 +775,7 @@
         </section>
 
         <!-- TEAM 3: GREEN -->
-        <section id="team-col-2" class="team-green glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-visible border-2 transition-all duration-300">
+        <section id="team-col-2" class="team-green glass-panel rounded-3xl p-3 flex flex-col justify-start relative overflow-visible border-2 transition-all duration-300">
             <!-- Team Top Stats -->
             <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-green-500/40">
                 <div class="flex items-center gap-2">
