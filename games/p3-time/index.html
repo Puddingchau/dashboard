@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>三年級「時間」大冒險 - 天水圍官立小學</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@600;800;900&display=swap');
+
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            color: #f8fafc;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            color: #0f172a;
+            border: 3px solid rgba(255, 255, 255, 0.85);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        }
+
+        .wii-btn {
+            transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+            transform: translateY(0);
+            cursor: pointer;
+            min-height: 55px;
+        }
+        .wii-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+        }
+        .wii-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .wii-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+            filter: grayscale(0.6);
+        }
+
+        .char-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+        }
+        .char-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(251, 191, 36, 0.6);
+        }
+        .char-card.selected {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(30, 27, 75, 0.95) 100%);
+            border: 3px solid #facc15;
+            box-shadow: 0 0 16px rgba(250, 204, 21, 0.6), inset 0 0 12px rgba(250, 204, 21, 0.3);
+            transform: scale(1.04);
+        }
+
+        .team-red {
+            background: linear-gradient(180deg, rgba(239, 68, 68, 0.25) 0%, rgba(185, 28, 28, 0.45) 100%);
+            border-color: #f87171;
+        }
+        .team-blue {
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.25) 0%, rgba(29, 78, 216, 0.45) 100%);
+            border-color: #60a5fa;
+        }
+        .team-green {
+            background: linear-gradient(180deg, rgba(34, 197, 94, 0.25) 0%, rgba(21, 128, 61, 0.45) 100%);
+            border-color: #4ade80;
+        }
+
+        @keyframes flamePulse {
+            0% { box-shadow: 0 0 15px #ff4500, inset 0 0 10px #ff8c00; }
+            50% { box-shadow: 0 0 35px #ff8c00, inset 0 0 25px #ffd700; }
+            100% { box-shadow: 0 0 15px #ff4500, inset 0 0 10px #ff8c00; }
+        }
+        .flame-aura {
+            animation: flamePulse 1.2s infinite ease-in-out;
+            border-color: #ff4500 !important;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(3deg); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        @keyframes pulse-urgent {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px #ef4444); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 28px #f87171); }
+        }
+        .animate-urgent { animation: pulse-urgent 0.6s infinite ease-in-out; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-12px); }
+            40%, 80% { transform: translateX(12px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+
+        @keyframes pop-up {
+            0% { transform: scale(0.6) translateY(20px); opacity: 0; }
+            70% { transform: scale(1.05) translateY(-5px); opacity: 1; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .animate-pop { animation: pop-up 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        .float-score {
+            position: absolute;
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: #facc15;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.8), 0 0 15px #f59e0b;
+            pointer-events: none;
+            animation: float-up-fade 1.2s forwards cubic-bezier(0.215, 0.61, 0.355, 1);
+            z-index: 60;
+        }
+        @keyframes float-up-fade {
+            0% { opacity: 1; transform: translateY(0) scale(0.8); }
+            50% { opacity: 1; transform: translateY(-45px) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-90px) scale(1); }
+        }
+
+        .pin {
+            width: 18px;
+            height: 36px;
+            background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+            border-radius: 7px 7px 4px 4px;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 900;
+            color: #0f172a;
+            padding-bottom: 2px;
+        }
+        .pin::before {
+            content: "";
+            position: absolute;
+            top: 7px; left: 2px; right: 2px; height: 4px;
+            background: #ef4444; border-radius: 2px;
+        }
+        .pin.down {
+            transform: translateY(20px) rotate(80deg);
+            opacity: 0.15;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+    </style>
+</head>
+<body class="flex flex-col h-screen w-screen overflow-hidden select-none">
+
+    <canvas id="effects-canvas" class="fixed inset-0 pointer-events-none z-40"></canvas>
+
+    <header class="h-16 px-6 glass-panel border-b flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-amber-400 text-slate-900 font-extrabold px-3 py-1 rounded-full text-sm shadow-md flex items-center gap-1">
+                <span>🏫</span> 天水圍官立小學
+            </div>
+            <h1 class="text-xl md:text-2xl font-black tracking-wide text-white drop-shadow-md flex items-center gap-2">
+                三年級「時間」大冒險 <span id="stage-badge" class="text-amber-300 text-sm font-bold bg-slate-900/70 px-3 py-1 rounded-xl border border-amber-400/40">🎳 時間保齡球</span>
+            </h1>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div id="timer-container" class="bg-slate-900/80 border-2 border-amber-400/80 px-6 py-1.5 rounded-2xl flex items-center gap-2 shadow-inner">
+                <span class="text-2xl">⏳</span>
+                <span id="timer-display" class="font-mono text-3xl font-black text-amber-300 tracking-wider">01:00</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button id="btn-sound" onclick="window.toggleSound()" class="wii-btn bg-slate-700 hover:bg-slate-600 text-white p-2.5 rounded-xl font-bold flex items-center justify-center">
+                <span id="sound-icon" class="text-xl">🔊</span>
+            </button>
+            <button onclick="window.openSetupModal()" class="wii-btn bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-black flex items-center gap-2 text-sm shadow-lg border border-indigo-400">
+                <span>⚙️</span> 選單設定
+            </button>
+        </div>
+    </header>
+
+    <div id="central-review-bar" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-4xl bg-slate-900/95 border-4 border-amber-400 rounded-3xl p-5 shadow-2xl backdrop-blur-xl animate-pop text-center">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-700/80 pb-2">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">💡</span>
+                <span class="text-2xl font-black text-amber-300 tracking-wide">中央題目解析與視覺圖解</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-950 px-4 py-1.5 rounded-2xl border border-amber-400/50">
+                <span class="text-lg text-slate-400 font-bold">倒數:</span>
+                <span id="review-timer-display" class="text-4xl font-black font-mono text-amber-300">20</span>
+                <span class="text-sm font-bold text-slate-400">秒</span>
+            </div>
+        </div>
+
+        <div class="my-2 px-4 py-3 bg-slate-950/90 rounded-2xl border border-slate-800 flex flex-col items-center">
+            <div id="review-answer-text" class="text-2xl font-black text-emerald-400 mb-1 leading-relaxed">
+                正確答案：15 分鐘
+            </div>
+            <div id="review-visual-container" class="my-2 w-full flex justify-center items-center min-h-[110px] bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+            </div>
+            <div id="review-tip-text" class="text-sm md:text-base font-bold text-slate-300">
+                提示：從 08:15 至 08:30，分針走了 15 大格，經過時間為 15 分鐘。
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mt-3">
+            <button id="btn-review-next" onclick="window.forceNextQuestion()" type="button" class="wii-btn bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-xl rounded-2xl border-2 border-emerald-300 shadow-xl flex items-center justify-center gap-2 min-h-[60px]">
+                <span>▶</span> 跳過倒數，下一題
+            </button>
+            <button id="btn-review-hold" onclick="window.togglePauseReview()" type="button" class="wii-btn bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xl rounded-2xl border-2 border-indigo-400 shadow-xl flex items-center justify-center gap-2 min-h-[60px]">
+                <span id="hold-btn-icon">⏸</span> <span id="hold-btn-text">停留講評</span>
+            </button>
+        </div>
+    </div>
+
+    <main id="game-arena" class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 p-3 relative overflow-hidden z-10">
+        
+        <!-- TEAM 1: RED -->
+        <section id="team-col-0" class="team-red glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-hidden border-2 transition-all duration-300">
+            <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-red-500/40">
+                <div class="flex items-center gap-2">
+                    <div id="mascot-0" class="w-11 h-11 rounded-full bg-red-500/30 border-2 border-red-400 flex items-center justify-center text-2xl animate-float transition-transform">
+                        🧭
+                    </div>
+                    <div>
+                        <div id="team-name-0" class="text-base font-black text-white">第一組 (紅隊)</div>
+                        <div id="team-role-0" class="text-xs font-bold text-red-300">探險家 🧭</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-300 font-bold flex items-center justify-end gap-1">
+                        <span>正確/總數:</span>
+                        <span id="acc-0" class="text-amber-300 font-black">0/0</span>
+                    </div>
+                    <div class="text-2xl font-black text-amber-300 tracking-tight" id="score-0">0</div>
+                </div>
+            </div>
+
+            <div class="h-6 flex items-center justify-between my-1 px-2">
+                <div id="combo-badge-0" class="opacity-0 transition-opacity duration-300 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1">
+                    ⚡ 連擊 <span id="combo-count-0">0</span>
+                </div>
+                <div id="streak-fire-0" class="hidden text-xs text-amber-300 font-black animate-pulse">🔥 火力全開!</div>
+            </div>
+
+            <div id="visual-track-0" class="h-16 bg-slate-950/80 rounded-2xl border border-slate-700/80 mb-2 relative overflow-hidden flex items-center justify-center"></div>
+
+            <div id="q-box-0" class="glass-card flex-1 rounded-2xl p-3.5 flex flex-col justify-between relative overflow-y-auto">
+                <div class="text-center my-auto">
+                    <div class="text-4xl mb-2">⏱️</div>
+                    <div class="text-lg font-black text-slate-800">準備進行「時間」大冒險！</div>
+                    <div class="text-sm font-bold text-slate-500 mt-1">點擊右上角「選單設定」或下方開始按鈕！</div>
+                </div>
+            </div>
+
+            <div id="options-0" class="grid grid-cols-2 gap-2 mt-2"></div>
+        </section>
+
+        <!-- TEAM 2: BLUE -->
+        <section id="team-col-1" class="team-blue glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-hidden border-2 transition-all duration-300">
+            <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-blue-500/40">
+                <div class="flex items-center gap-2">
+                    <div id="mascot-1" class="w-11 h-11 rounded-full bg-blue-500/30 border-2 border-blue-400 flex items-center justify-center text-2xl animate-float transition-transform">
+                        🧙
+                    </div>
+                    <div>
+                        <div id="team-name-1" class="text-base font-black text-white">第二組 (藍隊)</div>
+                        <div id="team-role-1" class="text-xs font-bold text-blue-300">魔法師 🧙</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-300 font-bold flex items-center justify-end gap-1">
+                        <span>正確/總數:</span>
+                        <span id="acc-1" class="text-amber-300 font-black">0/0</span>
+                    </div>
+                    <div class="text-2xl font-black text-amber-300 tracking-tight" id="score-1">0</div>
+                </div>
+            </div>
+
+            <div class="h-6 flex items-center justify-between my-1 px-2">
+                <div id="combo-badge-1" class="opacity-0 transition-opacity duration-300 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1">
+                    ⚡ 連擊 <span id="combo-count-1">0</span>
+                </div>
+                <div id="streak-fire-1" class="hidden text-xs text-amber-300 font-black animate-pulse">🔥 火力全開!</div>
+            </div>
+
+            <div id="visual-track-1" class="h-16 bg-slate-950/80 rounded-2xl border border-slate-700/80 mb-2 relative overflow-hidden flex items-center justify-center"></div>
+
+            <div id="q-box-1" class="glass-card flex-1 rounded-2xl p-3.5 flex flex-col justify-between relative overflow-y-auto">
+                <div class="text-center my-auto">
+                    <div class="text-4xl mb-2">⏱️</div>
+                    <div class="text-lg font-black text-slate-800">準備進行「時間」大冒險！</div>
+                    <div class="text-sm font-bold text-slate-500 mt-1">點擊右上角「選單設定」或下方開始按鈕！</div>
+                </div>
+            </div>
+
+            <div id="options-1" class="grid grid-cols-2 gap-2 mt-2"></div>
+        </section>
+
+        <!-- TEAM 3: GREEN -->
+        <section id="team-col-2" class="team-green glass-panel rounded-3xl p-3 flex flex-col justify-between relative overflow-hidden border-2 transition-all duration-300">
+            <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-green-500/40">
+                <div class="flex items-center gap-2">
+                    <div id="mascot-2" class="w-11 h-11 rounded-full bg-green-500/30 border-2 border-green-400 flex items-center justify-center text-2xl animate-float transition-transform">
+                        🛡️
+                    </div>
+                    <div>
+                        <div id="team-name-2" class="text-base font-black text-white">第三組 (綠隊)</div>
+                        <div id="team-role-2" class="text-xs font-bold text-green-300">守護者 🛡️</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-300 font-bold flex items-center justify-end gap-1">
+                        <span>正確/總數:</span>
+                        <span id="acc-2" class="text-amber-300 font-black">0/0</span>
+                    </div>
+                    <div class="text-2xl font-black text-amber-300 tracking-tight" id="score-2">0</div>
+                </div>
+            </div>
+
+            <div class="h-6 flex items-center justify-between my-1 px-2">
+                <div id="combo-badge-2" class="opacity-0 transition-opacity duration-300 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1">
+                    ⚡ 連擊 <span id="combo-count-2">0</span>
+                </div>
+                <div id="streak-fire-2" class="hidden text-xs text-amber-300 font-black animate-pulse">🔥 火力全開!</div>
+            </div>
+
+            <div id="visual-track-2" class="h-16 bg-slate-950/80 rounded-2xl border border-slate-700/80 mb-2 relative overflow-hidden flex items-center justify-center"></div>
+
+            <div id="q-box-2" class="glass-card flex-1 rounded-2xl p-3.5 flex flex-col justify-between relative overflow-y-auto">
+                <div class="text-center my-auto">
+                    <div class="text-4xl mb-2">⏱️</div>
+                    <div class="text-lg font-black text-slate-800">準備進行「時間」大冒險！</div>
+                    <div class="text-sm font-bold text-slate-500 mt-1">點擊右上角「選單設定」或下方開始按鈕！</div>
+                </div>
+            </div>
+
+            <div id="options-2" class="grid grid-cols-2 gap-2 mt-2"></div>
+        </section>
+
+    </main>
+
+    <div id="setup-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel max-w-3xl w-full rounded-3xl p-6 md:p-8 border-2 border-amber-400/50 shadow-2xl relative animate-pop max-h-[92vh] overflow-y-auto">
+            <div class="text-center mb-5">
+                <span class="text-4xl">⏱️</span>
+                <h2 class="text-3xl font-black text-white mt-1">三年級「時間」大冒險</h2>
+                <p class="text-amber-300 font-extrabold text-sm md:text-base mt-1.5 tracking-wider flex items-center justify-center gap-1">
+                    <span>🏫</span> 天水圍官立小學
+                </p>
+            </div>
+
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-amber-300 font-black text-sm mb-1.5">1. 選擇比賽對決模式</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="mode-race" type="button" onclick="window.setGameMode('race')" class="wii-btn p-3 rounded-2xl border-2 font-black text-left flex items-center gap-3 bg-amber-500 border-amber-300 text-slate-950">
+                            <span class="text-2xl">⚡</span>
+                            <div>
+                                <div class="text-base">同題搶答競速</div>
+                                <div class="text-xs opacity-80 font-semibold">三組面對相同題目，答對進中央講評</div>
+                            </div>
+                        </button>
+                        <button id="mode-indep" type="button" onclick="window.setGameMode('indep')" class="wii-btn p-3 rounded-2xl border-2 font-black text-left flex items-center gap-3 bg-slate-800 border-slate-600 text-slate-300">
+                            <span class="text-2xl">🎯</span>
+                            <div>
+                                <div class="text-base">各自獨立解題</div>
+                                <div class="text-xs opacity-80 font-semibold">三組各自答題，本組 6 秒微型解答卡</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-amber-300 font-black text-sm mb-1.5">2. 比賽時間限制</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button id="time-60" type="button" onclick="window.setTimeLimit(60)" class="wii-btn p-2 rounded-xl font-black border-2 bg-amber-500 border-amber-300 text-slate-950 text-center text-xs md:text-sm">
+                            ⏱️ 1 分鐘
+                        </button>
+                        <button id="time-120" type="button" onclick="window.setTimeLimit(120)" class="wii-btn p-2 rounded-xl font-black border-2 bg-slate-800 border-slate-600 text-slate-300 text-center text-xs md:text-sm">
+                            ⏱️ 2 分鐘
+                        </button>
+                        <button id="time-180" type="button" onclick="window.setTimeLimit(180)" class="wii-btn p-2 rounded-xl font-black border-2 bg-slate-800 border-slate-600 text-slate-300 text-center text-xs md:text-sm">
+                            ⏱️ 3 分鐘
+                        </button>
+                        <button id="time-300" type="button" onclick="window.setTimeLimit(300)" class="wii-btn p-2 rounded-xl font-black border-2 bg-slate-800 border-slate-600 text-slate-300 text-center text-xs md:text-sm">
+                            ⏱️ 5 分鐘
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-amber-300 font-black text-sm">3. 隊伍職業角色選擇</label>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="window.setActiveTeamPicker(0)" id="tab-team-0" class="px-3 py-1 rounded-lg text-xs font-black bg-red-600 text-white border border-red-300">第一組角色</button>
+                            <button type="button" onclick="window.setActiveTeamPicker(1)" id="tab-team-1" class="px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-slate-300 border border-slate-600">第二組角色</button>
+                            <button type="button" onclick="window.setActiveTeamPicker(2)" id="tab-team-2" class="px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-slate-300 border border-slate-600">第三組角色</button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-900/90 p-3 rounded-2xl border-2 border-indigo-500/40">
+                        <div id="char-picker-header" class="text-xs font-bold text-indigo-300 mb-2 flex items-center gap-2">
+                            <span>👤</span> <span id="char-picker-title">第一組選擇職業</span>
+                        </div>
+                        <div id="char-grid" class="grid grid-cols-3 sm:grid-cols-6 gap-2"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-amber-300 font-black text-sm mb-1.5">4. 選擇五大熱門 Wii 競賽主題</label>
+                    <select id="theme-select" class="w-full bg-slate-800 text-amber-300 font-black p-3 rounded-2xl border-2 border-amber-400/60 focus:border-amber-400 outline-none text-base cursor-pointer">
+                        <option value="🎳 時間保齡球">🎳 1. 時間保齡球 (Time Strike Bowling)</option>
+                        <option value="🏎️ 疾速時間賽車">🏎️ 2. 疾速時間賽車 (Grand Prix Time Race)</option>
+                        <option value="🚣 急流節奏劃艇">🚣 3. 急流節奏劃艇 (River Rapids Rowing)</option>
+                        <option value="🏹 精準時刻射箭">🏹 4. 精準時刻射箭 (Precision Time Archery)</option>
+                        <option value="🚀 銀河重力火箭">🚀 5. 銀河重力火箭 (Galaxy Gravity Launch)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-amber-300 font-black text-sm mb-1.5">5. 小三「時間」單元重點關卡</label>
+                    <select id="stage-select" class="w-full bg-slate-800 text-white font-bold p-3 rounded-2xl border-2 border-slate-600 focus:border-amber-400 outline-none cursor-pointer">
+                        <option value="0">🔥 【小三時間綜合大對決】全範疇隨機題目</option>
+                        <option value="1">第一關：秒的認識與時間單位選擇 (秒/分/小時)</option>
+                        <option value="2">第二關：時間間隔與長度計算 (小時與分鐘)</option>
+                        <option value="3">第三關：開始時刻與結束時刻推理</option>
+                        <option value="4">第四關：12小時制與24小時報時制互化</option>
+                        <option value="5">第五關：跨越正午與多樣生活情境題</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+                <button type="button" onclick="window.startGame()" class="wii-btn flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-xl py-3.5 rounded-2xl shadow-lg border-2 border-emerald-300 text-center tracking-wider">
+                    🚀 開始比賽 GAME START!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="victory-modal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center p-4">
+        <div class="glass-panel max-w-2xl w-full rounded-3xl p-6 md:p-8 border-2 border-amber-400 text-center animate-pop relative overflow-hidden">
+            <div class="text-5xl mb-2 animate-bounce">🏆</div>
+            <h2 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-100 to-amber-400">
+                時間大冒險比賽結束！頒獎典禮
+            </h2>
+            <p class="text-slate-300 text-sm mt-1 mb-6">天水圍官立小學同學表現非常出色！以下為最終得分排行榜：</p>
+
+            <div id="podium-container" class="flex justify-center items-end gap-3 h-60 mb-6 px-4"></div>
+
+            <div class="flex gap-4">
+                <button type="button" onclick="window.openSetupModal()" class="wii-btn flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3.5 rounded-2xl border-2 border-indigo-400">
+                    🔄 重新設定 / 再玩一次
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let soundMuted = false;
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function toggleSound() {
+            soundMuted = !soundMuted;
+            const soundIcon = document.getElementById('sound-icon');
+            if (soundIcon) soundIcon.innerText = soundMuted ? '🔇' : '🔊';
+        }
+
+        const sound = {
+            play: function(type, comboCount = 0) {
+                if (soundMuted) return;
+                try {
+                    const ctx = getAudioContext();
+                    const now = ctx.currentTime;
+
+                    if (type === 'tick') {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(600, now);
+                        gain.gain.setValueAtTime(0.04, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                        osc.start(now); osc.stop(now + 0.05);
+                    } else if (type === 'correct') {
+                        const baseFreq = 523.25 + Math.min(comboCount * 40, 400);
+                        [baseFreq, baseFreq * 1.25, baseFreq * 1.5, baseFreq * 2].forEach((freq, i) => {
+                            const o = ctx.createOscillator();
+                            const g = ctx.createGain();
+                            o.connect(g); g.connect(ctx.destination);
+                            o.type = 'triangle';
+                            o.frequency.setValueAtTime(freq, now + i * 0.07);
+                            g.gain.setValueAtTime(0.18, now + i * 0.07);
+                            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.25);
+                            o.start(now + i * 0.07); o.stop(now + i * 0.07 + 0.25);
+                        });
+                    } else if (type === 'wrong') {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(220, now);
+                        osc.frequency.setValueAtTime(175, now + 0.1);
+                        gain.gain.setValueAtTime(0.18, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                        osc.start(now); osc.stop(now + 0.3);
+                    } else if (type === 'fanfare') {
+                        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                            const o = ctx.createOscillator();
+                            const g = ctx.createGain();
+                            o.connect(g); g.connect(ctx.destination);
+                            o.type = 'triangle';
+                            o.frequency.setValueAtTime(freq, now + i * 0.12);
+                            g.gain.setValueAtTime(0.22, now + i * 0.12);
+                            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+                            o.start(now + i * 0.12); o.stop(now + i * 0.12 + 0.35);
+                        });
+                    }
+                } catch(e) {}
+            }
+        };
+
+        const canvas = document.getElementById('effects-canvas');
+        const pCtx = canvas ? canvas.getContext('2d') : null;
+        let particles = [];
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function triggerBurst(x, y) {
+            const colors = ['#facc15', '#4ade80', '#60a5fa', '#f87171', '#a855f7'];
+            for (let i = 0; i < 28; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.7) * 12,
+                    size: Math.random() * 7 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 1,
+                    decay: Math.random() * 0.025 + 0.015
+                });
+            }
+        }
+
+        function renderParticles() {
+            if (pCtx && canvas) {
+                pCtx.clearRect(0, 0, canvas.width, canvas.height);
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx; p.y += p.vy;
+                    p.vy += 0.25; p.alpha -= p.decay;
+                    if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+                    pCtx.save();
+                    pCtx.globalAlpha = p.alpha;
+                    pCtx.fillStyle = p.color;
+                    pCtx.beginPath();
+                    pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    pCtx.fill();
+                    pCtx.restore();
+                }
+            }
+            requestAnimationFrame(renderParticles);
+        }
+        requestAnimationFrame(renderParticles);
+
+        function genClockSVG(hours, minutes, seconds = null) {
+            const h = hours % 12;
+            const m = minutes;
+            const hDeg = (h * 30) + (m * 0.5);
+            const mDeg = m * 6;
+            const sDeg = seconds !== null ? seconds * 6 : null;
+
+            let numbersSvg = '';
+            for (let i = 1; i <= 12; i++) {
+                const angle = (i * 30 - 90) * (Math.PI / 180);
+                const x = 50 + 34 * Math.cos(angle);
+                const y = 50 + 34 * Math.sin(angle);
+                numbersSvg += `<text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="7.5" font-weight="900" fill="#0f172a">${i}</text>`;
+            }
+
+            return `
+                <div class="flex items-center gap-3 bg-white/90 p-2 rounded-2xl border-2 border-amber-300 shadow-inner">
+                    <svg width="95" height="95" viewBox="0 0 100 100" class="drop-shadow-md">
+                        <circle cx="50" cy="50" r="46" fill="#ffffff" stroke="#0f172a" stroke-width="4"/>
+                        <circle cx="50" cy="50" r="41" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+                        ${numbersSvg}
+                        <line x1="50" y1="50" x2="${50 + 22 * Math.sin(hDeg * Math.PI / 180)}" y2="${50 - 22 * Math.cos(hDeg * Math.PI / 180)}" stroke="#ef4444" stroke-width="4.5" stroke-linecap="round"/>
+                        <line x1="50" y1="50" x2="${50 + 31 * Math.sin(mDeg * Math.PI / 180)}" y2="${50 - 31 * Math.cos(mDeg * Math.PI / 180)}" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+                        ${sDeg !== null ? `<line x1="50" y1="50" x2="${50 + 35 * Math.sin(sDeg * Math.PI / 180)}" y2="${50 - 35 * Math.cos(sDeg * Math.PI / 180)}" stroke="#f59e0b" stroke-width="1.5"/>` : ''}
+                        <circle cx="50" cy="50" r="3.5" fill="#0f172a"/>
+                    </svg>
+                    <div class="text-left font-black text-slate-800 text-xs sm:text-sm">
+                        <div class="text-indigo-600 font-mono text-lg font-black">${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}</div>
+                        <div class="text-slate-500 font-bold">🔴 時針位 (紅): ${hours} 時</div>
+                        <div class="text-slate-500 font-bold">🔵 分針位 (藍): ${minutes} 分</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function genTimelineSVG(startStr, durationStr, endStr) {
+            return `
+                <div class="w-full max-w-md bg-slate-900/90 p-3 rounded-2xl border-2 border-indigo-400/60 shadow-lg">
+                    <div class="text-xs font-black text-indigo-300 mb-1 flex items-center justify-between">
+                        <span>⏱️ 時間數軸推理 (Time Line)</span>
+                        <span class="text-amber-300 font-mono">長度: ${durationStr}</span>
+                    </div>
+                    <svg width="100%" height="45" viewBox="0 0 320 45">
+                        <line x1="30" y1="26" x2="290" y2="26" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="45" cy="26" r="7" fill="#3b82f6" stroke="#ffffff" stroke-width="2"/>
+                        <text x="45" y="13" text-anchor="middle" font-size="10" font-weight="900" fill="#60a5fa">${startStr}</text>
+                        <path d="M 55 20 Q 160 2 265 20" fill="none" stroke="#facc15" stroke-width="2.5" stroke-dasharray="4,2"/>
+                        <polygon points="268,22 260,16 260,24" fill="#facc15"/>
+                        <text x="160" y="11" text-anchor="middle" font-size="10" font-weight="900" fill="#facc15">+ ${durationStr}</text>
+                        <circle cx="275" cy="26" r="7" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+                        <text x="275" y="13" text-anchor="middle" font-size="10" font-weight="900" fill="#34d399">${endStr}</text>
+                    </svg>
+                </div>
+            `;
+        }
+
+        function gen12vs24SVG(h12, m, period) {
+            const h24 = period === '下午' || period === '晚上' ? (h12 === 12 ? 12 : h12 + 12) : (period === '上午' && h12 === 12 ? 0 : h12);
+            const str12 = `${period} ${h12}:${m.toString().padStart(2,'0')}`;
+            const str24 = `${h24.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+            const icon = period.includes('下午') || period.includes('晚上') ? '🌙' : '☀️';
+
+            return `
+                <div class="flex items-center justify-center gap-2 sm:gap-4 bg-slate-900/90 p-2.5 rounded-2xl border-2 border-amber-400/60 shadow-lg">
+                    <div class="bg-indigo-950 px-3 py-1.5 rounded-xl border border-indigo-400/50 text-center">
+                        <div class="text-[10px] text-indigo-300 font-bold">${icon} 12小時報時制</div>
+                        <div class="text-sm sm:text-base font-black text-amber-300 font-mono">${str12}</div>
+                    </div>
+                    <div class="text-xl font-black text-amber-400">⚡ 換算 ➔</div>
+                    <div class="bg-slate-950 px-3 py-1.5 rounded-xl border border-emerald-400/50 text-center">
+                        <div class="text-[10px] text-emerald-300 font-bold">📟 24小時報時制</div>
+                        <div class="text-sm sm:text-base font-black text-emerald-400 font-mono">${str24}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const characterClasses = [
+            { id: 'explorer', name: '探險家', icon: '🧭' },
+            { id: 'wizard',   name: '魔法師', icon: '🧙' },
+            { id: 'guardian', name: '守護者', icon: '🛡️' },
+            { id: 'alien',    name: '外星人', icon: '👽' },
+            { id: 'ninja',    name: '忍者',   icon: '🥷' },
+            { id: 'warrior',  name: '戰士',   icon: '⚔️' }
+        ];
+
+        let selectedTeamChars = [characterClasses[0], characterClasses[1], characterClasses[2]];
+        let activeTeamPickerIdx = 0;
+
+        function setActiveTeamPicker(teamIdx) {
+            activeTeamPickerIdx = teamIdx;
+            const teamColors = ['第一組', '第二組', '第三組'];
+            const tabColors = [
+                ['bg-red-600', 'text-white', 'border-red-300'],
+                ['bg-blue-600', 'text-white', 'border-blue-300'],
+                ['bg-green-600', 'text-white', 'border-green-300']
+            ];
+
+            for (let i = 0; i < 3; i++) {
+                const tab = document.getElementById(`tab-team-${i}`);
+                if (tab) {
+                    tab.className = i === teamIdx ? `px-3 py-1 rounded-lg text-xs font-black ${tabColors[i].join(' ')}` : `px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-slate-300 border border-slate-600`;
+                }
+            }
+
+            const pickerTitle = document.getElementById('char-picker-title');
+            if (pickerTitle) pickerTitle.innerText = `${teamColors[teamIdx]} 選擇職業`;
+            renderCharPickerGrid();
+        }
+
+        function renderCharPickerGrid() {
+            const grid = document.getElementById('char-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            const currentSelected = selectedTeamChars[activeTeamPickerIdx];
+
+            characterClasses.forEach(char => {
+                const isSel = (char.id === currentSelected.id);
+                const card = document.createElement('div');
+                card.className = `char-card flex flex-col items-center justify-center p-2 text-center ${isSel ? 'selected' : ''}`;
+                card.innerHTML = `
+                    <div class="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-2xl mb-1 shadow-inner">
+                        ${char.icon}
+                    </div>
+                    <div class="text-xs font-black ${isSel ? 'text-amber-300' : 'text-slate-200'}">${char.name}</div>
+                `;
+                card.onclick = () => window.selectCharacter(char.id);
+                grid.appendChild(card);
+            });
+        }
+
+        function selectCharacter(charId) {
+            const char = characterClasses.find(c => c.id === charId) || characterClasses[0];
+            selectedTeamChars[activeTeamPickerIdx] = char;
+            renderCharPickerGrid();
+
+            const mascot = document.getElementById(`mascot-${activeTeamPickerIdx}`);
+            const role = document.getElementById(`team-role-${activeTeamPickerIdx}`);
+            if (mascot) mascot.innerText = char.icon;
+            if (role) role.innerText = `${char.name} ${char.icon}`;
+        }
+
+        function shuffle(arr) {
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        // STAGE 1: Seconds & Time Unit Selection (Rich Scenarios)
+        function genStage1() {
+            const type = Math.floor(Math.random() * 3);
+            if (type === 0) {
+                const activities = [
+                    { name: "50米短跑比賽", unit: "秒", val: (Math.floor(Math.random() * 6) + 2) * 5 },
+                    { name: "拍手 10 下", unit: "秒", val: Math.floor(Math.random() * 5) + 3 },
+                    { name: "天官小學一堂數學課", unit: "分鐘", val: 35 },
+                    { name: "晚上睡眠時間", unit: "小時", val: 8 },
+                    { name: "刷牙保健時間", unit: "分鐘", val: 3 }
+                ];
+                const act = activities[Math.floor(Math.random() * activities.length)];
+                let options = [];
+                if (act.unit === "秒") {
+                    options = shuffle([`${act.val} 秒`, `${act.val} 分鐘`, `${act.val} 小時`, `${act.val} 天`]);
+                } else if (act.unit === "分鐘") {
+                    options = shuffle([`${act.val} 分鐘`, `${act.val} 秒`, `${act.val} 小時`, `${act.val} 天`]);
+                } else {
+                    options = shuffle([`${act.val} 小時`, `${act.val} 秒`, `${act.val} 分鐘`, `${act.val} 天`]);
+                }
+
+                return {
+                    title: "第一關：時間單位選擇",
+                    qText: `進行 <span class="text-amber-600 font-black">「${act.name}」</span>，最合理的所需時間單位是：`,
+                    ans: `${act.val} ${act.unit}`,
+                    tip: `「${act.name}」所需時間比較適中，合理的單位是「${act.unit}」。`,
+                    visualHtml: genClockSVG(0, 0, act.unit === "秒" ? act.val : 0),
+                    options: options
+                };
+            } else if (type === 1) {
+                const mins = Math.floor(Math.random() * 6) + 1;
+                const totalSec = mins * 60;
+                const options = shuffle([`${totalSec} 秒`, `${totalSec - 30} 秒`, `${totalSec + 60} 秒`, `${mins * 10} 秒`]);
+                return {
+                    title: "第一關：分與秒的單位換算",
+                    qText: `<span class="text-indigo-700 font-black">${mins} 分鐘</span> 相等於多少秒？`,
+                    ans: `${totalSec} 秒`,
+                    tip: `因為 1 分鐘 = 60 秒，所以 ${mins} 分鐘 = ${mins} × 60 = ${totalSec} 秒。`,
+                    visualHtml: genClockSVG(0, mins, 0),
+                    options: options
+                };
+            } else {
+                const h = Math.floor(Math.random() * 11) + 1;
+                const m = (Math.floor(Math.random() * 11) + 1) * 5;
+                const ansStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                const wrong1 = `${h.toString().padStart(2,'0')}:${((m + 15) % 60).toString().padStart(2,'0')}`;
+                const wrong2 = `${(h % 12 + 1).toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                const wrong3 = `${h.toString().padStart(2,'0')}:${(m > 10 ? m - 10 : m + 20).toString().padStart(2,'0')}`;
+
+                return {
+                    title: "第一關：看鐘面讀出時刻",
+                    qText: `觀察鐘面時針與分針的位置，請問正確顯示的時刻是：`,
+                    ans: ansStr,
+                    tip: `時針指向 ${h}，分針指向 ${m / 5} (即 ${m} 分鐘)。`,
+                    visualHtml: genClockSVG(h, m),
+                    options: shuffle([ansStr, wrong1, wrong2, wrong3])
+                };
+            }
+        }
+
+        // STAGE 2: Time Duration Calculation (Rich Scenarios)
+        function genStage2() {
+            const scenarios = [
+                "天官小學數學課", "電腦簡報設計課", "常識科實驗課", "體育科籃球訓練",
+                "港鐵車程 (天水圍 ➔ 尖沙咀)", "音樂校隊合奏練習", "校園電視台播報"
+            ];
+            const scenarioName = scenarios[Math.floor(Math.random() * scenarios.length)];
+
+            const startH = Math.floor(Math.random() * 4) + 8;
+            const startM = (Math.floor(Math.random() * 4)) * 15;
+            const durM = (Math.floor(Math.random() * 5) + 1) * 15;
+
+            let endM = startM + durM;
+            let endH = startH + Math.floor(endM / 60);
+            endM = endM % 60;
+
+            const startStr = `${startH.toString().padStart(2,'0')}:${startM.toString().padStart(2,'0')}`;
+            const endStr = `${endH.toString().padStart(2,'0')}:${endM.toString().padStart(2,'0')}`;
+            
+            const durH = Math.floor(durM / 60);
+            const remainM = durM % 60;
+            const durStr = durH > 0 ? (remainM > 0 ? `${durH} 小時 ${remainM} 分鐘` : `${durH} 小時`) : `${remainM} 分鐘`;
+
+            const options = shuffle([
+                durStr,
+                `${durM + 15} 分鐘`,
+                `${durM > 20 ? durM - 15 : durM + 30} 分鐘`,
+                `${durH + 1} 小時`
+            ]);
+
+            return {
+                title: "第二關：計算經過時間",
+                qText: `<b>【${scenarioName}】</b>從 <span class="text-indigo-600 font-black">${startStr}</span> 開始，至 <span class="text-emerald-600 font-black">${endStr}</span> 結束，共經過了多少時間？`,
+                ans: durStr,
+                tip: `從 ${startStr} 到 ${endStr}，時間長度為 ${durStr}。`,
+                visualHtml: genTimelineSVG(startStr, durStr, endStr),
+                options: options
+            };
+        }
+
+        // STAGE 3: Start & End Time Reasoning (Rich Scenarios)
+        function genStage3() {
+            const isFindEnd = Math.random() > 0.5;
+            const startH = Math.floor(Math.random() * 3) + 2;
+            const startM = (Math.floor(Math.random() * 4)) * 15;
+            const durM = (Math.floor(Math.random() * 3) + 1) * 20;
+
+            let endM = startM + durM;
+            let endH = startH + Math.floor(endM / 60);
+            endM = endM % 60;
+
+            const startStr = `下午 ${startH}:${startM.toString().padStart(2,'0')}`;
+            const endStr = `下午 ${endH}:${endM.toString().padStart(2,'0')}`;
+            const durStr = `${durM} 分鐘`;
+
+            const forwardScenarios = [
+                { name: "3D動畫電影放映", subject: "放映", action: "片長" },
+                { name: "校際足球聯賽", subject: "開賽", action: "比賽時間" },
+                { name: "鋼琴演奏大賽", subject: "登場比賽", action: "演奏時間" },
+                { name: "機器人編程比賽", subject: "挑戰", action: "比賽時間" }
+            ];
+            const backwardScenarios = [
+                { name: "屯馬綫列車", subject: "到站", action: "車程" },
+                { name: "校際合唱團練習", subject: "散隊放學", action: "練習時間" },
+                { name: "舞蹈校隊表演", subject: "演出完畢", action: "綵排與演出" },
+                { name: "童軍露營營火會", subject: "結束", action: "活動時間" }
+            ];
+
+            if (isFindEnd) {
+                const sc = forwardScenarios[Math.floor(Math.random() * forwardScenarios.length)];
+                const options = shuffle([
+                    endStr,
+                    `下午 ${endH}:${((endM + 15) % 60).toString().padStart(2,'0')}`,
+                    `下午 ${endH + 1}:${endM.toString().padStart(2,'0')}`,
+                    `下午 ${startH}:${endM.toString().padStart(2,'0')}`
+                ]);
+                return {
+                    title: "第三關：推理結束時刻",
+                    qText: `<b>【${sc.name}】</b>於 <span class="text-indigo-600 font-black">${startStr}</span> ${sc.subject}，${sc.action}為 <span class="text-amber-600 font-black">${durStr}</span>，請問<b>【結束時刻】</b>是？`,
+                    ans: endStr,
+                    tip: `${startStr} 加上 ${durStr}，結束時刻是 ${endStr}。`,
+                    visualHtml: genTimelineSVG(startStr, durStr, endStr),
+                    options: options
+                };
+            } else {
+                const sc = backwardScenarios[Math.floor(Math.random() * backwardScenarios.length)];
+                const options = shuffle([
+                    startStr,
+                    `下午 ${startH}:${((startM + 15) % 60).toString().padStart(2,'0')}`,
+                    `下午 ${startH > 1 ? startH - 1 : 12}:${startM.toString().padStart(2,'0')}`,
+                    `下午 ${endH}:${startM.toString().padStart(2,'0')}`
+                ]);
+                return {
+                    title: "第三關：倒推開始時刻",
+                    qText: `<b>【${sc.name}】</b>於 <span class="text-emerald-600 font-black">${endStr}</span> ${sc.subject}，${sc.action}為 <span class="text-amber-600 font-black">${durStr}</span>，請問<b>【出發/開始時刻】</b>是？`,
+                    ans: startStr,
+                    tip: `${endStr} 倒退 ${durStr}，開始時刻是 ${startStr}。`,
+                    visualHtml: genTimelineSVG(startStr, durStr, endStr),
+                    options: options
+                };
+            }
+        }
+
+        // STAGE 4: 12-Hour vs 24-Hour Conversion
+        function genStage4() {
+            const is12to24 = Math.random() > 0.5;
+            const h12 = Math.floor(Math.random() * 11) + 1;
+            const m = (Math.floor(Math.random() * 12)) * 5;
+            const period = Math.random() > 0.5 ? '下午' : '上午';
+
+            const h24 = period === '下午' ? (h12 === 12 ? 12 : h12 + 12) : (h12 === 12 ? 0 : h12);
+            const str12 = `${period} ${h12}:${m.toString().padStart(2,'0')}`;
+            const str24 = `${h24.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+
+            if (is12to24) {
+                const wrong1 = `${(h24 + 1) % 24}:${m.toString().padStart(2,'0')}`;
+                const wrong2 = `${h12.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                const wrong3 = `${(h24 + 12) % 24}:${m.toString().padStart(2,'0')}`;
+                return {
+                    title: "第四關：12小時制 ➔ 24小時制",
+                    qText: `將 12小時報時制的「<span class="text-indigo-600 font-black">${str12}</span>」換算為 <b>24小時報時制</b>：`,
+                    ans: str24,
+                    tip: period === '下午' && h12 !== 12 ? `下午時間換算為 24 小時制需將小時數 +12 (${h12} + 12 = ${h24})。` : `上午時間轉換 24 小時制數字維持不變。`,
+                    visualHtml: gen12vs24SVG(h12, m, period),
+                    options: shuffle([str24, wrong1, wrong2, wrong3])
+                };
+            } else {
+                const wrong1 = `${period === '下午' ? '上午' : '下午'} ${h12}:${m.toString().padStart(2,'0')}`;
+                const wrong2 = `${period} ${(h12 % 12 + 1)}:${m.toString().padStart(2,'0')}`;
+                const wrong3 = `${period} ${h24}:${m.toString().padStart(2,'0')}`;
+                return {
+                    title: "第四關：24小時制 ➔ 12小時制",
+                    qText: `電子鐘顯示 24小時報時制「<span class="text-emerald-600 font-black">${str24}</span>」，換算為 <b>12小時報時制</b> 是：`,
+                    ans: str12,
+                    tip: `24小時制的 ${str24} 對應 12小時制的 ${str12}。`,
+                    visualHtml: gen12vs24SVG(h12, m, period),
+                    options: shuffle([str12, wrong1, wrong2, wrong3])
+                };
+            }
+        }
+
+        // STAGE 5: RICH DYNAMIC SCENARIOS (CROSSING NOON LIFE PROBLEMS)
+        function genStage5() {
+            const type = Math.floor(Math.random() * 2);
+
+            const startMArr = [10, 15, 20, 30, 40, 45, 50];
+            const startM = startMArr[Math.floor(Math.random() * startMArr.length)];
+            const startH = Math.random() > 0.3 ? 11 : 10;
+            
+            const durMArr = [25, 30, 35, 40, 45, 50, 55];
+            const durM = durMArr[Math.floor(Math.random() * durMArr.length)];
+
+            const totalM = (startH * 60 + startM) + durM;
+            const endH = Math.floor(totalM / 60);
+            const remM = totalM % 60;
+            
+            const endH12 = endH > 12 ? endH - 12 : endH;
+            const endPeriod = endH >= 12 ? '下午' : '上午';
+
+            const startStr = `上午 ${startH.toString().padStart(2,'0')}:${startM.toString().padStart(2,'0')}`;
+            const endStr = `${endPeriod} ${endH12.toString().padStart(2,'0')}:${remM.toString().padStart(2,'0')}`;
+            const durStr = `${durM} 分鐘`;
+
+            const richScenarios = [
+                {
+                    title: "參觀科學館",
+                    qForward: `天官小學參觀香港科學館，乘坐校巴於 <span class="text-indigo-600 font-black">${startStr}</span> 出發，車程費時 <span class="text-amber-600 font-black">${durStr}</span>，到達科學館的時刻是：`,
+                    qBackward: `天官小學師生於 <span class="text-emerald-600 font-black">${endStr}</span> 抵達科學館，已知乘坐校巴費時 <span class="text-amber-600 font-black">${durStr}</span>，請問<b>【校巴出發時刻】</b>是：`
+                },
+                {
+                    title: "迪士尼飛越太空山",
+                    qForward: `同學於迪士尼樂園 <span class="text-indigo-600 font-black">${startStr}</span> 開始排隊玩飛越太空山，排隊及遊玩共花了 <span class="text-amber-600 font-black">${durStr}</span>，離開設施的時刻是：`,
+                    qBackward: `同學於 <span class="text-emerald-600 font-black">${endStr}</span> 完成迪士尼太空山遊玩，排隊及遊玩共花了 <span class="text-amber-600 font-black">${durStr}</span>，請問<b>【開始排隊時刻】</b>是：`
+                },
+                {
+                    title: "校運會接力賽",
+                    qForward: `天官小學陸運會 4×100米接力賽於 <span class="text-indigo-600 font-black">${startStr}</span> 鳴槍開跑，賽程及頒獎費時 <span class="text-amber-600 font-black">${durStr}</span>，頒獎完畢的時刻是：`,
+                    qBackward: `接力賽頒獎典禮於 <span class="text-emerald-600 font-black">${endStr}</span> 結束，已知比賽與頒獎共花了 <span class="text-amber-600 font-black">${durStr}</span>，請問<b>【開跑時刻】</b>是：`
+                },
+                {
+                    title: "海洋公園海豚表演",
+                    qForward: `海洋公園海豚劇場於 <span class="text-indigo-600 font-black">${startStr}</span> 開幕演出，節目及講解長達 <span class="text-amber-600 font-black">${durStr}</span>，表演散場的時刻是：`,
+                    qBackward: `海豚劇場表演於 <span class="text-emerald-600 font-black">${endStr}</span> 散場，表演長度為 <span class="text-amber-600 font-black">${durStr}</span>，請問<b>【開始表演時刻】</b>是：`
+                },
+                {
+                    title: "小廚師蛋糕烘焙班",
+                    qForward: `廚藝社同學於 <span class="text-indigo-600 font-black">${startStr}</span> 開始製作小蛋糕，準備與烘烤耗時 <span class="text-amber-600 font-black">${durStr}</span>，蛋糕熱騰騰出爐的時刻是：`,
+                    qBackward: `新鮮蛋糕於 <span class="text-emerald-600 font-black">${endStr}</span> 烘烤出爐，製作與烘烤共費時 <span class="text-amber-600 font-black">${durStr}</span>，請問<b>【開始製作時刻】</b>是：`
+                },
+                {
+                    title: "午膳與小憩體驗",
+                    qForward: `天官小學生於 <span class="text-indigo-600 font-black">${startStr}</span> 開始享用午膳與休息，午膳時間共 <span class="text-amber-600 font-black">${durStr}</span>，午膳結束的時刻是：`,
+                    qBackward: `同學於 <span class="text-emerald-600 font-black">${endStr}</span> 結束午膳與休息，已知午膳時間共 <span class="text-amber-600 font-black">${durStr}</span>，請問<b>【開始午膳時刻】</b>是：`
+                }
+            ];
+
+            const sc = richScenarios[Math.floor(Math.random() * richScenarios.length)];
+
+            if (type === 0) {
+                const wrong1 = `下午 01:${remM.toString().padStart(2,'0')}`;
+                const wrong2 = `下午 12:${((remM + 15) % 60).toString().padStart(2,'0')}`;
+                const wrong3 = `上午 12:${remM.toString().padStart(2,'0')}`;
+
+                return {
+                    title: `第五關：${sc.title} (推算時刻)`,
+                    qText: sc.qForward,
+                    ans: endStr,
+                    tip: `${startStr} 經過 ${60 - startM} 分鐘到達正午 12:00，再過 ${durM - (60 - startM)} 分鐘到達 ${endStr}。`,
+                    visualHtml: genTimelineSVG(startStr, durStr, endStr),
+                    options: shuffle([endStr, wrong1, wrong2, wrong3])
+                };
+            } else {
+                const wrong1 = `上午 11:${((startM + 10) % 60).toString().padStart(2,'0')}`;
+                const wrong2 = `上午 10:${startM.toString().padStart(2,'0')}`;
+                const wrong3 = `下午 12:${startM.toString().padStart(2,'0')}`;
+
+                return {
+                    title: `第五關：${sc.title} (倒推時刻)`,
+                    qText: sc.qBackward,
+                    ans: startStr,
+                    tip: `從 ${endStr} 倒退 ${durStr}（跨越正午 12:00），開始時刻是 ${startStr}。`,
+                    visualHtml: genTimelineSVG(startStr, durStr, endStr),
+                    options: shuffle([startStr, wrong1, wrong2, wrong3])
+                };
+            }
+        }
+
+        function genQuestion(stageNum) {
+            let stage = stageNum;
+            if (stage === 0) stage = Math.floor(Math.random() * 5) + 1;
+            if (stage === 1) return genStage1();
+            if (stage === 2) return genStage2();
+            if (stage === 3) return genStage3();
+            if (stage === 4) return genStage4();
+            return genStage5();
+        }
+
+        function genUniqueQuestion(stageNum) {
+            if (!gameState.questionHistory) gameState.questionHistory = [];
+            let q = null;
+            let attempts = 0;
+            while (attempts < 25) {
+                q = genQuestion(stageNum);
+                const key = q.qText.replace(/<[^>]*>?/gm, '').trim();
+                if (!gameState.questionHistory.includes(key)) {
+                    gameState.questionHistory.push(key);
+                    if (gameState.questionHistory.length > 20) gameState.questionHistory.shift();
+                    return q;
+                }
+                attempts++;
+            }
+            return q;
+        }
+
+        let gameConfig = { mode: 'race', timeLimit: 60, theme: '🎳 時間保齡球', stage: 0 };
+
+        let gameState = {
+            active: false,
+            timeRemaining: 60,
+            timerInterval: null,
+            scores: [0, 0, 0],
+            combos: [0, 0, 0],
+            correctCount: [0, 0, 0],
+            totalCount: [0, 0, 0],
+            questionCount: [1, 1, 1],
+            currentQ: [null, null, null],
+            sharedQ: null,
+            teamAnswered: [false, false, false],
+            teamProgress: [0, 0, 0],
+            questionHistory: []
+        };
+
+        let reviewTimeLeft = 20;
+        let reviewInterval = null;
+        let isReviewPaused = false;
+        let reviewActive = false;
+
+        let microTimers = [null, null, null];
+        let microTimeLeft = [6, 6, 6];
+
+        function setGameMode(mode) {
+            gameConfig.mode = mode;
+            const btnRace = document.getElementById('mode-race');
+            const btnIndep = document.getElementById('mode-indep');
+            if (btnRace) btnRace.className = `wii-btn p-3 rounded-2xl border-2 font-black text-left flex items-center gap-3 ${mode==='race' ? 'bg-amber-500 border-amber-300 text-slate-950' : 'bg-slate-800 border-slate-600 text-slate-300'}`;
+            if (btnIndep) btnIndep.className = `wii-btn p-3 rounded-2xl border-2 font-black text-left flex items-center gap-3 ${mode==='indep' ? 'bg-amber-500 border-amber-300 text-slate-950' : 'bg-slate-800 border-slate-600 text-slate-300'}`;
+        }
+
+        function setTimeLimit(seconds) {
+            gameConfig.timeLimit = seconds;
+            [60, 120, 180, 300].forEach(sec => {
+                const btn = document.getElementById(`time-${sec}`);
+                if (btn) btn.className = `wii-btn p-2 rounded-xl font-black border-2 ${sec===seconds ? 'bg-amber-500 border-amber-300 text-slate-950' : 'bg-slate-800 border-slate-600 text-slate-300'} text-center text-xs md:text-sm`;
+            });
+        }
+
+        function openSetupModal() {
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            if (reviewInterval) clearInterval(reviewInterval);
+            for (let i = 0; i < 3; i++) if (microTimers[i]) clearInterval(microTimers[i]);
+            microTimers = [null, null, null];
+
+            gameState.active = false;
+            reviewActive = false;
+            document.getElementById('central-review-bar').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+            window.setActiveTeamPicker(0);
+            document.getElementById('setup-modal').classList.remove('hidden');
+        }
+
+        function updateAllButtonStates() {
+            for (let i = 0; i < 3; i++) {
+                const container = document.getElementById(`options-${i}`);
+                if (!container) continue;
+                const btns = container.querySelectorAll('button');
+                const shouldDisable = !gameState.active || reviewActive || gameState.teamAnswered[i];
+                btns.forEach(btn => btn.disabled = shouldDisable);
+            }
+        }
+
+        function renderVisualTracks() {
+            const theme = gameConfig.theme;
+            for (let i = 0; i < 3; i++) {
+                const track = document.getElementById(`visual-track-${i}`);
+                if (!track) continue;
+                const pct = Math.min(gameState.teamProgress[i], 100);
+
+                if (theme.includes('保齡球')) {
+                    track.innerHTML = `
+                        <div class="flex items-center justify-between w-full px-3">
+                            <span class="text-xs font-black text-amber-300 bg-slate-900 px-2 py-0.5 rounded border border-amber-400/30">擊倒: <b id="pin-pct-${i}">${pct}%</b></span>
+                            <div class="flex items-center justify-center gap-1.5">
+                                <div class="pin" id="pin-${i}-1">1</div>
+                                <div class="pin" id="pin-${i}-2">2</div>
+                                <div class="pin" id="pin-${i}-3">3</div>
+                                <div class="pin" id="pin-${i}-4">4</div>
+                                <div class="pin" id="pin-${i}-5">5</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const icon = theme.includes('賽車') ? '🏎️' : (theme.includes('劃艇') ? '🚣' : (theme.includes('射箭') ? '🏹' : '🚀'));
+                    track.innerHTML = `
+                        <div class="w-full px-3 flex flex-col justify-center h-full">
+                            <div class="flex justify-between text-[11px] font-black text-amber-200 mb-1">
+                                <span>${icon} 競技進度</span>
+                                <span class="text-amber-300 font-bold" id="progress-val-${i}">${pct}% 衝刺中</span>
+                                <span>🏁 終點</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-3 rounded-full relative overflow-hidden border border-slate-600">
+                                <div id="track-bar-${i}" class="bg-gradient-to-r from-amber-500 to-red-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                                <span id="track-icon-${i}" class="absolute top-1/2 -translate-y-1/2 text-sm transition-all duration-500" style="left: calc(${pct}% - 10px)">${icon}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function triggerVisualTrackEffect(teamIdx, isCorrect) {
+            if (isCorrect) gameState.teamProgress[teamIdx] = Math.min(gameState.teamProgress[teamIdx] + 20, 100);
+            const pct = gameState.teamProgress[teamIdx];
+            const theme = gameConfig.theme;
+
+            if (theme.includes('保齡球')) {
+                const pinPct = document.getElementById(`pin-pct-${teamIdx}`);
+                if (pinPct) pinPct.innerText = `${pct}%`;
+                if (isCorrect) {
+                    for (let k = 1; k <= 5; k++) {
+                        const pin = document.getElementById(`pin-${teamIdx}-${k}`);
+                        if (pin) pin.classList.add('down');
+                    }
+                    setTimeout(() => {
+                        for (let k = 1; k <= 5; k++) {
+                            const pin = document.getElementById(`pin-${teamIdx}-${k}`);
+                            if (pin) pin.classList.remove('down');
+                        }
+                    }, 1200);
+                }
+            } else {
+                const bar = document.getElementById(`track-bar-${teamIdx}`);
+                const val = document.getElementById(`progress-val-${teamIdx}`);
+                const icon = document.getElementById(`track-icon-${teamIdx}`);
+                if (bar) bar.style.width = `${pct}%`;
+                if (val) val.innerText = `${pct}% 衝刺中`;
+                if (icon) icon.style.left = `calc(${pct}% - 10px)`;
+            }
+        }
+
+        function startGame() {
+            getAudioContext();
+            sound.play('correct');
+
+            const themeSel = document.getElementById('theme-select');
+            const stageSel = document.getElementById('stage-select');
+            if (themeSel) gameConfig.theme = themeSel.value;
+            if (stageSel) gameConfig.stage = parseInt(stageSel.value);
+
+            const stageBadge = document.getElementById('stage-badge');
+            if (stageBadge) stageBadge.innerText = gameConfig.theme;
+
+            gameState.active = true;
+            reviewActive = false;
+            gameState.timeRemaining = gameConfig.timeLimit;
+            gameState.scores = [0, 0, 0];
+            gameState.combos = [0, 0, 0];
+            gameState.correctCount = [0, 0, 0];
+            gameState.totalCount = [0, 0, 0];
+            gameState.questionCount = [1, 1, 1];
+            gameState.teamAnswered = [false, false, false];
+            gameState.teamProgress = [0, 0, 0];
+            gameState.questionHistory = [];
+
+            for (let i = 0; i < 3; i++) if (microTimers[i]) clearInterval(microTimers[i]);
+            microTimers = [null, null, null];
+
+            document.getElementById('setup-modal').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('central-review-bar').classList.add('hidden');
+
+            const teamNames = ['第一組 (紅隊)', '第二組 (藍隊)', '第三組 (綠隊)'];
+            for (let i = 0; i < 3; i++) {
+                const mascot = document.getElementById(`mascot-${i}`);
+                const name = document.getElementById(`team-name-${i}`);
+                const role = document.getElementById(`team-role-${i}`);
+                if (mascot) mascot.innerText = selectedTeamChars[i].icon;
+                if (name) name.innerText = teamNames[i];
+                if (role) role.innerText = `${selectedTeamChars[i].name} ${selectedTeamChars[i].icon}`;
+
+                document.getElementById(`score-${i}`).innerText = '0';
+                document.getElementById(`acc-${i}`).innerText = '0/0';
+                document.getElementById(`combo-count-${i}`).innerText = '0';
+                document.getElementById(`combo-badge-${i}`).style.opacity = '0';
+                document.getElementById(`streak-fire-${i}`).classList.add('hidden');
+                document.getElementById(`team-col-${i}`).classList.remove('flame-aura');
+            }
+
+            renderVisualTracks();
+            updateTimerDisplay();
+            document.getElementById('timer-container').classList.remove('animate-urgent');
+
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            gameState.timerInterval = setInterval(gameLoop, 1000);
+
+            if (gameConfig.mode === 'race') {
+                gameState.sharedQ = genUniqueQuestion(gameConfig.stage);
+                for (let i = 0; i < 3; i++) {
+                    gameState.currentQ[i] = gameState.sharedQ;
+                    renderQuestion(i);
+                }
+            } else {
+                for (let i = 0; i < 3; i++) {
+                    gameState.currentQ[i] = genUniqueQuestion(gameConfig.stage);
+                    renderQuestion(i);
+                }
+            }
+            updateAllButtonStates();
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(gameState.timeRemaining / 60).toString().padStart(2, '0');
+            const s = (gameState.timeRemaining % 60).toString().padStart(2, '0');
+            const timerDisp = document.getElementById('timer-display');
+            if (timerDisp) timerDisp.innerText = `${m}:${s}`;
+        }
+
+        function gameLoop() {
+            if (!gameState.active || reviewActive) return;
+            gameState.timeRemaining--;
+            updateTimerDisplay();
+
+            if (gameState.timeRemaining <= 10 && gameState.timeRemaining > 0) {
+                sound.play('tick');
+                document.getElementById('timer-container').classList.add('animate-urgent');
+            }
+            if (gameState.timeRemaining <= 0) endGame();
+        }
+
+        function renderQuestion(teamIdx) {
+            const q = gameState.currentQ[teamIdx];
+            const qBox = document.getElementById(`q-box-${teamIdx}`);
+            const optionsBox = document.getElementById(`options-${teamIdx}`);
+            if (!qBox || !optionsBox) return;
+
+            qBox.innerHTML = `
+                <div class="flex items-center justify-between gap-1 mb-1.5 pb-1 border-b border-slate-200">
+                    <span class="bg-amber-100 text-amber-900 font-extrabold text-xs px-2 py-0.5 rounded-lg border border-amber-300">
+                        ⏱️ 第 ${gameState.questionCount[teamIdx]} 題
+                    </span>
+                    <span class="bg-red-50 text-red-600 font-bold text-[11px] px-2 py-0.5 rounded-md border border-red-200 truncate max-w-[170px]">
+                        ${q.title}
+                    </span>
+                </div>
+                <div class="my-auto py-1 text-center text-slate-800 font-extrabold text-base md:text-lg leading-snug">
+                    ${q.qText}
+                </div>
+            `;
+
+            optionsBox.innerHTML = '';
+            q.options.forEach((optText) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'wii-btn bg-white hover:bg-amber-50 text-slate-900 font-black p-2.5 text-xs md:text-sm rounded-xl border-2 border-slate-300 shadow flex items-center justify-center text-center min-h-[55px] relative';
+                btn.innerHTML = optText;
+                btn.onclick = (e) => window.checkAnswer(teamIdx, optText, e);
+                optionsBox.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(teamIdx, selectedOpt, event) {
+            if (!gameState.active || reviewActive || gameState.teamAnswered[teamIdx]) return;
+
+            gameState.teamAnswered[teamIdx] = true;
+            updateAllButtonStates();
+
+            const q = gameState.currentQ[teamIdx];
+            const isCorrect = (selectedOpt === q.ans);
+            gameState.totalCount[teamIdx]++;
+
+            if (isCorrect) {
+                gameState.correctCount[teamIdx]++;
+                sound.play('correct', gameState.combos[teamIdx]);
+                if (event && event.clientX) triggerBurst(event.clientX, event.clientY);
+
+                gameState.combos[teamIdx]++;
+                const comboBonus = Math.min(gameState.combos[teamIdx] * 20, 100);
+                const pointsGained = 100 + comboBonus;
+                gameState.scores[teamIdx] += pointsGained;
+
+                showFloatingScore(teamIdx, `+${pointsGained}`, event ? event.clientX : null, event ? event.clientY : null);
+                triggerVisualTrackEffect(teamIdx, true);
+
+                document.getElementById(`score-${teamIdx}`).innerText = gameState.scores[teamIdx];
+                document.getElementById(`acc-${teamIdx}`).innerText = `${gameState.correctCount[teamIdx]}/${gameState.totalCount[teamIdx]}`;
+                document.getElementById(`combo-count-${teamIdx}`).innerText = gameState.combos[teamIdx];
+
+                if (gameState.combos[teamIdx] > 1) document.getElementById(`combo-badge-${teamIdx}`).style.opacity = '1';
+                if (gameState.combos[teamIdx] >= 3) {
+                    document.getElementById(`streak-fire-${teamIdx}`).classList.remove('hidden');
+                    document.getElementById(`team-col-${teamIdx}`).classList.add('flame-aura');
+                }
+            } else {
+                sound.play('wrong');
+                gameState.combos[teamIdx] = 0;
+                document.getElementById(`acc-${teamIdx}`).innerText = `${gameState.correctCount[teamIdx]}/${gameState.totalCount[teamIdx]}`;
+                document.getElementById(`combo-badge-${teamIdx}`).style.opacity = '0';
+                document.getElementById(`streak-fire-${teamIdx}`).classList.add('hidden');
+                document.getElementById(`team-col-${teamIdx}`).classList.remove('flame-aura');
+
+                const col = document.getElementById(`team-col-${teamIdx}`);
+                if (col) {
+                    col.classList.add('animate-shake');
+                    setTimeout(() => col.classList.remove('animate-shake'), 400);
+                }
+                showFloatingScore(teamIdx, '❌ 答錯了', event ? event.clientX : null, event ? event.clientY : null);
+            }
+
+            if (gameConfig.mode === 'race') {
+                startCentralReview(q, isCorrect, teamIdx);
+            } else {
+                startMicroReview(teamIdx, q, isCorrect, selectedOpt);
+            }
+        }
+
+        function startMicroReview(teamIdx, q, isCorrect, selectedOpt) {
+            const optionsBox = document.getElementById(`options-${teamIdx}`);
+            if (optionsBox) {
+                const btns = optionsBox.querySelectorAll('button');
+                btns.forEach(btn => {
+                    btn.disabled = true;
+                    if (btn.innerText.includes(q.ans) || btn.innerHTML.includes(q.ans)) {
+                        btn.className = 'wii-btn bg-emerald-600 text-white font-black p-2.5 text-base rounded-xl border-4 border-amber-300 shadow-xl flex items-center justify-center text-center min-h-[60px] scale-105 relative z-20';
+                        if (!btn.querySelector('.correct-badge')) {
+                            btn.insertAdjacentHTML('beforeend', `<span class="correct-badge absolute -top-2.5 -right-2 bg-amber-400 text-slate-950 text-[10px] px-2 py-0.5 rounded-full border border-slate-900 font-black shadow-md animate-bounce">✅ 正確答案</span>`);
+                        }
+                    } else if (!isCorrect && (btn.innerText.includes(selectedOpt) || btn.innerHTML.includes(selectedOpt))) {
+                        btn.className = 'wii-btn bg-red-600 text-white font-black p-2.5 text-xs rounded-xl border-2 border-red-300 shadow flex items-center justify-center text-center opacity-80';
+                    }
+                });
+            }
+
+            const qBox = document.getElementById(`q-box-${teamIdx}`);
+            if (qBox) {
+                const cardHtml = `
+                    <div id="micro-card-${teamIdx}" class="mt-2 p-2.5 ${isCorrect ? 'bg-emerald-50 border-emerald-400 text-emerald-950' : 'bg-red-50 border-red-400 text-red-950'} border-2 rounded-2xl animate-pop text-left text-xs shadow-md">
+                        <div class="flex items-center justify-between font-black mb-1">
+                            <span>${isCorrect ? '🎉 答對了！' : '❌ 答錯了！'} 正確答案：<b class="text-sm text-emerald-700 font-mono">${q.ans}</b></span>
+                            <span class="bg-slate-900 text-amber-300 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold">倒數 <b id="micro-timer-${teamIdx}">6</b>s</span>
+                        </div>
+                        <div class="my-1.5 flex justify-center">${q.visualHtml || ''}</div>
+                        <div class="text-slate-600 font-bold mb-2 text-[11px]">${q.tip || ''}</div>
+                        <button type="button" onclick="window.nextIndepQuestion(${teamIdx})" class="wii-btn w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1.5 rounded-xl border border-emerald-300 text-xs shadow-md flex items-center justify-center gap-1 min-h-[36px]">
+                            <span>知道了，下一題 ▶</span>
+                        </button>
+                    </div>
+                `;
+                qBox.insertAdjacentHTML('beforeend', cardHtml);
+            }
+
+            microTimeLeft[teamIdx] = 6;
+            if (microTimers[teamIdx]) clearInterval(microTimers[teamIdx]);
+            microTimers[teamIdx] = setInterval(() => {
+                microTimeLeft[teamIdx]--;
+                const timerEl = document.getElementById(`micro-timer-${teamIdx}`);
+                if (timerEl) timerEl.innerText = microTimeLeft[teamIdx];
+                if (microTimeLeft[teamIdx] <= 0) window.nextIndepQuestion(teamIdx);
+            }, 1000);
+        }
+
+        function nextIndepQuestion(teamIdx) {
+            if (microTimers[teamIdx]) clearInterval(microTimers[teamIdx]);
+            microTimers[teamIdx] = null;
+            const card = document.getElementById(`micro-card-${teamIdx}`);
+            if (card) card.remove();
+
+            gameState.teamAnswered[teamIdx] = false;
+            gameState.questionCount[teamIdx]++;
+            gameState.currentQ[teamIdx] = genUniqueQuestion(gameConfig.stage);
+            renderQuestion(teamIdx);
+            updateAllButtonStates();
+        }
+
+        function startCentralReview(q, isCorrect, teamIdx) {
+            reviewActive = true;
+            updateAllButtonStates();
+
+            for (let i = 0; i < 3; i++) {
+                const optionsBox = document.getElementById(`options-${i}`);
+                if (optionsBox) {
+                    const btns = optionsBox.querySelectorAll('button');
+                    btns.forEach(btn => {
+                        if (btn.innerText.includes(q.ans) || btn.innerHTML.includes(q.ans)) {
+                            btn.className = 'wii-btn bg-emerald-600 text-white font-black p-2.5 text-base rounded-xl border-4 border-amber-300 shadow-xl flex items-center justify-center text-center min-h-[60px] scale-105 relative z-20';
+                            if (!btn.querySelector('.correct-badge')) {
+                                btn.insertAdjacentHTML('beforeend', `<span class="correct-badge absolute -top-2.5 -right-2 bg-amber-400 text-slate-950 text-[10px] px-2 py-0.5 rounded-full border border-slate-900 font-black shadow-md animate-bounce">✅ 正確答案</span>`);
+                            }
+                        }
+                    });
+                }
+            }
+
+            const teamName = teamIdx === 0 ? '第一組' : (teamIdx === 1 ? '第二組' : '第三組');
+            const ansText = document.getElementById('review-answer-text');
+            const tipText = document.getElementById('review-tip-text');
+            const visualBox = document.getElementById('review-visual-container');
+
+            if (ansText) ansText.innerText = `${isCorrect ? '🎉 ' + teamName + '搶答正確！' : '❌ ' + teamName + '答錯了！'} 正確答案：${q.ans}`;
+            if (tipText) tipText.innerText = q.tip || `提示：請仔細計算時間長度與時刻。`;
+            if (visualBox) visualBox.innerHTML = q.visualHtml || '';
+
+            reviewTimeLeft = 20;
+            isReviewPaused = false;
+            const timerDisp = document.getElementById('review-timer-display');
+            if (timerDisp) timerDisp.innerText = reviewTimeLeft;
+
+            const reviewBar = document.getElementById('central-review-bar');
+            if (reviewBar) reviewBar.classList.remove('hidden');
+
+            if (reviewInterval) clearInterval(reviewInterval);
+            reviewInterval = setInterval(() => {
+                if (!isReviewPaused) {
+                    reviewTimeLeft--;
+                    const timerEl = document.getElementById('review-timer-display');
+                    if (timerEl) timerEl.innerText = reviewTimeLeft;
+                    if (reviewTimeLeft <= 0) window.forceNextQuestion();
+                }
+            }, 1000);
+        }
+
+        function togglePauseReview() {
+            isReviewPaused = !isReviewPaused;
+            const holdIcon = document.getElementById('hold-btn-icon');
+            const holdText = document.getElementById('hold-btn-text');
+            const holdBtn = document.getElementById('btn-review-hold');
+            if (isReviewPaused) {
+                if (holdIcon) holdIcon.innerText = '▶';
+                if (holdText) holdText.innerText = '繼續倒數';
+                if (holdBtn) holdBtn.className = 'wii-btn bg-pink-600 hover:bg-pink-500 text-white font-black text-xl rounded-2xl border-2 border-pink-300 shadow-xl flex items-center justify-center gap-2 min-h-[60px]';
+            } else {
+                if (holdIcon) holdIcon.innerText = '⏸';
+                if (holdText) holdText.innerText = '停留講評';
+                if (holdBtn) holdBtn.className = 'wii-btn bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xl rounded-2xl border-2 border-indigo-400 shadow-xl flex items-center justify-center gap-2 min-h-[60px]';
+            }
+        }
+
+        function forceNextQuestion() {
+            if (reviewInterval) clearInterval(reviewInterval);
+            const reviewBar = document.getElementById('central-review-bar');
+            if (reviewBar) reviewBar.classList.add('hidden');
+
+            reviewActive = false;
+            gameState.teamAnswered = [false, false, false];
+
+            gameState.sharedQ = genUniqueQuestion(gameConfig.stage);
+            for (let i = 0; i < 3; i++) {
+                gameState.questionCount[i]++;
+                gameState.currentQ[i] = gameState.sharedQ;
+                renderQuestion(i);
+            }
+            updateAllButtonStates();
+        }
+
+        function showFloatingScore(teamIdx, text, x, y) {
+            const el = document.createElement('div');
+            el.className = 'float-score';
+            el.innerText = text;
+            el.style.left = `${x || window.innerWidth / 2}px`;
+            el.style.top = `${y || window.innerHeight / 2}px`;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1200);
+        }
+
+        function endGame() {
+            gameState.active = false;
+            reviewActive = false;
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            if (reviewInterval) clearInterval(reviewInterval);
+            for (let i = 0; i < 3; i++) if (microTimers[i]) clearInterval(microTimers[i]);
+
+            document.getElementById('central-review-bar').classList.add('hidden');
+            sound.play('fanfare');
+
+            const teamNames = ['第一組 (紅隊)', '第二組 (藍隊)', '第三組 (綠隊)'];
+            const results = [
+                { id: 0, name: teamNames[0], char: selectedTeamChars[0], score: gameState.scores[0] },
+                { id: 1, name: teamNames[1], char: selectedTeamChars[1], score: gameState.scores[1] },
+                { id: 2, name: teamNames[2], char: selectedTeamChars[2], score: gameState.scores[2] }
+            ].sort((a, b) => b.score - a.score);
+
+            const podiumContainer = document.getElementById('podium-container');
+            if (podiumContainer) {
+                podiumContainer.innerHTML = `
+                    <div class="flex-1 flex flex-col items-center justify-end h-full">
+                        <div class="text-3xl mb-1">${results[1].char.icon}</div>
+                        <div class="text-xs font-black text-slate-300 mb-1">${results[1].name}</div>
+                        <div class="text-base font-black text-amber-300 mb-1">${results[1].score} 分</div>
+                        <div class="w-full bg-slate-400 border-t-4 border-slate-200 rounded-t-2xl flex items-center justify-center text-2xl font-black text-slate-900 shadow-lg" style="height: 60%;">🥈 亞軍</div>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center justify-end h-full">
+                        <div class="text-4xl mb-1 animate-bounce">👑 ${results[0].char.icon}</div>
+                        <div class="text-xs font-black text-amber-300 mb-1">${results[0].name}</div>
+                        <div class="text-2xl font-black text-amber-300 mb-1">${results[0].score} 分</div>
+                        <div class="w-full bg-gradient-to-b from-amber-400 to-yellow-500 border-t-4 border-amber-200 rounded-t-2xl flex items-center justify-center text-3xl font-black text-amber-950 shadow-2xl" style="height: 85%;">🥇 冠軍</div>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center justify-end h-full">
+                        <div class="text-3xl mb-1">${results[2].char.icon}</div>
+                        <div class="text-xs font-black text-slate-400 mb-1">${results[2].name}</div>
+                        <div class="text-base font-black text-amber-300 mb-1">${results[2].score} 分</div>
+                        <div class="w-full bg-amber-800 border-t-4 border-amber-600 rounded-t-2xl flex items-center justify-center text-xl font-black text-amber-100 shadow-md" style="height: 45%;">🥉 季軍</div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('victory-modal').classList.remove('hidden');
+            for (let i = 0; i < 6; i++) {
+                setTimeout(() => triggerBurst(Math.random() * window.innerWidth, Math.random() * window.innerHeight * 0.6), i * 200);
+            }
+        }
+
+        window.toggleSound = toggleSound;
+        window.setGameMode = setGameMode;
+        window.setTimeLimit = setTimeLimit;
+        window.setActiveTeamPicker = setActiveTeamPicker;
+        window.selectCharacter = selectCharacter;
+        window.openSetupModal = openSetupModal;
+        window.startGame = startGame;
+        window.checkAnswer = checkAnswer;
+        window.forceNextQuestion = forceNextQuestion;
+        window.togglePauseReview = togglePauseReview;
+        window.nextIndepQuestion = nextIndepQuestion;
+
+        window.onload = function() {
+            window.setActiveTeamPicker(0);
+        };
+    </script>
+</body>
+</html>

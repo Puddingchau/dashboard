@@ -28,3 +28,4 @@
 ## 遊戲
 
 - [三年級「五位數」大冒險](https://puddingchau.github.io/dashboard/games/p3-five-digit/)
+- [三年級「時間」大冒險](https://puddingchau.github.io/dashboard/games/p3-time/)
