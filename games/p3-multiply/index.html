@@ -75,6 +75,29 @@
     .timer-urgent { color: #ef4444; animation: pulse 0.5s infinite alternate; }
     @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
 
+    .header-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .fs-btn, .menu-btn {
+      min-height: 44px;
+      border-radius: 10px;
+      font-weight: 900;
+      cursor: pointer;
+      border: 2px solid #64748b;
+      background: #334155;
+      color: #fff;
+    }
+    .fs-btn {
+      width: 48px;
+      font-size: 1.35rem;
+    }
+    .menu-btn {
+      padding: 0 14px;
+      font-size: 1rem;
+    }
+
     /* Setup / Hero Select Screen */
     #setup-screen {
       position: absolute;
@@ -96,6 +119,7 @@
     .opt-btn {
       background: #334155; border: 2px solid #64748b; color: #fff;
       padding: 8px 20px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s;
+      min-height: 48px;
     }
     .opt-btn.active { background: #2563eb; border-color: #60a5fa; box-shadow: 0 0 12px rgba(96,165,250,0.6); }
 
@@ -135,7 +159,12 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    .hero-card:hover { border-color: var(--text-gold); transform: translateY(-2px); }
+    @media (hover: hover) {
+      .hero-card:hover { border-color: var(--text-gold); transform: translateY(-2px); }
+      .start-btn:hover { transform: scale(1.05); }
+      .opt-btn:hover { border-color: #93c5fd; }
+      .fs-btn:hover, .menu-btn:hover { background: #475569; }
+    }
     .p1-row .hero-card.selected { border-color: var(--p1-light); background: #1e3a8a; box-shadow: 0 0 12px rgba(96,165,250,0.8); }
     .p2-row .hero-card.selected { border-color: var(--p2-light); background: #881337; box-shadow: 0 0 12px rgba(248,113,113,0.8); }
     .hero-icon-box { width: 55px; height: 55px; margin-bottom: 4px; }
@@ -153,8 +182,8 @@
       box-shadow: 0 6px 20px rgba(245,158,11,0.5);
       transition: all 0.2s;
       margin-top: 10px;
+      min-height: 64px;
     }
-    .start-btn:hover { transform: scale(1.05); }
 
     /* Main Battle Arena (Responsive Layout) */
     #main-arena {
@@ -275,6 +304,40 @@
     .restart-btn {
       background: var(--border-gold); color: #000; font-size: 1.3rem; font-weight: 900;
       padding: 10px 36px; border: none; border-radius: 30px; cursor: pointer; margin-top: 10px;
+      min-height: 56px;
+    }
+
+    /* ========== SMARTBOARD / WIDE SCREEN ========== */
+    @media (min-width: 1024px) {
+      .game-title-text { font-size: 2rem; }
+      .opt-btn {
+        min-height: 72px;
+        font-size: 1.35rem;
+        padding: 12px 28px;
+      }
+      .ans-btn {
+        min-height: 80px;
+        font-size: clamp(1.4rem, 3.2vh, 2.2rem);
+      }
+      .question-card {
+        font-size: clamp(1.65rem, 4vh, 2.8rem);
+      }
+      .start-btn, .restart-btn {
+        min-height: 80px;
+        font-size: 1.8rem;
+      }
+      .hero-card { min-height: 112px; }
+      .hero-card-name { font-size: 1.25rem; }
+      .select-label { font-size: 1.25rem; }
+      .fs-btn, .menu-btn { min-height: 52px; font-size: 1.2rem; }
+      .zone-header { font-size: 1.35rem; }
+    }
+
+    html:fullscreen, html:-webkit-full-screen,
+    body:fullscreen, body:-webkit-full-screen {
+      width: 100%;
+      height: 100%;
+      background: #0f172a;
     }
   </style>
 </head>
@@ -286,7 +349,13 @@
       <div class="game-title-text">乘法大對決</div>
       <div class="game-subtitle-text">小學數學科三年級</div>
     </div>
-    <div class="timer-display" id="timer">⏱️ 03:00</div>
+    <div class="header-tools">
+      <button id="btn-fullscreen" class="fs-btn" type="button" onclick="togglePageFullscreen()" title="全螢幕 / Fullscreen">
+        <span id="fullscreen-icon" aria-label="進入全螢幕">⛶</span>
+      </button>
+      <button id="btn-setup" class="menu-btn" type="button" onclick="openSetupFromHeader()">選單設定</button>
+      <div class="timer-display" id="timer">⏱️ 03:00</div>
+    </div>
   </div>
 
   <div id="setup-screen">
@@ -736,6 +805,49 @@ function drawArena() {
   requestAnimationFrame(drawArena);
 }
 
+let arenaStarted = false;
+
+function togglePageFullscreen() {
+  const docEl = document.documentElement;
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  try {
+    if (!isFs) {
+      if (docEl.requestFullscreen) docEl.requestFullscreen();
+      else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+  } catch (err) {
+    console.warn('Fullscreen toggle failed', err);
+  }
+}
+
+function syncFullscreenIcon() {
+  const icon = document.getElementById('fullscreen-icon');
+  const btn = document.getElementById('btn-fullscreen');
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (icon) {
+    icon.textContent = isFs ? '↙' : '⛶';
+    icon.setAttribute('aria-label', isFs ? '退出全螢幕' : '進入全螢幕');
+  }
+  if (btn) btn.title = isFs ? '退出全螢幕' : '全螢幕 / Fullscreen';
+}
+document.addEventListener('fullscreenchange', syncFullscreenIcon);
+document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
+
+function openSetupFromHeader() {
+  const setup = document.getElementById('setup-screen');
+  const playing = setup.style.display === 'none';
+  if (playing) {
+    if (!confirm('比賽進行中，開啟設定會中斷目前進度。確定繼續？')) return;
+    if (gameTimer) clearInterval(gameTimer);
+    const mvp = document.getElementById('mvp-modal');
+    if (mvp) mvp.style.display = 'none';
+    setup.style.display = 'flex';
+  }
+}
+
 function startGame() {
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('p1-hero-name').innerText = HEROES[p1HeroIdx].name;
@@ -743,12 +855,14 @@ function startGame() {
 
   ropePos = 0;
   timeLeft = selectedTime;
+  document.getElementById('timer').classList.remove('timer-urgent');
   p1Data = { score: 0, total: 0, correct: 0, times: [], currentQ: null, locked: false };
   p2Data = { score: 0, total: 0, correct: 0, times: [], currentQ: null, locked: false };
 
   renderPlayerQ(1);
   renderPlayerQ(2);
 
+  if (gameTimer) clearInterval(gameTimer);
   gameTimer = setInterval(() => {
     timeLeft--;
     const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
@@ -765,8 +879,11 @@ function startGame() {
     }
   }, 1000);
 
-  initCanvas();
-  drawArena();
+  if (!arenaStarted) {
+    arenaStarted = true;
+    initCanvas();
+    drawArena();
+  }
 }
 
 function endGame(winner) {
