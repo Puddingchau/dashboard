@@ -234,7 +234,15 @@
                 font-size: 0.7rem !important;
             }
             header #sound-icon { font-size: 1rem; }
-            header #fullscreen-icon { font-size: 1rem; }
+            header #btn-fullscreen {
+                font-size: 0.85rem !important;
+                white-space: nowrap !important;
+                overflow: visible !important;
+                width: auto !important;
+                flex-shrink: 0;
+                padding-left: 0.45rem !important;
+                padding-right: 0.45rem !important;
+            }
 
             /* HARD RULE: always 3 team columns on phone (override grid-cols-1) */
             #game-arena {
@@ -615,6 +623,12 @@
             header .wii-btn {
                 min-height: 48px;
             }
+            #btn-fullscreen {
+                min-height: 48px;
+                font-size: 1.15rem !important;
+                padding: 0.45rem 0.95rem !important;
+                white-space: nowrap;
+            }
             [id^="q-box-"] .text-base,
             [id^="q-box-"] .text-lg,
             [id^="q-box-"] .leading-snug {
@@ -661,8 +675,8 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <button id="btn-fullscreen" onclick="window.togglePageFullscreen()" title="全螢幕 / Fullscreen" class="wii-btn bg-slate-700 hover:bg-slate-600 text-white p-2.5 rounded-xl font-bold flex items-center justify-center" type="button">
-                <span id="fullscreen-icon" class="text-xl" aria-label="進入全螢幕">⛶</span>
+            <button id="btn-fullscreen" onclick="window.togglePageFullscreen()" title="全螢幕" aria-label="進入全螢幕" class="wii-btn bg-slate-700 hover:bg-slate-600 text-white px-3 py-2.5 rounded-xl font-black flex items-center justify-center whitespace-nowrap" type="button">
+                <span id="fullscreen-label">全螢幕</span>
             </button>
             <button id="btn-sound" onclick="window.toggleSound()" class="wii-btn bg-slate-700 hover:bg-slate-600 text-white p-2.5 rounded-xl font-bold flex items-center justify-center">
                 <span id="sound-icon" class="text-xl">🔊</span>
@@ -2065,14 +2079,15 @@
         }
 
         function syncFullscreenIcon() {
-            const icon = document.getElementById('fullscreen-icon');
+            const label = document.getElementById('fullscreen-label');
             const btn = document.getElementById('btn-fullscreen');
             const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-            if (icon) {
-                icon.textContent = isFs ? '↙' : '⛶';
-                icon.setAttribute('aria-label', isFs ? '退出全螢幕' : '進入全螢幕');
+            const text = isFs ? '退出全螢幕' : '全螢幕';
+            if (label) label.textContent = text;
+            if (btn) {
+                btn.title = text;
+                btn.setAttribute('aria-label', text);
             }
-            if (btn) btn.title = isFs ? '退出全螢幕' : '全螢幕 / Fullscreen';
         }
         document.addEventListener('fullscreenchange', syncFullscreenIcon);
         document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
