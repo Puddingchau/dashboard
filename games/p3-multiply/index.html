@@ -29,13 +29,15 @@
 
     /* Top Bar Header */
     #header {
-      height: 60px;
+      height: auto;
       min-height: 60px;
       background: #111827;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0 20px;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 16px;
       border-bottom: 3px solid var(--border-gold);
       z-index: 10;
     }
@@ -90,8 +92,14 @@
       color: #fff;
     }
     .fs-btn {
-      width: 48px;
-      font-size: 1.35rem;
+      width: auto;
+      min-width: 5.5rem;
+      padding: 0 14px;
+      font-size: 1.05rem;
+      white-space: nowrap;
+      overflow: visible;
+      flex-shrink: 0;
+      font-family: 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
     }
     .menu-btn {
       padding: 0 14px;
@@ -350,8 +358,8 @@
       <div class="game-subtitle-text">小學數學科三年級</div>
     </div>
     <div class="header-tools">
-      <button id="btn-fullscreen" class="fs-btn" type="button" onclick="togglePageFullscreen()" title="全螢幕 / Fullscreen">
-        <span id="fullscreen-icon" aria-label="進入全螢幕">⛶</span>
+      <button id="btn-fullscreen" class="fs-btn" type="button" onclick="togglePageFullscreen()" title="全螢幕" aria-label="進入全螢幕">
+        <span id="fullscreen-label">全螢幕</span>
       </button>
       <button id="btn-setup" class="menu-btn" type="button" onclick="openSetupFromHeader()">選單設定</button>
       <div class="timer-display" id="timer">⏱️ 03:00</div>
@@ -824,14 +832,15 @@ function togglePageFullscreen() {
 }
 
 function syncFullscreenIcon() {
-  const icon = document.getElementById('fullscreen-icon');
+  const label = document.getElementById('fullscreen-label');
   const btn = document.getElementById('btn-fullscreen');
   const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-  if (icon) {
-    icon.textContent = isFs ? '↙' : '⛶';
-    icon.setAttribute('aria-label', isFs ? '退出全螢幕' : '進入全螢幕');
+  const text = isFs ? '退出全螢幕' : '全螢幕';
+  if (label) label.textContent = text;
+  if (btn) {
+    btn.title = text;
+    btn.setAttribute('aria-label', text);
   }
-  if (btn) btn.title = isFs ? '退出全螢幕' : '全螢幕 / Fullscreen';
 }
 document.addEventListener('fullscreenchange', syncFullscreenIcon);
 document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
