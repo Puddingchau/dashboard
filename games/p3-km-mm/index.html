@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>三年級「公里和毫米」大冒險</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@600;800;900&display=swap');
+
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            color: #f8fafc;
+            overflow-x: hidden; overflow-y: auto;
+            min-height: 100vh; height: auto;
+            width: 100vw;
+        }
+
+        /* Fullscreen Map styling when expanded */
+        .map-container:fullscreen, .map-container:-webkit-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+            background-color: #0f172a !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 24px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Glassmorphism Styling */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            color: #0f172a;
+            border: 3px solid rgba(255, 255, 255, 0.85);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Wii Arcade Touch Button Effects */
+        .wii-btn {
+            transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+            transform: translateY(0);
+            cursor: pointer;
+            min-height: 60px;
+        }
+        .wii-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+        }
+        .wii-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .wii-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+            filter: grayscale(0.6);
+        }
+
+        /* Character Card Style */
+        .char-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+        }
+        .char-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(251, 191, 36, 0.6);
+        }
+        .char-card.selected {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(30, 27, 75, 0.95) 100%);
+            border: 3px solid #facc15;
+            box-shadow: 0 0 16px rgba(250, 204, 21, 0.6), inset 0 0 12px rgba(250, 204, 21, 0.3);
+            transform: scale(1.04);
+        }
+
+        /* Team Color Schemes */
+        .team-red {
+            background: linear-gradient(180deg, rgba(239, 68, 68, 0.25) 0%, rgba(185, 28, 28, 0.45) 100%);
+            border-color: #f87171;
+        }
+        .team-blue {
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.25) 0%, rgba(29, 78, 216, 0.45) 100%);
+            border-color: #60a5fa;
+        }
+        .team-green {
+            background: linear-gradient(180deg, rgba(34, 197, 94, 0.25) 0%, rgba(21, 128, 61, 0.45) 100%);
+            border-color: #4ade80;
+        }
+
+        /* Flame Aura for High Combo */
+        @keyframes flamePulse {
+            0% { box-shadow: 0 0 15px #ff4500, inset 0 0 10px #ff8c00; }
+            50% { box-shadow: 0 0 35px #ff8c00, inset 0 0 25px #ffd700; }
+            100% { box-shadow: 0 0 15px #ff4500, inset 0 0 10px #ff8c00; }
+        }
+        .flame-aura {
+            animation: flamePulse 1.2s infinite ease-in-out;
+            border-color: #ff4500 !important;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(3deg); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        @keyframes pulse-urgent {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px #ef4444); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 28px #f87171); }
+        }
+        .animate-urgent { animation: pulse-urgent 0.6s infinite ease-in-out; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-12px); }
+            40%, 80% { transform: translateX(12px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+
+        @keyframes pop-up {
+            0% { transform: scale(0.6) translateY(20px); opacity: 0; }
+            70% { transform: scale(1.05) translateY(-5px); opacity: 1; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .animate-pop { animation: pop-up 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        /* Floating Score Text */
+        .float-score {
+            position: absolute;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #facc15;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.8), 0 0 15px #f59e0b;
+            pointer-events: none;
+            animation: float-up-fade 1.2s forwards cubic-bezier(0.215, 0.61, 0.355, 1);
+            z-index: 60;
+        }
+        @keyframes float-up-fade {
+            0% { opacity: 1; transform: translateY(0) scale(0.8); }
+            50% { opacity: 1; transform: translateY(-45px) scale(1.3); }
+            100% { opacity: 0; transform: translateY(-90px) scale(1); }
+        }
+
+        /* Bowling Pins Styling */
+        .pin {
+            width: 20px;
+            height: 40px;
+            background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+            border-radius: 8px 8px 5px 5px;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 900;
+            color: #0f172a;
+            padding-bottom: 2px;
+        }
+        .pin::before {
+            content: "";
+            position: absolute;
+            top: 8px;
+            left: 2px;
+            right: 2px;
+            height: 5px;
+            background: #ef4444;
+            border-radius: 2px;
+        }
+        .pin.down {
+            transform: translateY(24px) rotate(80deg);
+            opacity: 0.15;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+
+        /* ========== MOBILE ADAPTATION: keep 3 columns always ========== */
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+
+        @media (max-width: 1023px) {
+            body {
+                height: 100dvh;
+                width: 100vw;
+                max-width: 100vw;
+                padding-top: env(safe-area-inset-top, 0px);
+                padding-right: env(safe-area-inset-right, 0px);
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+                padding-left: env(safe-area-inset-left, 0px);
+                box-sizing: border-box;
+            }
+
+            header.glass-panel {
+                height: auto !important;
+                min-height: 44px;
+                max-height: none;
+                padding: 0.35rem 0.5rem !important;
+                gap: 0.35rem;
+                flex-wrap: wrap;
+            }
+            header .bg-amber-400 {
+                font-size: 0.65rem;
+                padding: 0.15rem 0.45rem;
+            }
+            header h1 {
+                font-size: 0.75rem !important;
+                line-height: 1.2;
+                flex-wrap: wrap;
+                gap: 0.25rem !important;
+            }
+            header #stage-badge {
+                font-size: 0.6rem !important;
+                padding: 0.1rem 0.4rem !important;
+            }
+            #timer-container {
+                padding: 0.15rem 0.55rem !important;
+                gap: 0.25rem !important;
+            }
+            #timer-container .text-2xl { font-size: 0.95rem; }
+            #timer-display {
+                font-size: 1.15rem !important;
+            }
+            header .wii-btn {
+                min-height: 36px !important;
+                padding: 0.35rem 0.55rem !important;
+                font-size: 0.7rem !important;
+            }
+            header #sound-icon { font-size: 1rem; }
+
+            /* HARD RULE: always 3 team columns on phone (override grid-cols-1) */
+            #game-arena {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 0.35rem !important;
+                padding: 0.35rem !important;
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #team-col-0,
+            #team-col-1,
+            #team-col-2 {
+                min-width: 0;
+                padding: 0.35rem !important;
+                border-radius: 0.85rem !important;
+            }
+
+            [id^="mascot-"] {
+                width: 1.75rem !important;
+                height: 1.75rem !important;
+                font-size: 0.95rem !important;
+            }
+            [id^="team-name-"] {
+                font-size: 0.65rem !important;
+                line-height: 1.15;
+            }
+            [id^="team-role-"] {
+                font-size: 0.55rem !important;
+            }
+            [id^="score-"] {
+                font-size: 1rem !important;
+            }
+            [id^="acc-"] {
+                font-size: 0.65rem !important;
+            }
+            #team-col-0 > div:first-child,
+            #team-col-1 > div:first-child,
+            #team-col-2 > div:first-child {
+                padding: 0.3rem !important;
+                border-radius: 0.65rem !important;
+                gap: 0.25rem;
+            }
+            #team-col-0 > div:first-child .text-xs,
+            #team-col-1 > div:first-child .text-xs,
+            #team-col-2 > div:first-child .text-xs {
+                font-size: 0.55rem !important;
+            }
+
+            [id^="visual-track-"] {
+                height: 56px !important;
+                margin-bottom: 0.25rem !important;
+                border-radius: 0.65rem !important;
+            }
+
+            [id^="combo-badge-"],
+            [id^="streak-fire-"] {
+                font-size: 0.55rem !important;
+            }
+
+            [id^="q-box-"] {
+                padding: 0.4rem !important;
+                border-radius: 0.65rem !important;
+                border-width: 2px !important;
+            }
+            [id^="q-box-"] .text-4xl { font-size: 1.25rem !important; }
+            [id^="q-box-"] .text-lg { font-size: 0.7rem !important; line-height: 1.25; }
+            [id^="q-box-"] .text-sm { font-size: 0.6rem !important; }
+            [id^="q-box-"] .text-base { font-size: 0.7rem !important; }
+            [id^="q-box-"] .text-xl { font-size: 0.8rem !important; }
+            [id^="q-box-"] .text-2xl { font-size: 0.9rem !important; }
+            [id^="q-box-"] .text-3xl { font-size: 1rem !important; }
+
+            [id^="options-"] {
+                gap: 0.25rem !important;
+                margin-top: 0.25rem !important;
+            }
+            [id^="options-"] .wii-btn {
+                min-height: 40px !important;
+                padding: 0.3rem 0.25rem !important;
+                font-size: 0.625rem !important; /* ~text-[10px] */
+                line-height: 1.15;
+                border-radius: 0.55rem !important;
+                border-width: 1.5px !important;
+            }
+
+            .wii-btn {
+                min-height: 40px;
+                box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.55);
+            }
+            .wii-btn:active:not(:disabled) {
+                transform: translateY(2px);
+                box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+            }
+
+            .pin {
+                width: 12px;
+                height: 24px;
+                font-size: 7px;
+            }
+            .pin::before {
+                top: 5px;
+                height: 3px;
+            }
+
+            .float-score {
+                font-size: 1.1rem !important;
+            }
+
+            /* Review bar → compact bottom-sheet style; lanes stay 3-col underneath */
+            #central-review-bar {
+                top: auto !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                transform: none !important;
+                width: 100% !important;
+                max-width: none !important;
+                max-height: min(55vh, 420px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                border-radius: 1.25rem 1.25rem 0 0 !important;
+                border-bottom: none !important;
+                padding: 0.65rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom, 0px)) !important;
+                margin: 0;
+            }
+            #central-review-bar .text-3xl { font-size: 1.1rem !important; }
+            #central-review-bar .text-2xl { font-size: 0.9rem !important; }
+            #central-review-bar #review-timer-display {
+                font-size: 1.75rem !important;
+            }
+            #central-review-bar #review-answer-text {
+                font-size: 0.95rem !important;
+                margin-bottom: 0.25rem !important;
+            }
+            #central-review-bar #review-tip-text {
+                font-size: 0.7rem !important;
+            }
+            #central-review-bar #review-visual-container {
+                min-height: 72px !important;
+                margin: 0.25rem 0 !important;
+            }
+            #central-review-bar .wii-btn,
+            #btn-review-next,
+            #btn-review-hold {
+                min-height: 44px !important;
+                font-size: 0.8rem !important;
+                gap: 0.35rem !important;
+                border-radius: 0.75rem !important;
+            }
+            #central-review-bar .grid {
+                gap: 0.5rem !important;
+                margin-top: 0.5rem !important;
+            }
+
+            /* Setup / victory: scrollable + full width + safe area */
+            #setup-modal,
+            #victory-modal {
+                padding: env(safe-area-inset-top, 0.5rem) env(safe-area-inset-right, 0.5rem) env(safe-area-inset-bottom, 0.5rem) env(safe-area-inset-left, 0.5rem) !important;
+                align-items: flex-start !important;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            #setup-modal > .glass-panel,
+            #victory-modal > .glass-panel {
+                max-width: 100% !important;
+                width: 100% !important;
+                max-height: none;
+                margin: 0.25rem 0 1rem;
+                padding: 0.85rem !important;
+                border-radius: 1rem !important;
+            }
+            #setup-modal h2,
+            #victory-modal h2 {
+                font-size: 1.15rem !important;
+            }
+            #setup-modal .space-y-5 > * + * {
+                margin-top: 0.75rem !important;
+            }
+            #setup-modal .wii-btn {
+                min-height: 40px !important;
+            }
+            #setup-modal #mode-race,
+            #setup-modal #mode-indep {
+                padding: 0.55rem !important;
+                gap: 0.4rem !important;
+            }
+            #setup-modal #mode-race .text-base,
+            #setup-modal #mode-indep .text-base {
+                font-size: 0.75rem !important;
+            }
+            #setup-modal #mode-race .text-xs,
+            #setup-modal #mode-indep .text-xs {
+                font-size: 0.55rem !important;
+            }
+            #char-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 0.35rem !important;
+            }
+            .char-card {
+                border-radius: 0.65rem !important;
+                padding: 0.35rem !important;
+            }
+            #podium-container {
+                height: 10rem !important;
+                gap: 0.35rem !important;
+                margin-bottom: 0.75rem !important;
+            }
+            #tab-team-0, #tab-team-1, #tab-team-2 {
+                padding: 0.25rem 0.4rem !important;
+                font-size: 0.6rem !important;
+            }
+        }
+
+        /* Extra-narrow phones: keep 3 cols, allow slight arena scroll if needed */
+        @media (max-width: 360px) {
+            #game-arena {
+                gap: 0.25rem !important;
+                padding: 0.25rem !important;
+            }
+            #team-col-0,
+            #team-col-1,
+            #team-col-2 {
+                min-width: 96px;
+                padding: 0.25rem !important;
+            }
+            [id^="visual-track-"] {
+                height: 48px !important;
+            }
+            [id^="options-"] .wii-btn {
+                min-height: 36px !important;
+                font-size: 0.55rem !important;
+            }
+            [id^="team-name-"] {
+                font-size: 0.55rem !important;
+            }
+            [id^="score-"] {
+                font-size: 0.85rem !important;
+            }
+        }
+
+        @media (max-width: 320px) {
+            #game-arena {
+                overflow-x: auto;
+            }
+            #team-col-0,
+            #team-col-1,
+            #team-col-2 {
+                min-width: 100px;
+            }
+        }
+
+
+    
+        /* === SCROLL FIX v2: document + column scroll, keep 3 cols === */
+        @media (max-width: 1023px) {
+            html {
+                height: auto !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+            body, body.flex, body.h-screen, body.w-screen, body.overflow-hidden {
+                height: auto !important;
+                min-height: 100dvh !important;
+                max-height: none !important;
+                overflow-x: hidden !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                position: relative !important;
+                touch-action: pan-y !important;
+            }
+            #effects-canvas {
+                pointer-events: none !important;
+            }
+            #game-arena {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                height: auto !important;
+                min-height: calc(100dvh - 5.5rem) !important;
+                overflow: visible !important;
+                align-items: stretch !important;
+            }
+            #team-col-0, #team-col-1, #team-col-2 {
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: visible !important;
+                height: auto !important;
+                min-height: calc(100dvh - 6rem) !important;
+                max-height: none !important;
+            }
+            [id^="visual-track-"] {
+                height: 40px !important;
+                min-height: 40px !important;
+                max-height: 40px !important;
+                flex-shrink: 0 !important;
+            }
+            [id^="q-box-"] {
+                flex: 1 1 auto !important;
+                min-height: 5.5rem !important;
+                overflow-y: auto !important;
+                max-height: none !important;
+            }
+            [id^="options-"] {
+                display: grid !important;
+                flex: 0 0 auto !important;
+                margin-top: 0.35rem !important;
+                padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)) !important;
+                position: relative !important;
+                z-index: 5 !important;
+            }
+            [id^="options-"] button {
+                min-height: 44px !important;
+            }
+        }
+
+    
+        /* === Q VISIBILITY FIX: stop justify-between from crushing q-box === */
+        @media (max-width: 1023px) {
+            #team-col-0, #team-col-1, #team-col-2 {
+                justify-content: flex-start !important;
+                gap: 0.35rem !important;
+            }
+            [id^="q-box-"] {
+                flex: 1 1 auto !important;
+                min-height: 5.5rem !important;
+                max-height: none !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                color: #0f172a !important;
+            }
+            [id^="q-box-"] .my-auto {
+                margin-top: 0.35rem !important;
+                margin-bottom: 0.35rem !important;
+            }
+            [id^="q-box-"] .text-base,
+            [id^="q-box-"] .text-lg,
+            [id^="q-box-"] .text-sm,
+            [id^="q-box-"] .text-xl,
+            [id^="q-box-"] .leading-snug {
+                font-size: 0.78rem !important;
+                line-height: 1.35 !important;
+                color: #0f172a !important;
+            }
+            [id^="q-box-"] b,
+            [id^="q-box-"] span {
+                color: inherit;
+            }
+            [id^="options-"] {
+                flex: 0 0 auto !important;
+                margin-top: auto !important;
+            }
+        }
+
+    </style>
+</head>
+<body class="flex flex-col min-h-screen w-screen select-none mobile-scroll-root">
+
+    <!-- Canvas Overlay for Particle Burst Effects -->
+    <canvas id="effects-canvas" class="fixed inset-0 pointer-events-none z-40"></canvas>
+
+    <!-- Top Navigation Header -->
+    <header class="h-16 px-6 glass-panel border-b flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-amber-400 text-slate-900 font-extrabold px-3 py-1 rounded-full text-sm shadow-md flex items-center gap-1">
+                <span>🏫</span> 天水圍官立小學
+            </div>
+            <h1 class="text-xl md:text-2xl font-black tracking-wide text-white drop-shadow-md flex items-center gap-2">
+                三年級「公里和毫米」大冒險 <span id="stage-badge" class="text-amber-300 text-sm font-bold bg-slate-900/70 px-3 py-1 rounded-xl border border-amber-400/40">📏 長度保齡球</span>
+            </h1>
+        </div>
+
+        <!-- Central Timer -->
+        <div class="flex items-center gap-4">
+            <div id="timer-container" class="bg-slate-900/80 border-2 border-amber-400/80 px-6 py-1.5 rounded-2xl flex items-center gap-2 shadow-inner">
+                <span class="text-2xl">⏳</span>
+                <span id="timer-display" class="font-mono text-3xl font-black text-amber-300 tracking-wider">01:00</span>
+            </div>
+        </div>
+
+        <!-- System Controls -->
+        <div class="flex items-center gap-3">
+            <button id="btn-sound" onclick="window.toggleSound()" class="wii-btn bg-slate-700 hover:bg-slate-600 text-white p-2.5 rounded-xl font-bold flex items-center justify-center">
+                <span id="sound-icon" class="text-xl">🔊</span>
+            </button>
+            <button onclick="window.openSetupModal()" class="wii-btn bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-black flex items-center gap-2 text-sm shadow-lg border border-indigo-400">
+                <span>⚙️</span> 選單設定
+            </button>
+        </div>
+    </header>
+
+    <!-- 🌟【中央控制 20 秒答案解析面板（搶答模式專用）】🌟 -->
+    <div id="central-review-bar" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-4xl bg-slate-900/95 border-4 border-amber-400 rounded-3xl p-6 shadow-2xl backdrop-blur-xl animate-pop text-center">
+        <div class="flex items-center justify-between mb-4 border-b border-slate-700/80 pb-3">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">💡</span>
+                <span class="text-2xl font-black text-amber-300 tracking-wide">中央題目解析與答案展示</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-950 px-5 py-2 rounded-2xl border border-amber-400/50">
+                <span class="text-xl text-slate-400 font-bold">倒數:</span>
+                <span id="review-timer-display" class="text-5xl font-black font-mono text-amber-300">20</span>
+                <span class="text-sm font-bold text-slate-400">秒</span>
+            </div>
+        </div>
+
+        <!-- Correct Answer & Explanation Text -->
+        <div class="my-3 px-4 py-3 bg-slate-950/80 rounded-2xl border border-slate-800">
+            <div id="review-answer-text" class="text-2xl md:text-3xl font-black text-emerald-400 mb-2 leading-relaxed">
+                正確答案：1000 m
+            </div>
+            <div id="review-tip-text" class="text-base md:text-xl font-bold text-slate-300">
+                提示：1 km = 1000 m。
+            </div>
+        </div>
+
+        <!-- Central Dual Control Buttons -->
+        <div class="grid grid-cols-2 gap-5 mt-5">
+            <button id="btn-review-next" onclick="window.forceNextQuestion()" type="button" class="wii-btn bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-xl md:text-2xl rounded-2xl border-2 border-emerald-300 shadow-xl flex items-center justify-center gap-3 min-h-[75px]">
+                <span>▶</span> 跳過倒數，下一題
+            </button>
+            <button id="btn-review-hold" onclick="window.togglePauseReview()" type="button" class="wii-btn bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xl md:text-2xl rounded-2xl border-2 border-indigo-400 shadow-xl flex items-center justify-center gap-3 min-h-[75px]">
+                <span id="hold-btn-icon">⏸</span> <span id="hold-btn-text">停留講評</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Game Play Arena (3-Player Column Split) -->
+    <main id="game-arena" class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 p-3 relative z-10">
+        
+        <!-- TEAM 1: RED -->
+        <section id="team-col-0" class="team-red glass-panel rounded-3xl p-3 flex flex-col justify-start relative overflow-visible border-2 transition-all duration-300">
+            <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-red-500/40">
+                <div class="flex items-center gap-2">
+                    <div id="mascot-0" class="w-12 h-12 rounded-full bg-red-500/30 border-2 border-red-400 flex items-center justify-center text-2xl animate-float transition-transform">🧭</div>
+                    <div>
+                        <div id="team-name-0" class="text-base font-black text-white">第一組 (紅隊)</div>
+                        <div id="team-role-0" class="text-xs font-bold text-red-300">探險家 🧭</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-300 font-bold flex items-center justify-end gap-1"><span>正確/總數:</span><span id="acc-0" class="text-amber-300 font-black">0/0</span></div>
+                    <div class="text-2xl font-black text-amber-300 tracking-tight" id="score-0">0</div>
+                </div>
+            </div>
+
+            <div class="h-7 flex items-center justify-between my-1 px-2">
+                <div id="combo-badge-0" class="opacity-0 transition-opacity duration-300 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1">⚡ 連擊 <span id="combo-count-0">0</span></div>
+                <div id="streak-fire-0" class="hidden text-xs text-amber-300 font-black animate-pulse">🔥 火力全開!</div>
+            </div>
+
+            <div id="visual-track-0" class="h-20 bg-slate-950/80 rounded-2xl border border-slate-700/80 mb-2 relative overflow-hidden flex items-center justify-center shrink-0"></div>
+
+            <div id="q-box-0" class="glass-card flex-1 rounded-2xl p-4 flex flex-col justify-between relative overflow-y-auto">
+                <div class="text-center m-auto">
+                    <div class="text-4xl mb-2">🎮</div>
+                    <div class="text-lg font-black text-slate-800">準備進行大冒險！</div>
+                </div>
+            </div>
+
+            <div id="options-0" class="grid grid-cols-2 gap-2 mt-2"></div>
+        </section>
+
+        <!-- TEAM 2: BLUE -->
+        <section id="team-col-1" class="team-blue glass-panel rounded-3xl p-3 flex flex-col justify-start relative overflow-visible border-2 transition-all duration-300">
+            <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-blue-500/40">
+                <div class="flex items-center gap-2">
+                    <div id="mascot-1" class="w-12 h-12 rounded-full bg-blue-500/30 border-2 border-blue-400 flex items-center justify-center text-2xl animate-float transition-transform">🧙</div>
+                    <div>
+                        <div id="team-name-1" class="text-base font-black text-white">第二組 (藍隊)</div>
+                        <div id="team-role-1" class="text-xs font-bold text-blue-300">魔法師 🧙</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-300 font-bold flex items-center justify-end gap-1"><span>正確/總數:</span><span id="acc-1" class="text-amber-300 font-black">0/0</span></div>
+                    <div class="text-2xl font-black text-amber-300 tracking-tight" id="score-1">0</div>
+                </div>
+            </div>
+
+            <div class="h-7 flex items-center justify-between my-1 px-2">
+                <div id="combo-badge-1" class="opacity-0 transition-opacity duration-300 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1">⚡ 連擊 <span id="combo-count-1">0</span></div>
+                <div id="streak-fire-1" class="hidden text-xs text-amber-300 font-black animate-pulse">🔥 火力全開!</div>
+            </div>
+
+            <div id="visual-track-1" class="h-20 bg-slate-950/80 rounded-2xl border border-slate-700/80 mb-2 relative overflow-hidden flex items-center justify-center shrink-0"></div>
+
+            <div id="q-box-1" class="glass-card flex-1 rounded-2xl p-4 flex flex-col justify-between relative overflow-y-auto">
+                <div class="text-center m-auto">
+                    <div class="text-4xl mb-2">🎮</div>
+                    <div class="text-lg font-black text-slate-800">準備進行大冒險！</div>
+                </div>
+            </div>
+
+            <div id="options-1" class="grid grid-cols-2 gap-2 mt-2"></div>
+        </section>
+
+        <!-- TEAM 3: GREEN -->
+        <section id="team-col-2" class="team-green glass-panel rounded-3xl p-3 flex flex-col justify-start relative overflow-visible border-2 transition-all duration-300">
+            <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-2xl border border-green-500/40">
+                <div class="flex items-center gap-2">
+                    <div id="mascot-2" class="w-12 h-12 rounded-full bg-green-500/30 border-2 border-green-400 flex items-center justify-center text-2xl animate-float transition-transform">🛡️</div>
+                    <div>
+                        <div id="team-name-2" class="text-base font-black text-white">第三組 (綠隊)</div>
+                        <div id="team-role-2" class="text-xs font-bold text-green-300">守護者 🛡️</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-300 font-bold flex items-center justify-end gap-1"><span>正確/總數:</span><span id="acc-2" class="text-amber-300 font-black">0/0</span></div>
+                    <div class="text-2xl font-black text-amber-300 tracking-tight" id="score-2">0</div>
+                </div>
+            </div>
+
+            <div class="h-7 flex items-center justify-between my-1 px-2">
+                <div id="combo-badge-2" class="opacity-0 transition-opacity duration-300 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1">⚡ 連擊 <span id="combo-count-2">0</span></div>
+                <div id="streak-fire-2" class="hidden text-xs text-amber-300 font-black animate-pulse">🔥 火力全開!</div>
+            </div>
+
+            <div id="visual-track-2" class="h-20 bg-slate-950/80 rounded-2xl border border-slate-700/80 mb-2 relative overflow-hidden flex items-center justify-center shrink-0"></div>
+
+            <div id="q-box-2" class="glass-card flex-1 rounded-2xl p-4 flex flex-col justify-between relative overflow-y-auto">
+                <div class="text-center m-auto">
+                    <div class="text-4xl mb-2">🎮</div>
+                    <div class="text-lg font-black text-slate-800">準備進行大冒險！</div>
+                </div>
+            </div>
+
+            <div id="options-2" class="grid grid-cols-2 gap-2 mt-2"></div>
+        </section>
+    </main>
+
+    <!-- FULL SETUP MODAL SCREEN -->
+    <div id="setup-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel max-w-3xl w-full rounded-3xl p-6 md:p-8 border-2 border-amber-400/50 shadow-2xl relative animate-pop max-h-[92vh] overflow-y-auto">
+            <div class="text-center mb-5">
+                <span class="text-4xl">🎮</span>
+                <h2 class="text-3xl font-black text-white mt-1">三年級「公里和毫米」大冒險</h2>
+                <p class="text-amber-300 font-extrabold text-sm md:text-base mt-1.5 tracking-wider flex items-center justify-center gap-1">
+                    <span>🏫</span> 天水圍官立小學
+                </p>
+            </div>
+
+            <div class="space-y-5">
+                <!-- 1. Game Mode Selection -->
+                <div>
+                    <label class="block text-amber-300 font-black text-sm mb-1.5">1. 選擇比賽對決模式</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="mode-race" type="button" onclick="window.setGameMode('race')" class="wii-btn p-3 rounded-2xl border-2 font-black text-left flex items-center gap-3 bg-amber-500 border-amber-300 text-slate-950">
+                            <span class="text-2xl">⚡</span>
+                            <div>
+                                <div class="text-base">同題搶答競速</div>
+                                <div class="text-xs opacity-80 font-semibold">三組面對相同題目，答對進中央講評</div>
+                            </div>
+                        </button>
+                        <button id="mode-indep" type="button" onclick="window.setGameMode('indep')" class="wii-btn p-3 rounded-2xl border-2 font-black text-left flex items-center gap-3 bg-slate-800 border-slate-600 text-slate-300">
+                            <span class="text-2xl">🎯</span>
+                            <div>
+                                <div class="text-base">各自獨立解題</div>
+                                <div class="text-xs opacity-80 font-semibold">三組各自答題，本組 6 秒微型解答卡</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Time Limit Selection -->
+                <div>
+                    <label class="block text-amber-300 font-black text-sm mb-1.5">2. 比賽時間限制</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button id="time-60" type="button" onclick="window.setTimeLimit(60)" class="wii-btn p-2 rounded-xl font-black border-2 bg-amber-500 border-amber-300 text-slate-950 text-center text-xs md:text-sm">⏱️ 1 分鐘</button>
+                        <button id="time-120" type="button" onclick="window.setTimeLimit(120)" class="wii-btn p-2 rounded-xl font-black border-2 bg-slate-800 border-slate-600 text-slate-300 text-center text-xs md:text-sm">⏱️ 2 分鐘</button>
+                        <button id="time-180" type="button" onclick="window.setTimeLimit(180)" class="wii-btn p-2 rounded-xl font-black border-2 bg-slate-800 border-slate-600 text-slate-300 text-center text-xs md:text-sm">⏱️ 3 分鐘</button>
+                        <button id="time-300" type="button" onclick="window.setTimeLimit(300)" class="wii-btn p-2 rounded-xl font-black border-2 bg-slate-800 border-slate-600 text-slate-300 text-center text-xs md:text-sm">⏱️ 5 分鐘</button>
+                    </div>
+                </div>
+
+                <!-- 3. Character Class Selection -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-amber-300 font-black text-sm">3. 隊伍職業角色選擇</label>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="window.setActiveTeamPicker(0)" id="tab-team-0" class="px-3 py-1 rounded-lg text-xs font-black bg-red-600 text-white border border-red-300">第一組角色</button>
+                            <button type="button" onclick="window.setActiveTeamPicker(1)" id="tab-team-1" class="px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-slate-300 border border-slate-600">第二組角色</button>
+                            <button type="button" onclick="window.setActiveTeamPicker(2)" id="tab-team-2" class="px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-slate-300 border border-slate-600">第三組角色</button>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/90 p-3 rounded-2xl border-2 border-indigo-500/40">
+                        <div id="char-picker-header" class="text-xs font-bold text-indigo-300 mb-2 flex items-center gap-2">
+                            <span>👤</span> <span id="char-picker-title">第一組選擇職業</span>
+                        </div>
+                        <div id="char-grid" class="grid grid-cols-3 sm:grid-cols-6 gap-2"></div>
+                    </div>
+                </div>
+
+                <!-- 4. Top 5 Wii Theme Selection -->
+                <div>
+                    <label class="block text-amber-300 font-black text-sm mb-1.5">4. 選擇五大熱門 Wii 競賽主題</label>
+                    <select id="theme-select" class="w-full bg-slate-800 text-amber-300 font-black p-3 rounded-2xl border-2 border-amber-400/60 focus:border-amber-400 outline-none text-base cursor-pointer">
+                        <option value="📏 長度保齡球">📏 1. 長度保齡球 (Length Bowling Strike)</option>
+                        <option value="🏎️ 疾速卡丁車">🏎️ 2. 疾速卡丁車 (Grand Prix Math Race)</option>
+                        <option value="🚣 急流節奏劃艇">🚣 3. 急流節奏劃艇 (River Rapids Rowing)</option>
+                        <option value="🏹 精準萬位射箭">🏹 4. 精準萬位射箭 (Precision Archery)</option>
+                        <option value="🚀 銀河重力火箭">🚀 5. 銀河重力火箭 (Galaxy Gravity Launch)</option>
+                    </select>
+                </div>
+
+                <!-- 5. Stage / Focus Selection -->
+                <div>
+                    <label class="block text-amber-300 font-black text-sm mb-1.5">5. 單元題型與重點關卡</label>
+                    <select id="stage-select" class="w-full bg-slate-800 text-white font-bold p-3 rounded-2xl border-2 border-slate-600 focus:border-amber-400 outline-none cursor-pointer">
+                        <option value="0">🔥 【公里與毫米綜合大對決】全範疇隨機題目</option>
+                        <option value="1">第一關：長度單位辨識 (km/m/cm/mm)</option>
+                        <option value="2">第二關：單位換算與直尺量度 (1km=1000m, 1cm=10mm)</option>
+                        <option value="3">第三關：混合單位長度與距離比較排序</option>
+                        <option selected value="4">第四關：社區地圖與路線距離算術</option>
+                        <option value="5">第五關：生活應用、身高比拼與常犯錯除錯</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Start Button -->
+            <div class="mt-6 flex gap-3">
+                <button type="button" onclick="window.startGame()" class="wii-btn flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-xl py-3.5 rounded-2xl shadow-lg border-2 border-emerald-300 text-center tracking-wider">
+                    🚀 開始比賽 GAME START!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VICTORY PODIUM MODAL -->
+    <div id="victory-modal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center p-4">
+        <div class="glass-panel max-w-2xl w-full rounded-3xl p-6 md:p-8 border-2 border-amber-400 text-center animate-pop relative overflow-hidden">
+            <div class="text-5xl mb-2 animate-bounce">🏆</div>
+            <h2 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-100 to-amber-400">
+                大冒險比賽結束！頒獎典禮
+            </h2>
+            <p class="text-slate-300 text-sm mt-1 mb-6">三組同學表現非常出色！以下為最終得分排行榜：</p>
+            <div id="podium-container" class="flex justify-center items-end gap-3 h-60 mb-6 px-4"></div>
+            <div class="flex gap-4">
+                <button type="button" onclick="window.openSetupModal()" class="wii-btn flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3.5 rounded-2xl border-2 border-indigo-400">
+                    🔄 重新設定 / 再玩一次
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO SYNTHESIS & GAME LOGIC SCRIPT -->
+    <script>
+        let soundMuted = false;
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx;
+        }
+
+        function toggleSound() {
+            soundMuted = !soundMuted;
+            const soundIcon = document.getElementById('sound-icon');
+            if (soundIcon) soundIcon.innerText = soundMuted ? '🔇' : '🔊';
+        }
+
+        const sound = {
+            play: function(type, comboCount = 0) {
+                if (soundMuted) return;
+                try {
+                    const ctx = getAudioContext();
+                    const now = ctx.currentTime;
+                    if (type === 'tick') {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sine'; osc.frequency.setValueAtTime(600, now);
+                        gain.gain.setValueAtTime(0.04, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                        osc.start(now); osc.stop(now + 0.05);
+                    } else if (type === 'correct') {
+                        const baseFreq = 523.25 + Math.min(comboCount * 40, 400);
+                        [baseFreq, baseFreq * 1.25, baseFreq * 1.5, baseFreq * 2].forEach((freq, i) => {
+                            const o = ctx.createOscillator(); const g = ctx.createGain();
+                            o.connect(g); g.connect(ctx.destination);
+                            o.type = 'triangle'; o.frequency.setValueAtTime(freq, now + i * 0.07);
+                            g.gain.setValueAtTime(0.18, now + i * 0.07); g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.25);
+                            o.start(now + i * 0.07); o.stop(now + i * 0.07 + 0.25);
+                        });
+                    } else if (type === 'wrong') {
+                        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(220, now); osc.frequency.setValueAtTime(175, now + 0.1);
+                        gain.gain.setValueAtTime(0.18, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                        osc.start(now); osc.stop(now + 0.3);
+                    } else if (type === 'fanfare') {
+                        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                            const o = ctx.createOscillator(); const g = ctx.createGain();
+                            o.connect(g); g.connect(ctx.destination);
+                            o.type = 'triangle'; o.frequency.setValueAtTime(freq, now + i * 0.12);
+                            g.gain.setValueAtTime(0.22, now + i * 0.12); g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+                            o.start(now + i * 0.12); o.stop(now + i * 0.12 + 0.35);
+                        });
+                    }
+                } catch(e) {}
+            }
+        };
+
+        const canvas = document.getElementById('effects-canvas');
+        const pCtx = canvas ? canvas.getContext('2d') : null;
+        let particles = [];
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function triggerBurst(x, y) {
+            const colors = ['#facc15', '#4ade80', '#60a5fa', '#f87171', '#a855f7'];
+            for (let i = 0; i < 28; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.7) * 12,
+                    size: Math.random() * 7 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 1, decay: Math.random() * 0.025 + 0.015
+                });
+            }
+        }
+
+        function renderParticles() {
+            if (pCtx && canvas) {
+                pCtx.clearRect(0, 0, canvas.width, canvas.height);
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx; p.y += p.vy; p.vy += 0.25; p.alpha -= p.decay;
+                    if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+                    pCtx.save();
+                    pCtx.globalAlpha = p.alpha; pCtx.fillStyle = p.color;
+                    pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2); pCtx.fill();
+                    pCtx.restore();
+                }
+            }
+            requestAnimationFrame(renderParticles);
+        }
+        requestAnimationFrame(renderParticles);
+
+        const characterClasses = [
+            { id: 'explorer', name: '探險家', icon: '🧭' },
+            { id: 'wizard',   name: '魔法師', icon: '🧙' },
+            { id: 'guardian', name: '守護者', icon: '🛡️' },
+            { id: 'alien',    name: '外星人', icon: '👽' },
+            { id: 'ninja',    name: '忍者',   icon: '🥷' },
+            { id: 'warrior',  name: '戰士',   icon: '⚔️' }
+        ];
+
+        let selectedTeamChars = [characterClasses[0], characterClasses[1], characterClasses[2]];
+        let activeTeamPickerIdx = 0;
+
+        function setActiveTeamPicker(teamIdx) {
+            activeTeamPickerIdx = teamIdx;
+            const teamColors = ['第一組', '第二組', '第三組'];
+            const tabColors = [['bg-red-600', 'text-white', 'border-red-300'],['bg-blue-600', 'text-white', 'border-blue-300'],['bg-green-600', 'text-white', 'border-green-300']];
+
+            for (let i = 0; i < 3; i++) {
+                const tab = document.getElementById(`tab-team-${i}`);
+                if (tab) {
+                    if (i === teamIdx) tab.className = `px-3 py-1 rounded-lg text-xs font-black ${tabColors[i].join(' ')}`;
+                    else tab.className = `px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-slate-300 border border-slate-600`;
+                }
+            }
+            const pickerTitle = document.getElementById('char-picker-title');
+            if (pickerTitle) pickerTitle.innerText = `${teamColors[teamIdx]} 選擇職業`;
+            renderCharPickerGrid();
+        }
+
+        function renderCharPickerGrid() {
+            const grid = document.getElementById('char-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            const currentSelected = selectedTeamChars[activeTeamPickerIdx];
+            characterClasses.forEach(char => {
+                const isSel = (char.id === currentSelected.id);
+                const card = document.createElement('div');
+                card.className = `char-card flex flex-col items-center justify-center p-2 text-center ${isSel ? 'selected' : ''}`;
+                card.innerHTML = `
+                    <div class="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-2xl mb-1 shadow-inner">${char.icon}</div>
+                    <div class="text-xs font-black ${isSel ? 'text-amber-300' : 'text-slate-200'}">${char.name}</div>
+                `;
+                card.onclick = () => window.selectCharacter(char.id);
+                grid.appendChild(card);
+            });
+        }
+
+        function selectCharacter(charId) {
+            const char = characterClasses.find(c => c.id === charId) || characterClasses[0];
+            selectedTeamChars[activeTeamPickerIdx] = char;
+            renderCharPickerGrid();
+            const mascot = document.getElementById(`mascot-${activeTeamPickerIdx}`);
+            const role = document.getElementById(`team-role-${activeTeamPickerIdx}`);
+            if (mascot) mascot.innerText = char.icon;
+            if (role) role.innerText = `${char.name} ${char.icon}`;
+        }
+
+        function shuffle(arr) {
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        // Global function for independent map fullscreen toggle
+        function toggleMapFullscreen(teamIdx) {
+            const mapWrapper = document.getElementById(`map-wrapper-${teamIdx}`);
+            if (!mapWrapper) return;
+            if (!document.fullscreenElement) {
+                if (mapWrapper.requestFullscreen) {
+                    mapWrapper.requestFullscreen();
+                } else if (mapWrapper.webkitRequestFullscreen) {
+                    mapWrapper.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        function genStage1() {
+            const items = [
+                { name: "一枝街燈的高度", ans: "m (米)", options: ["m (米)", "km (公里)", "cm (厘米)", "mm (毫米)"], tip: "提示：街燈高度約 6 米 (m)。" },
+                { name: "一本兒童雜誌的厚度", ans: "mm (毫米)", options: ["mm (毫米)", "m (米)", "km (公里)", "cm (厘米)"], tip: "提示：較薄的厚度常用毫米 (mm)。" },
+                { name: "白石角海濱長廊的長度", ans: "km (公里)", options: ["km (公里)", "m (米)", "cm (厘米)", "mm (毫米)"], tip: "提示：長距離地標長度用公里 (km)。" },
+                { name: "一個10元硬幣的厚度", ans: "mm (毫米)", options: ["mm (毫米)", "cm (厘米)", "m (米)", "km (公里)"], tip: "提示：硬幣厚度約 3 mm。" }
+            ];
+            const qObj = items[Math.floor(Math.random() * items.length)];
+            return { title: "第一關：單位辨識", qText: `請為<b>【${qObj.name}】</b>選最合適單位：`, ans: qObj.ans, tip: qObj.tip, options: shuffle(qObj.options) };
+        }
+
+        function genStage2() {
+            const isKmToM = Math.random() > 0.5;
+            if (isKmToM) {
+                const km = Math.floor(Math.random() * 9) + 1, extraM = (Math.floor(Math.random() * 9) + 1) * 10;
+                const ansVal = `${km * 1000 + extraM} m`;
+                return { title: "第二關：單位換算", qText: `<b>${km} km ${extraM} m</b> 等於多少 <b>m</b>？`, ans: ansVal, tip: `提示：1km=1000m。故 ${km}km = ${km}000m，再加 ${extraM}m。`, options: shuffle([ansVal, `${km * 100 + extraM} m`, `${km * 10000 + extraM} m`, `${km * 10 + extraM} m`]) };
+            } else {
+                const p1 = Math.floor(Math.random() * 30) + 40, p2 = Math.floor(Math.random() * 20) + 20, diff = p1 - p2;
+                const ansVal = `${diff} mm`;
+                return { title: "第二關：直尺差值", qText: `筆袋長 <b>${p1} mm</b>，調色盤長 <b>${p2} mm</b>，筆袋比調色盤<b>長多少 mm</b>？`, ans: ansVal, tip: `提示：直接相減：${p1} - ${p2} = ${diff} mm。`, options: shuffle([ansVal, `${diff + 10} mm`, `${p1 + p2} mm`, `${Math.abs(diff - 2)} mm`]) };
+            }
+        }
+
+        function genStage3() {
+            const dist1 = 4000, dist3 = 1800, diff = dist1 - dist3, ansStr = `${diff} m`;
+            return { title: "第三關：距離計算", qText: `小祖距離終點 <b>4 km</b>，小欣距離終點 <b>1800 m</b>，相距多少米？`, ans: ansStr, tip: `提示：先將 4km 轉為 4000m。4000 - 1800 = 2200m。`, options: shuffle([ansStr, `1000 m`, `3200 m`, `2800 m`]) };
+        }
+
+        /* ✨ 獨立分組 SVG 地圖關卡 ✨ */
+        function genStage4(teamIdx) {
+            const routes = [
+                { q: "從商場往展覽館，途經郵局和酒店，路程全長是多少 km？", ans: "17 km", tip: "提示：請先觀察地圖上的黃字公里數。<br>路線：商場(5km)郵局(5km)酒店(7km)展覽館 = 17 km。" },
+                { q: "從機場前往酒店，最短的路線長多少 km？", ans: "8 km", tip: "提示：請先觀察地圖上的黃字公里數。<br>路線：機場(1km)展覽館(7km)酒店 = 8 km。" },
+                { q: "從商場直接前往博物館的路線長多少 km？", ans: "9 km", tip: "提示：請先觀察地圖上的黃字公里數。<br>看地圖圖示直接標示為 9 km。" },
+                { q: "從博物館往銀行，途經郵局，總路程是多少 km？", ans: "6 km", tip: "提示：請先觀察地圖上的黃字公里數。<br>路線：博物館(3km)郵局(3km)銀行 = 6 km。" }
+            ];
+
+            const r = routes[Math.floor(Math.random() * routes.length)];
+            const numAns = parseInt(r.ans);
+            const distractors = [`${numAns + 2} km`, `${numAns - 3 > 0 ? numAns - 3 : numAns + 5} km`, `${numAns + 6} km`];
+
+            const mapId = `community-map-${teamIdx}`;
+
+            const communityMapSVG = `
+            <svg id="${mapId}" viewBox="0 0 340 260" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" class="bg-slate-900 w-full h-full object-contain">
+                <!-- Lines (Routes) -->
+                <line x1="60" y1="120" x2="60" y2="40" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+                <line x1="60" y1="40" x2="160" y2="40" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+                <line x1="160" y1="40" x2="280" y2="40" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+                <line x1="60" y1="220" x2="60" y2="120" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+                <line x1="60" y1="220" x2="160" y2="130" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+                <line x1="60" y1="220" x2="240" y2="200" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+                <line x1="240" y1="200" x2="160" y2="130" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+                <line x1="160" y1="130" x2="160" y2="40" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+                <line x1="160" y1="130" x2="280" y2="40" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+                <line x1="240" y1="200" x2="280" y2="40" stroke="#475569" stroke-width="4" stroke-dasharray="4,4"/>
+
+                <!-- Distance Texts -->
+                <rect x="40" y="70" width="40" height="20" fill="#1e293b" rx="4"/><text x="60" y="84" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">1km</text>
+                <rect x="90" y="28" width="40" height="20" fill="#1e293b" rx="4"/><text x="110" y="42" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">2km</text>
+                <rect x="200" y="28" width="40" height="20" fill="#1e293b" rx="4"/><text x="220" y="42" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">4km</text>
+                <rect x="40" y="160" width="40" height="20" fill="#1e293b" rx="4"/><text x="60" y="174" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">7km</text>
+                <rect x="98" y="175" width="40" height="20" fill="#1e293b" rx="4"/><text x="118" y="189" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">5km</text>
+                <rect x="138" y="210" width="40" height="20" fill="#1e293b" rx="4"/><text x="158" y="224" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">2km</text>
+                <rect x="193" y="165" width="40" height="20" fill="#1e293b" rx="4"/><text x="213" y="179" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">3km</text>
+                <rect x="140" y="75" width="40" height="20" fill="#1e293b" rx="4"/><text x="160" y="89" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">3km</text>
+                <rect x="213" y="90" width="40" height="20" fill="#1e293b" rx="4"/><text x="233" y="104" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">5km</text>
+                <rect x="258" y="125" width="40" height="20" fill="#1e293b" rx="4"/><text x="278" y="139" fill="#facc15" font-size="13" font-weight="bold" text-anchor="middle">9km</text>
+
+                <!-- Nodes -->
+                <circle cx="60" cy="40" r="16" fill="#3b82f6"/><text x="60" y="45" fill="white" font-size="13" text-anchor="middle">✈️</text><text x="60" y="18" fill="white" font-size="14" font-weight="bold" text-anchor="middle">機場</text>
+                <circle cx="160" cy="40" r="16" fill="#eab308"/><text x="160" y="45" fill="white" font-size="13" text-anchor="middle">🏦</text><text x="160" y="18" fill="white" font-size="14" font-weight="bold" text-anchor="middle">銀行</text>
+                <circle cx="280" cy="40" r="16" fill="#ef4444"/><text x="280" y="45" fill="white" font-size="13" text-anchor="middle">🛍️</text><text x="280" y="18" fill="white" font-size="14" font-weight="bold" text-anchor="middle">商場</text>
+                
+                <circle cx="60" cy="120" r="16" fill="#a855f7"/><text x="60" y="125" fill="white" font-size="13" text-anchor="middle">🖼️</text><text x="35" y="125" fill="white" font-size="14" font-weight="bold" text-anchor="end">展覽館</text>
+                
+                <circle cx="160" cy="130" r="16" fill="#22c55e"/><text x="160" y="135" fill="white" font-size="13" text-anchor="middle">📮</text><text x="182" y="135" fill="white" font-size="14" font-weight="bold" text-anchor="start">郵局</text>
+                
+                <circle cx="60" cy="220" r="16" fill="#ec4899"/><text x="60" y="225" fill="white" font-size="13" text-anchor="middle">🏨</text><text x="60" y="248" fill="white" font-size="14" font-weight="bold" text-anchor="middle">酒店</text>
+                
+                <circle cx="240" cy="200" r="16" fill="#f97316"/><text x="240" y="205" fill="white" font-size="13" text-anchor="middle">🏛️</text><text x="240" y="228" fill="white" font-size="14" font-weight="bold" text-anchor="middle">博物館</text>
+            </svg>`;
+
+            return {
+                title: "第四關：路線距離計算",
+                qText: `📍【請先察看地圖黃字距離】<br><b>${r.q}</b>`,
+                ans: r.ans,
+                tip: r.tip,
+                options: shuffle(Array.from(new Set([r.ans, ...distractors]))),
+                extraHtml: communityMapSVG
+            };
+        }
+
+        function genStage5() {
+            const ansStr = "900 m";
+            return { title: "第五關：隧道計算", qText: `將軍澳隧道的長度比 <b>1 km 短 100 m</b>，隧道長多少？`, ans: ansStr, tip: `提示：1000m - 100m = 900m。`, options: shuffle(["100 m", "90 m", "1000 m", ansStr]) };
+        }
+
+        function genQuestion(stageNum, teamIdx) {
+            let stage = stageNum;
+            if (stage === 0) stage = Math.floor(Math.random() * 5) + 1;
+            if (stage === 1) return genStage1();
+            if (stage === 2) return genStage2();
+            if (stage === 3) return genStage3();
+            if (stage === 4) return genStage4(teamIdx);
+            return genStage5();
+        }
+
+        let gameConfig = { mode: 'race', timeLimit: 60, theme: '📏 長度保齡球', stage: 0 };
+        let gameState = {
+            active: false, timeRemaining: 60, timerInterval: null,
+            scores: [0, 0, 0], combos: [0, 0, 0], correctCount: [0, 0, 0], totalCount: [0, 0, 0],
+            questionCount: [1, 1, 1], currentQ: [null, null, null], sharedQ: null,
+            teamAnswered: [false, false, false], teamProgress: [0, 0, 0], questionHistory: []
+        };
+        let reviewTimeLeft = 20, reviewInterval = null, isReviewPaused = false, reviewActive = false;
+        let microTimers = [null, null, null], microTimeLeft = [6, 6, 6];
+
+        function genUniqueQuestion(stageNum, teamIdx) {
+            if (!gameState.questionHistory) gameState.questionHistory = [];
+            let q = null;
+            let attempts = 0;
+            while (attempts < 25) {
+                q = genQuestion(stageNum, teamIdx);
+                const key = q.qText.replace(/<[^>]*>?/gm, '').trim();
+                if (!gameState.questionHistory.includes(key)) {
+                    gameState.questionHistory.push(key);
+                    if (gameState.questionHistory.length > 20) gameState.questionHistory.shift();
+                    return q;
+                }
+                attempts++;
+            }
+            return q;
+        }
+
+        function setGameMode(mode) {
+            gameConfig.mode = mode;
+            const btnRace = document.getElementById('mode-race');
+            const btnIndep = document.getElementById('mode-indep');
+            if (btnRace) btnRace.className = `wii-btn p-3 rounded-2xl border-2 font-black text-left flex items-center gap-3 ${mode==='race' ? 'bg-amber-500 border-amber-300 text-slate-950' : 'bg-slate-800 border-slate-600 text-slate-300'}`;
+            if (btnIndep) btnIndep.className = `wii-btn p-3 rounded-2xl border-2 font-black text-left flex items-center gap-3 ${mode==='indep' ? 'bg-amber-500 border-amber-300 text-slate-950' : 'bg-slate-800 border-slate-600 text-slate-300'}`;
+        }
+
+        function setTimeLimit(seconds) {
+            gameConfig.timeLimit = seconds;
+            [60, 120, 180, 300].forEach(sec => {
+                const btn = document.getElementById(`time-${sec}`);
+                if (btn) btn.className = `wii-btn p-2 rounded-xl font-black border-2 ${sec===seconds ? 'bg-amber-500 border-amber-300 text-slate-950' : 'bg-slate-800 border-slate-600 text-slate-300'} text-center text-xs md:text-sm`;
+            });
+        }
+
+        function openSetupModal() {
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            if (reviewInterval) clearInterval(reviewInterval);
+            for (let i = 0; i < 3; i++) if (microTimers[i]) clearInterval(microTimers[i]);
+            microTimers = [null, null, null];
+            gameState.active = false; reviewActive = false;
+            document.getElementById('central-review-bar').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+            window.setActiveTeamPicker(0);
+            document.getElementById('setup-modal').classList.remove('hidden');
+        }
+
+        function updateAllButtonStates() {
+            for (let i = 0; i < 3; i++) {
+                const container = document.getElementById(`options-${i}`);
+                if (!container) continue;
+                const btns = container.querySelectorAll('button');
+                const shouldDisable = !gameState.active || reviewActive || gameState.teamAnswered[i];
+                btns.forEach(btn => btn.disabled = shouldDisable);
+            }
+        }
+
+        function renderVisualTracks() {
+            const theme = gameConfig.theme;
+            for (let i = 0; i < 3; i++) {
+                const track = document.getElementById(`visual-track-${i}`);
+                if (!track) continue;
+                const pct = Math.min(gameState.teamProgress[i], 100);
+                if (theme.includes('保齡球')) {
+                    track.innerHTML = `
+                        <div class="flex items-center justify-between w-full px-3">
+                            <span class="text-xs font-black text-amber-300 bg-slate-900 px-2 py-0.5 rounded border border-amber-400/30">擊倒: <b id="pin-pct-${i}">${pct}%</b></span>
+                            <div class="flex items-center justify-center gap-1.5">
+                                <div class="pin" id="pin-${i}-1">1</div><div class="pin" id="pin-${i}-2">2</div><div class="pin" id="pin-${i}-3">3</div><div class="pin" id="pin-${i}-4">4</div><div class="pin" id="pin-${i}-5">5</div>
+                            </div>
+                        </div>`;
+                } else if (theme.includes('卡丁車')) {
+                    track.innerHTML = `<div class="w-full px-3 flex flex-col justify-center h-full"><div class="flex justify-between text-[11px] font-black text-slate-300 mb-1"><span>🏎️ 賽道</span><span class="text-amber-300 font-bold" id="progress-val-${i}">${pct}% 衝刺中</span><span>🏁 終點</span></div><div class="w-full bg-slate-800 h-3.5 rounded-full relative overflow-hidden border border-slate-600"><div id="track-bar-${i}" class="bg-gradient-to-r from-amber-500 to-red-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div><span id="kart-${i}" class="absolute top-1/2 -translate-y-1/2 text-sm transition-all duration-500" style="left: calc(${pct}% - 12px)">🏎️</span></div></div>`;
+                } else if (theme.includes('劃艇')) {
+                    track.innerHTML = `<div class="w-full px-3 flex flex-col justify-center h-full"><div class="flex justify-between text-[11px] font-black text-cyan-200 mb-1"><span>🚩 起點</span><span class="text-cyan-300 font-bold" id="progress-val-${i}">💦 ${pct}% 水道</span><span>🏁 終點</span></div><div class="w-full bg-slate-900 h-3.5 rounded-full relative overflow-hidden border border-cyan-500/40"><div id="track-bar-${i}" class="bg-gradient-to-r from-cyan-500 to-blue-600 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div><span id="canoe-${i}" class="absolute top-1/2 -translate-y-1/2 text-sm transition-all duration-500" style="left: calc(${pct}% - 12px)">🚣</span></div></div>`;
+                } else if (theme.includes('射箭')) {
+                    track.innerHTML = `<div class="w-full px-3 flex flex-col justify-center h-full"><div class="flex justify-between text-[11px] font-black text-red-200 mb-1"><span>🏹 射程</span><span class="text-amber-300 font-bold" id="progress-val-${i}">${pct}% 靶心</span><span>🎯 10環</span></div><div class="w-full bg-slate-900 h-3.5 rounded-full relative overflow-hidden border border-red-500/40"><div id="track-bar-${i}" class="bg-gradient-to-r from-yellow-500 to-red-600 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div><span id="arrow-${i}" class="absolute top-1/2 -translate-y-1/2 text-sm transition-all duration-500" style="left: calc(${pct}% - 12px)">🏹</span></div></div>`;
+                } else {
+                    track.innerHTML = `<div class="w-full px-3 flex flex-col justify-center h-full"><div class="flex justify-between text-[11px] font-black text-indigo-200 mb-1"><span>🌍 地球</span><span class="text-indigo-300 font-bold" id="progress-val-${i}">軌道: ${pct}%</span><span>🪐 宇宙</span></div><div class="w-full bg-slate-950 h-3.5 rounded-full relative overflow-hidden border border-indigo-500/40"><div id="track-bar-${i}" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div><span id="rocket-${i}" class="absolute top-1/2 -translate-y-1/2 text-sm transition-all duration-500" style="left: calc(${pct}% - 12px)">🚀</span></div></div>`;
+                }
+            }
+        }
+
+        function triggerVisualTrackEffect(teamIdx, isCorrect) {
+            const theme = gameConfig.theme;
+            if (isCorrect) gameState.teamProgress[teamIdx] = Math.min(gameState.teamProgress[teamIdx] + 20, 100);
+            const pct = gameState.teamProgress[teamIdx];
+            if (theme.includes('保齡球')) {
+                const pinPct = document.getElementById(`pin-pct-${teamIdx}`);
+                if (pinPct) pinPct.innerText = `${pct}%`;
+                if (isCorrect) {
+                    for (let k = 1; k <= 5; k++) {
+                        const pin = document.getElementById(`pin-${teamIdx}-${k}`);
+                        if (pin) pin.classList.add('down');
+                    }
+                    setTimeout(() => {
+                        for (let k = 1; k <= 5; k++) {
+                            const pin = document.getElementById(`pin-${teamIdx}-${k}`);
+                            if (pin) pin.classList.remove('down');
+                        }
+                    }, 1200);
+                }
+            } else {
+                const bar = document.getElementById(`track-bar-${teamIdx}`);
+                const val = document.getElementById(`progress-val-${teamIdx}`);
+                const icon = document.getElementById(`kart-${teamIdx}`) || document.getElementById(`canoe-${teamIdx}`) || document.getElementById(`arrow-${teamIdx}`) || document.getElementById(`rocket-${teamIdx}`);
+                if (bar) bar.style.width = `${pct}%`;
+                if (val) {
+                    if (theme.includes('卡丁車')) val.innerText = `${pct}% 衝刺中`;
+                    else if (theme.includes('劃艇')) val.innerText = `💦 ${pct}% 水道進度`;
+                    else if (theme.includes('射箭')) val.innerText = `${pct}% 萬位靶心`;
+                    else val.innerText = `🔥 軌道高度: ${pct}%`;
+                }
+                if (icon) {
+                    icon.style.left = `calc(${pct}% - 12px)`;
+                    if (isCorrect) {
+                        icon.classList.add('scale-125');
+                        setTimeout(() => icon.classList.remove('scale-125'), 400);
+                    }
+                }
+            }
+        }
+
+        function startGame() {
+            getAudioContext(); sound.play('correct');
+            const themeSel = document.getElementById('theme-select');
+            const stageSel = document.getElementById('stage-select');
+            if (themeSel) gameConfig.theme = themeSel.value;
+            if (stageSel) gameConfig.stage = parseInt(stageSel.value);
+            const stageBadge = document.getElementById('stage-badge');
+            if (stageBadge) stageBadge.innerText = gameConfig.theme;
+
+            gameState.active = true; reviewActive = false;
+            gameState.timeRemaining = gameConfig.timeLimit;
+            gameState.scores = [0, 0, 0]; gameState.combos = [0, 0, 0];
+            gameState.correctCount = [0, 0, 0]; gameState.totalCount = [0, 0, 0];
+            gameState.questionCount = [1, 1, 1]; gameState.teamAnswered = [false, false, false];
+            gameState.teamProgress = [0, 0, 0]; gameState.questionHistory = [];
+
+            for (let i = 0; i < 3; i++) if (microTimers[i]) clearInterval(microTimers[i]);
+            microTimers = [null, null, null];
+
+            document.getElementById('setup-modal').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('central-review-bar').classList.add('hidden');
+
+            const teamNames = ['第一組 (紅隊)', '第二組 (藍隊)', '第三組 (綠隊)'];
+            for (let i = 0; i < 3; i++) {
+                const mascot = document.getElementById(`mascot-${i}`);
+                const name = document.getElementById(`team-name-${i}`);
+                const role = document.getElementById(`team-role-${i}`);
+                if (mascot) mascot.innerText = selectedTeamChars[i].icon;
+                if (name) name.innerText = teamNames[i];
+                if (role) role.innerText = `${selectedTeamChars[i].name} ${selectedTeamChars[i].icon}`;
+                document.getElementById(`score-${i}`).innerText = '0';
+                document.getElementById(`acc-${i}`).innerText = '0/0';
+                document.getElementById(`combo-count-${i}`).innerText = '0';
+                document.getElementById(`combo-badge-${i}`).style.opacity = '0';
+                document.getElementById(`streak-fire-${i}`).classList.add('hidden');
+                document.getElementById(`team-col-${i}`).classList.remove('flame-aura');
+            }
+
+            renderVisualTracks(); updateTimerDisplay();
+            document.getElementById('timer-container').classList.remove('animate-urgent');
+
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            gameState.timerInterval = setInterval(gameLoop, 1000);
+
+            if (gameConfig.mode === 'race') {
+                const baseQ = genUniqueQuestion(gameConfig.stage, 0); 
+                for (let i = 0; i < 3; i++) {
+                    if (baseQ.extraHtml) {
+                         gameState.currentQ[i] = genUniqueQuestion(gameConfig.stage, i);
+                         gameState.currentQ[i].title = baseQ.title;
+                         gameState.currentQ[i].qText = baseQ.qText;
+                         gameState.currentQ[i].ans = baseQ.ans;
+                         gameState.currentQ[i].tip = baseQ.tip;
+                         gameState.currentQ[i].options = [...baseQ.options];
+                    } else {
+                         gameState.currentQ[i] = baseQ;
+                    }
+                    renderQuestion(i);
+                }
+                gameState.sharedQ = baseQ;
+            } else {
+                for (let i = 0; i < 3; i++) {
+                    gameState.currentQ[i] = genUniqueQuestion(gameConfig.stage, i);
+                    renderQuestion(i);
+                }
+            }
+            updateAllButtonStates();
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(gameState.timeRemaining / 60).toString().padStart(2, '0');
+            const s = (gameState.timeRemaining % 60).toString().padStart(2, '0');
+            const timerDisp = document.getElementById('timer-display');
+            if (timerDisp) timerDisp.innerText = `${m}:${s}`;
+        }
+
+        function gameLoop() {
+            if (!gameState.active || reviewActive) return;
+            gameState.timeRemaining--;
+            updateTimerDisplay();
+            if (gameState.timeRemaining <= 10 && gameState.timeRemaining > 0) {
+                sound.play('tick');
+                document.getElementById('timer-container').classList.add('animate-urgent');
+            }
+            if (gameState.timeRemaining <= 0) endGame();
+        }
+
+        function renderQuestion(teamIdx) {
+            const q = gameState.currentQ[teamIdx];
+            const qBox = document.getElementById(`q-box-${teamIdx}`);
+            const optionsBox = document.getElementById(`options-${teamIdx}`);
+            if (!qBox || !optionsBox) return;
+
+            const themeIcon = gameConfig.theme.split(' ')[0] || '📏';
+            
+            qBox.innerHTML = `
+                <div class="flex items-center justify-between gap-1 mb-2 pb-1.5 border-b border-slate-200 shrink-0">
+                    <span class="bg-amber-100 text-amber-900 font-extrabold text-xs px-2.5 py-1 rounded-lg border border-amber-300 flex items-center gap-1">
+                        ${themeIcon} 第 ${gameState.questionCount[teamIdx]} 題
+                    </span>
+                    <span class="bg-red-50 text-red-600 font-bold text-[11px] px-2 py-0.5 rounded-md border border-red-200 truncate max-w-[180px]">
+                        ${q.title}
+                    </span>
+                </div>
+                ${q.extraHtml ? `
+                <div id="map-wrapper-${teamIdx}" class="map-container mb-2 w-full relative group shrink-0">
+                    <div class="flex justify-center w-full h-[180px] md:h-[220px] overflow-hidden rounded-xl border border-slate-600 cursor-pointer bg-slate-900 transition-transform active:scale-95" onclick="window.toggleMapFullscreen(${teamIdx})">
+                        ${q.extraHtml}
+                    </div>
+                    <button type="button" onclick="window.toggleMapFullscreen(${teamIdx})" class="absolute top-2 right-2 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-2.5 py-1.5 rounded-lg shadow-lg border border-amber-200 flex items-center gap-1 hover:scale-105 transition-transform z-10">
+                        🔍 放大地圖
+                    </button>
+                </div>` : ''}
+                <div class="my-auto py-1 text-center text-slate-800 font-extrabold text-sm md:text-base leading-snug">
+                    ${q.qText}
+                </div>
+            `;
+
+            optionsBox.innerHTML = '';
+            q.options.forEach((optText) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'wii-btn bg-white hover:bg-amber-50 text-slate-900 font-black p-3 text-xs md:text-sm rounded-xl border-2 border-slate-300 shadow flex items-center justify-center text-center min-h-[60px] relative';
+                btn.innerHTML = optText;
+                btn.onclick = (e) => window.checkAnswer(teamIdx, optText, e);
+                optionsBox.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(teamIdx, selectedOpt, event) {
+            if (!gameState.active || reviewActive || gameState.teamAnswered[teamIdx]) return;
+            gameState.teamAnswered[teamIdx] = true;
+            updateAllButtonStates();
+
+            const q = gameState.currentQ[teamIdx];
+            const isCorrect = (selectedOpt === q.ans);
+
+            gameState.totalCount[teamIdx]++;
+            const mascot = document.getElementById(`mascot-${teamIdx}`);
+            if (mascot) { mascot.classList.add('scale-125'); setTimeout(() => mascot.classList.remove('scale-125'), 300); }
+
+            if (isCorrect) {
+                gameState.correctCount[teamIdx]++;
+                sound.play('correct', gameState.combos[teamIdx]);
+                if (event && event.clientX) triggerBurst(event.clientX, event.clientY);
+                else {
+                    const col = document.getElementById(`team-col-${teamIdx}`);
+                    if (col) { const rect = col.getBoundingClientRect(); triggerBurst(rect.left + rect.width / 2, rect.top + rect.height / 2); }
+                }
+
+                gameState.combos[teamIdx]++;
+                const comboBonus = Math.min(gameState.combos[teamIdx] * 20, 100);
+                const pointsGained = 100 + comboBonus;
+                gameState.scores[teamIdx] += pointsGained;
+
+                showFloatingScore(teamIdx, `+${pointsGained}`, event ? event.clientX : null, event ? event.clientY : null);
+                triggerVisualTrackEffect(teamIdx, true);
+
+                document.getElementById(`score-${teamIdx}`).innerText = gameState.scores[teamIdx];
+                document.getElementById(`acc-${teamIdx}`).innerText = `${gameState.correctCount[teamIdx]}/${gameState.totalCount[teamIdx]}`;
+                document.getElementById(`combo-count-${teamIdx}`).innerText = gameState.combos[teamIdx];
+                if (gameState.combos[teamIdx] > 1) document.getElementById(`combo-badge-${teamIdx}`).style.opacity = '1';
+                if (gameState.combos[teamIdx] >= 3) {
+                    document.getElementById(`streak-fire-${teamIdx}`).classList.remove('hidden');
+                    document.getElementById(`team-col-${teamIdx}`).classList.add('flame-aura');
+                }
+            } else {
+                sound.play('wrong');
+                gameState.combos[teamIdx] = 0;
+                document.getElementById(`acc-${teamIdx}`).innerText = `${gameState.correctCount[teamIdx]}/${gameState.totalCount[teamIdx]}`;
+                document.getElementById(`combo-badge-${teamIdx}`).style.opacity = '0';
+                document.getElementById(`streak-fire-${teamIdx}`).classList.add('hidden');
+                document.getElementById(`team-col-${teamIdx}`).classList.remove('flame-aura');
+
+                const col = document.getElementById(`team-col-${teamIdx}`);
+                if (col) { col.classList.add('animate-shake'); setTimeout(() => col.classList.remove('animate-shake'), 400); }
+                showFloatingScore(teamIdx, '❌ 答錯了', event ? event.clientX : null, event ? event.clientY : null);
+            }
+
+            if (gameConfig.mode === 'race') startCentralReview(q, isCorrect, teamIdx);
+            else startMicroReview(teamIdx, q, isCorrect, selectedOpt);
+        }
+
+        function startMicroReview(teamIdx, q, isCorrect, selectedOpt) {
+            const optionsBox = document.getElementById(`options-${teamIdx}`);
+            if (optionsBox) {
+                const btns = optionsBox.querySelectorAll('button');
+                btns.forEach(btn => {
+                    btn.disabled = true;
+                    if (btn.innerText.includes(q.ans) || btn.innerHTML.includes(q.ans)) {
+                        btn.className = 'wii-btn bg-emerald-600 text-white font-black p-3 text-lg md:text-xl rounded-xl border-4 border-amber-300 shadow-xl flex items-center justify-center text-center min-h-[70px] scale-105 relative z-20 transition-all duration-300';
+                        if (!btn.querySelector('.correct-badge')) btn.insertAdjacentHTML('beforeend', `<span class="correct-badge absolute -top-3 -right-2 bg-amber-400 text-slate-950 text-xs px-2.5 py-0.5 rounded-full border-2 border-slate-900 font-black shadow-md animate-bounce">✅ 正確答案</span>`);
+                    } else if (!isCorrect && (btn.innerText.includes(selectedOpt) || btn.innerHTML.includes(selectedOpt))) {
+                        btn.className = 'wii-btn bg-red-600 text-white font-black p-3 text-xs md:text-sm rounded-xl border-2 border-red-300 shadow flex items-center justify-center text-center min-h-[60px] opacity-80';
+                    }
+                });
+            }
+
+            const qBox = document.getElementById(`q-box-${teamIdx}`);
+            if (qBox) {
+                const cardHtml = `
+                    <div id="micro-card-${teamIdx}" class="mt-2 p-3 shrink-0 ${isCorrect ? 'bg-emerald-50 border-emerald-400 text-emerald-950' : 'bg-red-50 border-red-400 text-red-950'} border-2 rounded-2xl animate-pop text-left text-xs md:text-sm shadow-md">
+                        <div class="flex items-center justify-between font-black mb-1">
+                            <span class="flex items-center gap-1">${isCorrect ? '🎉 答對了！' : '❌ 答錯了！'} 正確答案：<b class="text-base text-emerald-700 font-mono">${q.ans}</b></span>
+                            <span class="bg-slate-900 text-amber-300 px-2 py-0.5 rounded-full text-xs font-mono font-bold">倒數 <b id="micro-timer-${teamIdx}">6</b>s</span>
+                        </div>
+                        <div class="text-slate-600 font-bold mb-2 text-xs leading-relaxed">${q.tip || ''}</div>
+                        <button type="button" onclick="window.nextIndepQuestion(${teamIdx})" class="wii-btn w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl border border-emerald-300 text-xs shadow-md flex items-center justify-center gap-1 min-h-[40px]">
+                            <span>知道了，下一題 ▶</span>
+                        </button>
+                    </div>
+                `;
+                qBox.insertAdjacentHTML('beforeend', cardHtml);
+                qBox.scrollTop = qBox.scrollHeight;
+            }
+
+            microTimeLeft[teamIdx] = 6;
+            if (microTimers[teamIdx]) clearInterval(microTimers[teamIdx]);
+            microTimers[teamIdx] = setInterval(() => {
+                microTimeLeft[teamIdx]--;
+                const timerEl = document.getElementById(`micro-timer-${teamIdx}`);
+                if (timerEl) timerEl.innerText = microTimeLeft[teamIdx];
+                if (microTimeLeft[teamIdx] <= 0) window.nextIndepQuestion(teamIdx);
+            }, 1000);
+        }
+
+        function nextIndepQuestion(teamIdx) {
+            if (microTimers[teamIdx]) clearInterval(microTimers[teamIdx]);
+            microTimers[teamIdx] = null;
+            const card = document.getElementById(`micro-card-${teamIdx}`);
+            if (card) card.remove();
+            gameState.teamAnswered[teamIdx] = false;
+            gameState.questionCount[teamIdx]++;
+            gameState.currentQ[teamIdx] = genUniqueQuestion(gameConfig.stage, teamIdx);
+            renderQuestion(teamIdx);
+            updateAllButtonStates();
+        }
+
+        function startCentralReview(q, isCorrect, teamIdx) {
+            reviewActive = true; updateAllButtonStates();
+            for (let i = 0; i < 3; i++) {
+                const optionsBox = document.getElementById(`options-${i}`);
+                if (optionsBox) {
+                    const btns = optionsBox.querySelectorAll('button');
+                    btns.forEach(btn => {
+                        if (btn.innerText.includes(q.ans) || btn.innerHTML.includes(q.ans)) {
+                            btn.className = 'wii-btn bg-emerald-600 text-white font-black p-3 text-lg md:text-xl rounded-xl border-4 border-amber-300 shadow-xl flex items-center justify-center text-center min-h-[70px] scale-105 relative z-20 transition-all duration-300';
+                            if (!btn.querySelector('.correct-badge')) btn.insertAdjacentHTML('beforeend', `<span class="correct-badge absolute -top-3 -right-2 bg-amber-400 text-slate-950 text-xs px-2.5 py-0.5 rounded-full border-2 border-slate-900 font-black shadow-md animate-bounce">✅ 正確答案</span>`);
+                        }
+                    });
+                }
+            }
+
+            const teamName = teamIdx === 0 ? '第一組' : (teamIdx === 1 ? '第二組' : '第三組');
+            const ansText = document.getElementById('review-answer-text');
+            const tipText = document.getElementById('review-tip-text');
+            if (ansText) ansText.innerText = `${isCorrect ? '🎉 ' + teamName + '搶答正確！' : '❌ ' + teamName + '答錯了！'} 正確答案：${q.ans}`;
+            if (tipText) tipText.innerHTML = q.tip || `提示：請仔細計算單位。`;
+
+            reviewTimeLeft = 20; isReviewPaused = false;
+            const timerDisp = document.getElementById('review-timer-display');
+            if (timerDisp) timerDisp.innerText = reviewTimeLeft;
+
+            const holdIcon = document.getElementById('hold-btn-icon');
+            const holdText = document.getElementById('hold-btn-text');
+            const holdBtn = document.getElementById('btn-review-hold');
+            if (holdIcon) holdIcon.innerText = '⏸';
+            if (holdText) holdText.innerText = '停留講評';
+            if (holdBtn) holdBtn.className = 'wii-btn bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xl md:text-2xl rounded-2xl border-2 border-indigo-400 shadow-xl flex items-center justify-center gap-3 min-h-[75px]';
+
+            const reviewBar = document.getElementById('central-review-bar');
+            if (reviewBar) reviewBar.classList.remove('hidden');
+
+            if (reviewInterval) clearInterval(reviewInterval);
+            reviewInterval = setInterval(() => {
+                if (!isReviewPaused) {
+                    reviewTimeLeft--;
+                    const timerEl = document.getElementById('review-timer-display');
+                    if (timerEl) timerEl.innerText = reviewTimeLeft;
+                    if (reviewTimeLeft <= 0) window.forceNextQuestion();
+                }
+            }, 1000);
+        }
+
+        function togglePauseReview() {
+            isReviewPaused = !isReviewPaused;
+            const holdIcon = document.getElementById('hold-btn-icon');
+            const holdText = document.getElementById('hold-btn-text');
+            const holdBtn = document.getElementById('btn-review-hold');
+            if (isReviewPaused) {
+                if (holdIcon) holdIcon.innerText = '▶'; if (holdText) holdText.innerText = '繼續倒數';
+                if (holdBtn) holdBtn.className = 'wii-btn bg-pink-600 hover:bg-pink-500 text-white font-black text-xl md:text-2xl rounded-2xl border-2 border-pink-300 shadow-xl flex items-center justify-center gap-3 min-h-[75px]';
+            } else {
+                if (holdIcon) holdIcon.innerText = '⏸'; if (holdText) holdText.innerText = '停留講評';
+                if (holdBtn) holdBtn.className = 'wii-btn bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xl md:text-2xl rounded-2xl border-2 border-indigo-400 shadow-xl flex items-center justify-center gap-3 min-h-[75px]';
+            }
+        }
+
+        function forceNextQuestion() {
+            if (reviewInterval) clearInterval(reviewInterval);
+            const reviewBar = document.getElementById('central-review-bar');
+            if (reviewBar) reviewBar.classList.add('hidden');
+            reviewActive = false; gameState.teamAnswered = [false, false, false];
+            
+            const baseQ = genUniqueQuestion(gameConfig.stage, 0);
+            for (let i = 0; i < 3; i++) {
+                gameState.questionCount[i]++;
+                if (baseQ.extraHtml) {
+                     gameState.currentQ[i] = genUniqueQuestion(gameConfig.stage, i);
+                     gameState.currentQ[i].title = baseQ.title;
+                     gameState.currentQ[i].qText = baseQ.qText;
+                     gameState.currentQ[i].ans = baseQ.ans;
+                     gameState.currentQ[i].tip = baseQ.tip;
+                     gameState.currentQ[i].options = [...baseQ.options];
+                } else {
+                     gameState.currentQ[i] = baseQ;
+                }
+                renderQuestion(i);
+            }
+            gameState.sharedQ = baseQ;
+            updateAllButtonStates();
+        }
+
+        function showFloatingScore(teamIdx, text, x, y) {
+            const el = document.createElement('div');
+            el.className = 'float-score'; el.innerText = text;
+            el.style.left = `${x || window.innerWidth / 2}px`; el.style.top = `${y || window.innerHeight / 2}px`;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1200);
+        }
+
+        function endGame() {
+            gameState.active = false; reviewActive = false;
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            if (reviewInterval) clearInterval(reviewInterval);
+            for (let i = 0; i < 3; i++) if (microTimers[i]) clearInterval(microTimers[i]);
+
+            const reviewBar = document.getElementById('central-review-bar');
+            if (reviewBar) reviewBar.classList.add('hidden');
+            sound.play('fanfare');
+
+            const teamNames = ['第一組 (紅隊)', '第二組 (藍隊)', '第三組 (綠隊)'];
+            const results = [
+                { id: 0, name: teamNames[0], char: selectedTeamChars[0], score: gameState.scores[0] },
+                { id: 1, name: teamNames[1], char: selectedTeamChars[1], score: gameState.scores[1] },
+                { id: 2, name: teamNames[2], char: selectedTeamChars[2], score: gameState.scores[2] }
+            ].sort((a, b) => b.score - a.score);
+
+            const podiumContainer = document.getElementById('podium-container');
+            if (podiumContainer) {
+                podiumContainer.innerHTML = `
+                    <div class="flex-1 flex flex-col items-center justify-end h-full">
+                        <div class="text-3xl mb-1">${results[1].char.icon}</div>
+                        <div class="text-xs font-black text-slate-300 mb-1">${results[1].name}</div>
+                        <div class="text-base font-black text-amber-300 mb-1">${results[1].score} 分</div>
+                        <div class="w-full bg-slate-400 border-t-4 border-slate-200 rounded-t-2xl flex items-center justify-center text-2xl font-black text-slate-900 shadow-lg" style="height: 60%;">🥈 亞軍</div>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center justify-end h-full">
+                        <div class="text-4xl mb-1 animate-bounce">👑 ${results[0].char.icon}</div>
+                        <div class="text-xs font-black text-amber-300 mb-1">${results[0].name}</div>
+                        <div class="text-2xl font-black text-amber-300 mb-1">${results[0].score} 分</div>
+                        <div class="w-full bg-gradient-to-b from-amber-400 to-yellow-500 border-t-4 border-amber-200 rounded-t-2xl flex items-center justify-center text-3xl font-black text-amber-950 shadow-2xl" style="height: 85%;">🥇 冠軍</div>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center justify-end h-full">
+                        <div class="text-3xl mb-1">${results[2].char.icon}</div>
+                        <div class="text-xs font-black text-slate-400 mb-1">${results[2].name}</div>
+                        <div class="text-base font-black text-amber-300 mb-1">${results[2].score} 分</div>
+                        <div class="w-full bg-amber-800 border-t-4 border-amber-600 rounded-t-2xl flex items-center justify-center text-xl font-black text-amber-100 shadow-md" style="height: 45%;">🥉 季軍</div>
+                    </div>
+                `;
+            }
+
+            const victoryModal = document.getElementById('victory-modal');
+            if (victoryModal) victoryModal.classList.remove('hidden');
+
+            for (let i = 0; i < 6; i++) {
+                setTimeout(() => { triggerBurst(Math.random() * window.innerWidth, Math.random() * window.innerHeight * 0.6); }, i * 200);
+            }
+        }
+
+        window.toggleSound = toggleSound; window.setGameMode = setGameMode; window.setTimeLimit = setTimeLimit;
+        window.setActiveTeamPicker = setActiveTeamPicker; window.selectCharacter = selectCharacter;
+        window.openSetupModal = openSetupModal; window.startGame = startGame; window.checkAnswer = checkAnswer;
+        window.forceNextQuestion = forceNextQuestion; window.togglePauseReview = togglePauseReview;
+        window.nextIndepQuestion = nextIndepQuestion; window.genUniqueQuestion = genUniqueQuestion;
+        window.toggleMapFullscreen = toggleMapFullscreen;
+
+        window.onload = function() { window.setActiveTeamPicker(0); };
+    </script>
+</body>
+</html>
