@@ -51,6 +51,19 @@ test('a saved Calendar token does not open another silent popup', () => {
   }
 });
 
+test('cold open paints one flat theme, then the photo and the UI together', () => {
+  for (const html of [indexHtml, dashHtml]) {
+    assert.match(html, /html\.dash-booting\.theme-sunny-beach body::before/);
+    assert.match(html, /background-image:\s*none !important/);
+    assert.match(html, /function waitForBootImage/);
+    assert.match(html, /localStorage\.setItem\(GDRIVE_TOKEN_SESSION_KEY/);
+    assert.equal(html.includes('transition: background 0.4s ease'), false);
+    assert.match(html, /id="dash-fonts"/);
+    assert.match(html, /media="print"/);
+    assert.match(html, /waitDashBootHolds\(2500\)/);
+  }
+});
+
 test('open stays covered until the first pull, and the root scroller does not bounce', () => {
   for (const html of [indexHtml, dashHtml]) {
     assert.equal(html.includes('setTimeout(ready, 1800)'), false);
