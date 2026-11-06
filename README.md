@@ -35,3 +35,4 @@
 - [六年級 科學科 使用顯微鏡觀察動植物的細胞 (6LF2)](https://puddingchau.github.io/dashboard/games/p6-observe-cells/)
 - [三年級「長度」大冒險](https://puddingchau.github.io/dashboard/games/p3-length/)
 - [三年級「公里和毫米」大冒險](https://puddingchau.github.io/dashboard/games/p3-km-mm/)
+- [細胞解密大挑戰](https://puddingchau.github.io/dashboard/games/p6-cell-quiz/)
