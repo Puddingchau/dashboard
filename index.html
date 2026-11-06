@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#4C9BE0" />
+  <meta name="theme-color" content="#1E2C3A" />
   <style>
     /* Flat theme colour before the font CSS or the photo. The app stays hidden until one reveal. */
-    html, body { margin: 0; background-color: #4C9BE0; }
+    html, body { margin: 0; background-color: #1E2C3A; }
     html.dash-booting .app { opacity: 0; visibility: hidden; }
     html.dash-booting.theme-provence-field,
     html.dash-booting.theme-provence-field body { background-color: #4C9BE0 !important; background-image: none !important; }
@@ -18,12 +18,12 @@
     html.dash-booting.theme-sunny-beach body::before,
     html.dash-booting.theme-rain-cafe body::before { background-image: none !important; }
     html.dash-booting.theme-provence-field body::after { content: none !important; display: none !important; }
-    html.dash-booting.view-only .share-lock { background-color: #4C9BE0 !important; background-image: none !important; }
+    html.dash-booting.view-only .share-lock { background-color: #1E2C3A !important; background-image: none !important; }
   </style>
   <script>
     /* Theme is device-local (dash-hub-v1). Apply it before paint.
-       ?view=1 paints provence-field / 普羅旺斯田野 and does not write localStorage.
-       Schema below 12 paints provence-field once, same as normalizeState, so the
+       ?view=1 paints rain-cafe / 雨窗咖啡 and does not write localStorage.
+       Schema below 13 paints rain-cafe once, same as normalizeState, so the
        flat boot colour matches the theme that will be revealed. */
     (function () {
       var THEMES = ['provence-field', 'sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
@@ -50,7 +50,7 @@
         sakura: 'dusk', peach: 'clear', twilight: 'dusk', matcha: 'cloud',
         toys: 'toy'
       };
-      var theme = 'provence-field';
+      var theme = 'rain-cafe';
       var viewOnly = false;
       /* Browser scroll restoration and our own scroll restore were moving the page in opposite directions on open. */
       try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e0) {}
@@ -59,17 +59,17 @@
         viewOnly = new URLSearchParams(location.search).get('view') === '1';
       } catch (e) {}
       if (viewOnly) {
-        /* Friend share uses Provence Field. Do not follow localStorage and do not write it. */
+        /* Friend share uses 雨窗咖啡. Do not follow localStorage and do not write it. */
         document.documentElement.classList.add('view-only');
-        theme = 'provence-field';
+        theme = 'rain-cafe';
       } else {
         try {
           var raw = localStorage.getItem('dash-hub-v1');
           if (raw) {
             bootData = JSON.parse(raw);
             var savedSchema = bootData ? (Number(bootData.schemaVersion) || 0) : 0;
-            /* schema < 12 still has the previous default. Paint Provence before first paint. */
-            if (savedSchema >= 12 && bootData) {
+            /* schema < 13 still has the Provence force (or an older default). Paint rain-cafe before first paint. */
+            if (savedSchema >= 13 && bootData) {
               var rawTheme = THEME_MIGRATE[bootData.theme] || bootData.theme;
               if (THEMES.indexOf(rawTheme) !== -1) theme = rawTheme;
             }
@@ -79,7 +79,7 @@
       window.__DASH_BOOT_THEME = theme;
       document.documentElement.setAttribute('data-dash-theme', theme);
       document.documentElement.classList.add('theme-' + theme);
-      document.documentElement.style.backgroundColor = COLORS[theme] || '#4C9BE0';
+      document.documentElement.style.backgroundColor = COLORS[theme] || '#1E2C3A';
       if (PHOTO[theme]) {
         var preload = document.createElement('link');
         preload.rel = 'preload';
@@ -93,7 +93,7 @@
         if (bootData.busExpanded) document.documentElement.classList.add('boot-bus-open');
       }
       var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', COLORS[theme] || '#4C9BE0');
+      if (meta) meta.setAttribute('content', COLORS[theme] || '#1E2C3A');
       /* Owner opens from this device. A ?view=1 link carries its own snapshot in #s=.
          Pages sync-data.json is prefetched only when that snapshot is absent.
          Signed-in owner list sync is a Firestore pull after auth, not this file. */
@@ -880,7 +880,7 @@
       display: none !important;
     }
     html.dash-booting.view-only .share-lock {
-      background-color: #4C9BE0 !important;
+      background-color: #1E2C3A !important;
       background-image: none !important;
     }
     /* Login settle: do not smooth-scroll or anchor-jump while a sync repaint lands. */
@@ -3544,8 +3544,8 @@
       align-items: center;
       justify-content: center;
       padding: 24px 16px;
-      background-color: #4C9BE0;
-      background-image: url('provence-field-bg.jpg');
+      background-color: #1E2C3A;
+      background-image: url('rain-cafe-bg.jpg');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -3562,6 +3562,27 @@
     }
     html.view-only.theme-provence-field .share-lock-msg {
       color: #A34730;
+    }
+    /* Share lock sits on the coffee photo. Frost stays on the card, not a flat fill. */
+    html.view-only.theme-rain-cafe .share-lock-card {
+      background: rgba(255, 252, 248, 0.72);
+      backdrop-filter: blur(26px) saturate(1.35);
+      -webkit-backdrop-filter: blur(26px) saturate(1.35);
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      box-shadow:
+        0 24px 48px -22px rgba(20, 35, 55, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+      color: #1C242C;
+    }
+    html.view-only.theme-rain-cafe .share-lock-msg {
+      color: #7A5420;
+    }
+    html.view-only.theme-rain-cafe .view-only-banner {
+      background: rgba(245, 237, 224, 0.72);
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      color: #7A5420;
+      border: 1px solid rgba(255, 255, 255, 0.28);
     }
     .share-lock-card {
       width: min(420px, 100%);
@@ -3652,8 +3673,8 @@
   /* Copy the head-script theme onto body before the rest of the page paints. */
   (function () {
     var THEMES = ['provence-field', 'sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
-    var theme = window.__DASH_BOOT_THEME || 'provence-field';
-    if (THEMES.indexOf(theme) === -1) theme = 'provence-field';
+    var theme = window.__DASH_BOOT_THEME || 'rain-cafe';
+    if (THEMES.indexOf(theme) === -1) theme = 'rain-cafe';
     THEMES.forEach(function (p) { document.body.classList.remove('theme-' + p); });
     document.body.classList.remove('theme-rain-window');
     document.body.classList.add('theme-' + theme);
@@ -3748,9 +3769,9 @@
             </div>
           </div>
           <div class="theme-chips theme-chips-mobile" id="themeChipsMobile" role="group" aria-label="主題">
-            <button type="button" class="theme-chip active" data-theme="provence-field" title="田野" aria-label="普羅旺斯田野主題"></button>
+            <button type="button" class="theme-chip" data-theme="provence-field" title="田野" aria-label="普羅旺斯田野主題"></button>
             <button type="button" class="theme-chip" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
-            <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+            <button type="button" class="theme-chip active" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
             <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
             <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
             <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
@@ -3758,9 +3779,9 @@
             <button type="button" class="theme-chip" data-theme="toy" title="玩具" aria-label="Toy Story 主題"></button>
           </div>
           <div class="theme-chips theme-chips-desktop" id="themeChips" role="group" aria-label="主題">
-            <button type="button" class="theme-chip active" data-theme="provence-field" title="田野" aria-label="普羅旺斯田野主題"></button>
+            <button type="button" class="theme-chip" data-theme="provence-field" title="田野" aria-label="普羅旺斯田野主題"></button>
             <button type="button" class="theme-chip" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
-            <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
+            <button type="button" class="theme-chip active" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
             <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
             <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
             <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
@@ -4252,7 +4273,7 @@ const TCS_DATA = {
 };
 
 const STORAGE_KEY = 'dash-hub-v1';
-const SCHEMA_VERSION = 12; // 12: one-time default theme provence-field. 11: drop retired seed todos
+const SCHEMA_VERSION = 13; // 13: one-time default theme rain-cafe. 12: one-time default theme provence-field. 11: drop retired seed todos
 // Drive 檔「布丁仔-sync.json」永久停用：唔讀、唔寫、亦唔會為同步彈 drive.file。
 // 列表只經 Firebase；公開頁只經「推上線」寫 sync-data.json。個人活動仍用 calendar.events。
 const ENABLE_DRIVE_SYNC = false;
@@ -6413,7 +6434,7 @@ function normalizeState(data) {
     trainingExpanded: false,
     busExpanded: false,
     todoTab: 'today',
-    theme: 'provence-field',
+    theme: 'rain-cafe',
     syncUpdatedAt: 0,
     share: { enabled: false, salt: '', passwordHash: '', updatedAt: 0, expiresAt: 0 }
   };
@@ -6539,10 +6560,10 @@ function normalizeState(data) {
     toys: 'toy'
   };
   const rawTheme = THEME_MIGRATE[data.theme] || data.theme;
-  base.theme = THEMES.includes(rawTheme) ? rawTheme : 'provence-field';
-  // One-shot (schema < 12): switch the saved theme to Provence Field once.
-  // saveState writes schema 12, so a later theme-dot choice is kept.
-  if (prevSchema < 12) base.theme = 'provence-field';
+  base.theme = THEMES.includes(rawTheme) ? rawTheme : 'rain-cafe';
+  // One-shot (schema < 13): schema 12 forced Provence Field. Put rain-cafe back once.
+  // saveState writes schema 13, so a later theme-dot choice is kept.
+  if (prevSchema < 13) base.theme = 'rain-cafe';
   base.share = normalizeShare(data.share);
   base.schemaVersion = SCHEMA_VERSION;
   return base;
@@ -6580,7 +6601,7 @@ function buildExportPayload() {
     shortcuts: Array.isArray(state.shortcuts) ? state.shortcuts : [],
     categories: Array.isArray(state.categories) ? state.categories : [],
     busStops: Array.isArray(state.busStops) ? state.busStops : [],
-    theme: state.theme || 'provence-field',
+    theme: state.theme || 'rain-cafe',
     // Always publish 今天 / 個人活動. This document may show another tab until
     // a full reload; storing that choice made the next load and the other device jump.
     todoTab: 'today',
@@ -6617,7 +6638,7 @@ function saveState(opts) {
         trainingExpanded: !!state.trainingExpanded,
         busExpanded: !!state.busExpanded,
         todoTab: 'today',
-        theme: state.theme || 'provence-field',
+        theme: state.theme || 'rain-cafe',
         syncUpdatedAt: state.syncUpdatedAt || 0,
         share: normalizeShare(state.share)
       };
@@ -6645,13 +6666,13 @@ function saveState(opts) {
 const THEME_PRESETS = ['provence-field', 'sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
 
 function applyTheme(preset, persist) {
-  /* ?view=1 always shows provence-field / 普羅旺斯田野. Do not persist that onto the viewer's device.
+  /* ?view=1 always shows rain-cafe / 雨窗咖啡. Do not persist that onto the viewer's device.
      Owner theme (no ?view=1) still follows the argument and localStorage. */
   if (VIEW_ONLY) {
-    preset = 'provence-field';
+    preset = 'rain-cafe';
     persist = false;
   }
-  const t = THEME_PRESETS.includes(preset) ? preset : 'provence-field';
+  const t = THEME_PRESETS.includes(preset) ? preset : 'rain-cafe';
   if (!VIEW_ONLY) state.theme = t;
   const body = document.getElementById('appBody') || document.body;
   const already =
@@ -6675,7 +6696,7 @@ function applyTheme(preset, persist) {
   });
   const meta = document.querySelector('meta[name="theme-color"]');
   const colors = { 'provence-field': '#4C9BE0', 'sunny-beach': '#87CEEB', 'rain-cafe': '#C5D4E0', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
-  if (meta) meta.setAttribute('content', colors[t] || '#4C9BE0');
+  if (meta) meta.setAttribute('content', colors[t] || '#1E2C3A');
   if (persist !== false) saveState();
 }
 
@@ -11466,7 +11487,7 @@ function reRenderAfterSyncNow(extras) {
     try { renderEvents(); } catch (e) {}
     try { updateBlockSummaries(); } catch (e) {}
     if (extras) {
-      try { applyTheme(state.theme || 'provence-field', false); } catch (e) {}
+      try { applyTheme(state.theme || 'rain-cafe', false); } catch (e) {}
       try { syncShareOwnerUI(); } catch (e) {}
       try { syncTodoTabUI(); } catch (e) {}
       try { syncEventsFilterUI(); } catch (e) {}
@@ -13776,11 +13797,11 @@ function initViewOnlyChrome() {
   if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 布丁仔';
 }
 
-/** Share / ?view=1, lock screen and unlocked dashboard. Always provence-field / 普羅旺斯田野.
+/** Share / ?view=1, lock screen and unlocked dashboard. Always rain-cafe / 雨窗咖啡.
  *  Does not write localStorage or the owner's theme. */
 function applyShareEntryTheme() {
   if (!VIEW_ONLY) return;
-  const t = 'provence-field';
+  const t = 'rain-cafe';
   document.documentElement.classList.add('view-only');
   document.documentElement.classList.remove('theme-rain-window');
   THEME_PRESETS.forEach(function (p) {
@@ -13795,7 +13816,7 @@ function applyShareEntryTheme() {
     body.classList.add('theme-' + t);
   }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', '#4C9BE0');
+  if (meta) meta.setAttribute('content', '#C5D4E0');
 }
 
 /* ===== Share gate =====
@@ -14029,7 +14050,7 @@ function finishDashBootPaint() {
 }
 
 function renderDashboardSurfaces() {
-  applyTheme(state.theme || 'provence-field', false);
+  applyTheme(state.theme || 'rain-cafe', false);
   // First paint of this document opens on 今天 / 個人活動.
   // A later paint (share unlock reloads state) keeps a tab the user already picked.
   applySessionViewFilters();
