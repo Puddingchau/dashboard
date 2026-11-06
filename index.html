@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <meta name="theme-color" content="#87CEEB" />
+  <style>
+    /* Flat theme colour before the font CSS or the photo. The app stays hidden until one reveal. */
+    html, body { margin: 0; background-color: #87CEEB; }
+    html.dash-booting .app { opacity: 0; visibility: hidden; }
+    html.dash-booting.theme-sunny-beach,
+    html.dash-booting.theme-sunny-beach body { background-color: #87CEEB !important; background-image: none !important; }
+    html.dash-booting.theme-rain-cafe,
+    html.dash-booting.theme-rain-cafe body { background-color: #1E2C3A !important; background-image: none !important; }
+    html.dash-booting.theme-sunny-beach body::before,
+    html.dash-booting.theme-rain-cafe body::before { background-image: none !important; }
+  </style>
   <script>
     /* Theme is device-local (dash-hub-v1). Apply it before paint.
        ?view=1 always paints rain-cafe / 雨窗咖啡 (theme-rain-window) and does not write localStorage. */
@@ -42,6 +53,14 @@
       window.__DASH_BOOT_THEME = theme;
       document.documentElement.setAttribute('data-dash-theme', theme);
       document.documentElement.classList.add('theme-' + theme);
+      document.documentElement.style.backgroundColor = viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB');
+      if (theme === 'sunny-beach' || theme === 'rain-cafe') {
+        var preload = document.createElement('link');
+        preload.rel = 'preload';
+        preload.as = 'image';
+        preload.href = theme === 'rain-cafe' ? 'rain-cafe-bg.jpg' : 'sunny-beach-bg.jpg';
+        document.head.appendChild(preload);
+      }
       /* Saved expand flags before first paint, so training/bus do not pop open after JS. */
       if (!viewOnly && bootData) {
         if (bootData.trainingExpanded) document.documentElement.classList.add('boot-training-open');
@@ -85,7 +104,8 @@
   <title>布丁仔</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link id="dash-fonts" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet"></noscript>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     /* ===== Themes (sunny-beach / rain-cafe / sky / cloud / clear / dusk / toy) ===== */
@@ -562,7 +582,23 @@
     /* Hide the app until the first full paint. Empty lists otherwise grow in public and shove the page. */
     html.dash-booting .app {
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
+    }
+    /* Photo themes stay a flat colour until the one reveal. A lone photo, then the UI, is two flashes. */
+    html.dash-booting.theme-sunny-beach,
+    html.dash-booting.theme-sunny-beach body {
+      background-color: #87CEEB !important;
+      background-image: none !important;
+    }
+    html.dash-booting.theme-rain-cafe,
+    html.dash-booting.theme-rain-cafe body {
+      background-color: #1E2C3A !important;
+      background-image: none !important;
+    }
+    html.dash-booting.theme-sunny-beach body::before,
+    html.dash-booting.theme-rain-cafe body::before {
+      background-image: none !important;
     }
     /* Login settle: do not smooth-scroll or anchor-jump while a sync repaint lands. */
     html.sync-settling,
@@ -623,7 +659,11 @@
       overflow: visible;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: auto;
-      transition: background 0.4s ease, color 0.4s ease;
+      /* A background fade on load reads as another flash. Theme chips opt in below. */
+      transition: none;
+    }
+    html.theme-animate body {
+      transition: background-color 0.4s ease, color 0.4s ease;
     }
     /* iOS Safari: fixed background attachment often breaks scrolling/paint under sticky headers */
     @media (max-width: 1023px) {
@@ -6326,6 +6366,7 @@ function applyTheme(preset, persist) {
     body.classList.contains('theme-rain-window') === wantRain &&
     document.documentElement.classList.contains('theme-rain-window') === wantRain;
   if (!already) {
+    if (persist !== false) document.documentElement.classList.add('theme-animate');
     THEME_PRESETS.forEach(p => {
       body.classList.remove('theme-' + p);
       document.documentElement.classList.remove('theme-' + p);
@@ -10457,9 +10498,11 @@ async function refreshWeather() {
 function startHeaderInfo() {
   tickHeaderClock();
   setInterval(tickHeaderClock, 1000);
-  refreshWeather();
+  const weather = refreshWeather();
   setInterval(refreshWeather, 45 * 60 * 1000);
-  try { startHeaderBusEta(); } catch (e) {}
+  let bus = Promise.resolve();
+  try { bus = Promise.resolve(startHeaderBusEta()); } catch (e) { bus = Promise.resolve(); }
+  return Promise.all([weather, bus]);
 }
 
 /** E36A 昇薈 → 元朗. Fixed seed stop, not the GPS-nearest card. */
@@ -10628,7 +10671,7 @@ function bindHeaderBusChip(spec) {
 
 function startHeaderBusEta() {
   renderHeaderBusEta();
-  refreshHeaderBusEta();
+  const first = refreshHeaderBusEta();
   if (headerBusEtaTimer) clearInterval(headerBusEtaTimer);
   if (headerBusTickTimer) clearInterval(headerBusTickTimer);
   headerBusEtaTimer = setInterval(function () { refreshHeaderBusEta({ force: true }); }, BUS_ETA_POLL_MS);
@@ -10640,6 +10683,7 @@ function startHeaderBusEta() {
       if (document.visibilityState === 'visible') refreshHeaderBusEta();
     });
   }
+  return first;
 }
 
 
@@ -11788,20 +11832,49 @@ function formatGdriveSyncTime(ts) {
   return hh + ':' + mm;
 }
 
-function storeGdriveToken(token) {
+function storeGdriveToken(token, expiresIn) {
   if (VIEW_ONLY) return;
   gdriveAccessToken = token || null;
   try {
-    if (token) sessionStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, token);
-    else sessionStorage.removeItem(GDRIVE_TOKEN_SESSION_KEY);
+    if (token) {
+      sessionStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, token);
+      const secs = Number(expiresIn) || 3600;
+      const exp = Date.now() + Math.max(120, secs - 90) * 1000;
+      localStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, JSON.stringify({ token: token, exp: exp }));
+    } else {
+      sessionStorage.removeItem(GDRIVE_TOKEN_SESSION_KEY);
+      localStorage.removeItem(GDRIVE_TOKEN_SESSION_KEY);
+    }
   } catch (e) {}
 }
 
 function restoreGdriveTokenFromSession() {
   try {
     const t = sessionStorage.getItem(GDRIVE_TOKEN_SESSION_KEY);
-    if (t) gdriveAccessToken = t;
+    if (t) {
+      gdriveAccessToken = t;
+      try {
+        if (!localStorage.getItem(GDRIVE_TOKEN_SESSION_KEY)) {
+          const exp = Date.now() + (3600 - 90) * 1000;
+          localStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, JSON.stringify({ token: t, exp: exp }));
+        }
+      } catch (e2) {}
+      return gdriveAccessToken;
+    }
   } catch (e) {}
+  try {
+    const raw = localStorage.getItem(GDRIVE_TOKEN_SESSION_KEY);
+    if (!raw) return gdriveAccessToken;
+    const saved = raw.charAt(0) === '{' ? JSON.parse(raw) : null;
+    const token = saved && saved.token ? saved.token : (!saved ? raw : '');
+    const exp = saved && saved.exp ? Number(saved.exp) : 0;
+    if (token && (!saved || exp > Date.now())) {
+      gdriveAccessToken = token;
+      try { sessionStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, token); } catch (e2) {}
+    } else if (saved) {
+      localStorage.removeItem(GDRIVE_TOKEN_SESSION_KEY);
+    }
+  } catch (e3) {}
   return gdriveAccessToken;
 }
 
@@ -12193,7 +12266,7 @@ async function refreshGcalAccessToken() {
     client.callback = function (resp) {
       restore();
       if (resp && resp.access_token) {
-        storeGdriveToken(resp.access_token);
+        storeGdriveToken(resp.access_token, resp.expires_in);
         noteGcalAccessFromToken(resp);
         updateGdriveUiConnected(true);
         finish(true);
@@ -12881,7 +12954,7 @@ function ensureGdriveTokenClient() {
     callback: function (resp) {
       endOauthUi();
       if (resp && resp.access_token) {
-        storeGdriveToken(resp.access_token);
+        storeGdriveToken(resp.access_token, resp.expires_in);
         noteGcalAccessFromToken(resp);
         updateGdriveUiConnected(true);
         if (ENABLE_DRIVE_SYNC) setGdriveStatus('已連接', '列表由 Firebase 自動同步');
@@ -13007,32 +13080,44 @@ function tryGdriveSilentRestore() {
     return;
   }
   // No saved token: one silent restore, after any Firebase popup has closed.
-  let tries = 0;
-  function attempt() {
-    if (gdriveAccessToken) {
-      updateGdriveUiConnected(true);
-      scheduleGcalSync();
-      return;
+  // The boot curtain awaits this so the popup and the list paint land before the reveal.
+  window.__DASH_GCAL_BOOT = new Promise(function (resolveBoot) {
+    let tries = 0;
+    let settled = false;
+    function done() {
+      if (settled) return;
+      settled = true;
+      resolveBoot();
     }
-    if (!gcalSilentAttempted && oauthUiBlockingForeground()) {
-      setTimeout(attempt, 400);
-      return;
-    }
-    if (!window.google || !google.accounts || !google.accounts.oauth2) {
-      if (tries++ > 40) return;
-      setTimeout(attempt, 400);
-      return;
-    }
-    if (gcalSilentAttempted) return;
-    gcalSilentAttempted = true;
-    refreshGcalAccessToken().then(function (ok) {
-      if (ok || gdriveAccessToken) {
+    function attempt() {
+      if (gdriveAccessToken) {
         updateGdriveUiConnected(true);
         scheduleGcalSync();
+        done();
+        return;
       }
-    }).catch(function () {});
-  }
-  attempt();
+      if (!gcalSilentAttempted && oauthPopupOpen) {
+        setTimeout(attempt, 400);
+        return;
+      }
+      if (!window.google || !google.accounts || !google.accounts.oauth2) {
+        if (tries++ > 40) { done(); return; }
+        setTimeout(attempt, 400);
+        return;
+      }
+      if (gcalSilentAttempted) { done(); return; }
+      gcalSilentAttempted = true;
+      refreshGcalAccessToken().then(function (ok) {
+        if (ok || gdriveAccessToken) {
+          updateGdriveUiConnected(true);
+          scheduleGcalSync();
+        }
+        done();
+      }).catch(function () { done(); });
+    }
+    attempt();
+    setTimeout(done, 8000);
+  });
 }
 
 function bindSyncUi() {
@@ -13642,6 +13727,7 @@ function finishDashBootPaint() {
   dashBootPaintFinished = true;
   const root = document.documentElement;
   const clear = function () {
+    root.style.backgroundColor = '';
     root.classList.remove('dash-booting', 'boot-training-open', 'boot-bus-open');
   };
   if (typeof requestAnimationFrame === 'function') {
@@ -13688,11 +13774,49 @@ function waitForBootSync(ms) {
 }
 
 function waitForBootFonts(ms) {
-  if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+  const link = document.getElementById('dash-fonts');
+  const sheetReady = new Promise(function (resolve) {
+    function arm() {
+      if (link && link.media !== 'all') link.media = 'all';
+      resolve();
+    }
+    if (!link || link.sheet || link.media === 'all') { arm(); return; }
+    link.addEventListener('load', arm, { once: true });
+    link.addEventListener('error', arm, { once: true });
+  });
+  const fonts = sheetReady.then(function () {
+    if (!document.fonts || !document.fonts.ready) return;
+    return document.fonts.ready.then(function () {
+      return document.fonts.ready;
+    }).catch(function () {});
+  });
   return Promise.race([
-    document.fonts.ready.catch(function () {}),
+    fonts,
     new Promise(function (resolve) { setTimeout(resolve, ms); })
   ]);
+}
+
+function waitForBootImage(ms) {
+  const theme = window.__DASH_BOOT_THEME || '';
+  const url = theme === 'rain-cafe' ? 'rain-cafe-bg.jpg'
+    : (theme === 'sunny-beach' ? 'sunny-beach-bg.jpg' : '');
+  if (!url || typeof Image !== 'function') return Promise.resolve();
+  return new Promise(function (resolve) {
+    let settled = false;
+    function done() {
+      if (settled) return;
+      settled = true;
+      resolve();
+    }
+    const timer = setTimeout(done, ms);
+    const img = new Image();
+    img.onload = function () {
+      const decoded = img.decode ? img.decode() : Promise.resolve();
+      Promise.resolve(decoded).then(function () { clearTimeout(timer); done(); }, function () { clearTimeout(timer); done(); });
+    };
+    img.onerror = function () { clearTimeout(timer); done(); };
+    img.src = url;
+  });
 }
 
 function markBootSyncApplied(remote) {
@@ -13717,6 +13841,10 @@ function applyPrefetchedBootSync() {
 async function bootDashboard(opts) {
   opts = opts || {};
   let importedBeforePaint = false;
+  let headerReady = Promise.resolve();
+  let gcalBoot = Promise.resolve();
+  const fontsReady = waitForBootFonts(1600);
+  const imageReady = waitForBootImage(1200);
   try {
     initViewOnlyChrome();
     if (!VIEW_ONLY) oauthUiQuietUntil = Math.max(oauthUiQuietUntil, Date.now() + 1500);
@@ -13742,13 +13870,13 @@ async function bootDashboard(opts) {
       bindPushPagesUi();
       bindShareOwnerUi();
       bindHdrCatJump();
-      startHeaderInfo();
+      try { headerReady = Promise.resolve(startHeaderInfo()); } catch (e) { headerReady = Promise.resolve(); }
       if (!VIEW_ONLY) tryGdriveSilentRestore();
+      gcalBoot = window.__DASH_GCAL_BOOT || Promise.resolve();
       scrollToSectionFromHash();
     }
     if (state.busExpanded) startBusNearbyAndEta(true);
     dashboardBooted = true;
-    const fontsReady = waitForBootFonts(2000);
     if (!VIEW_ONLY) {
       const startFb = function () {
         try { return Promise.resolve(startFirebaseSync()); }
@@ -13758,13 +13886,26 @@ async function bootDashboard(opts) {
         if (opts.importCloud && !importedBeforePaint) await Promise.resolve(autoImportFromCloud()).then(startFb, startFb);
         else await startFb();
       } catch (e) {}
-      // The pull schedules Calendar when it finishes. Keep the curtain up for that
-      // paint too, so the page does not jump again as soon as it appears.
-      try { await waitDashBootHolds(2500); } catch (e) {}
     } else if (opts.importCloud && !importedBeforePaint) {
       autoImportFromCloud();
     }
-    try { await fontsReady; } catch (e) {}
+    // Fonts, the photo, weather, and the bus chips settle while the curtain is up.
+    try {
+      await Promise.race([
+        Promise.all([fontsReady, imageReady, headerReady]),
+        new Promise(function (resolve) { setTimeout(resolve, 1800); })
+      ]);
+    } catch (e) {}
+    if (!VIEW_ONLY) {
+      try {
+        await Promise.race([
+          gcalBoot,
+          new Promise(function (resolve) { setTimeout(resolve, 2500); })
+        ]);
+      } catch (e) {}
+      // The pull (or a restored Calendar token) schedules one paint. Stay covered for it.
+      try { await waitDashBootHolds(2500); } catch (e) {}
+    }
   } finally {
     finishDashBootPaint();
   }
