@@ -100,62 +100,98 @@ for (const [name, html] of [['index', indexHtml], ['dashboard', dashHtml]]) {
     assert.match(html, /localStorage\.setItem\(GDRIVE_TOKEN_SESSION_KEY/);
   });
 
-  test(name + ' defaults to provence-field and keeps the other theme dots', () => {
-    assert.match(html, /const SCHEMA_VERSION = 12;/);
-    assert.match(html, /if \(prevSchema < 12\) base\.theme = 'provence-field';/);
+  test(name + ' defaults to rain-cafe and keeps the other theme dots', () => {
+    assert.match(html, /const SCHEMA_VERSION = 13;/);
+    assert.match(html, /if \(prevSchema < 13\) base\.theme = 'rain-cafe';/);
+    assert.doesNotMatch(html, /if \(prevSchema < 12\) base\.theme = 'provence-field';/);
     assert.match(html, /const THEME_PRESETS = \['provence-field', 'sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'\];/);
     assert.match(html, /data-theme="provence-field"/);
     assert.match(html, /data-theme="sunny-beach"/);
     assert.match(html, /data-theme="rain-cafe"/);
     assert.match(html, /aria-label="普羅旺斯田野主題"/);
-    assert.match(extractFn(html, 'applyShareEntryTheme'), /const t = 'provence-field'/);
-    assert.doesNotMatch(extractFn(html, 'applyShareEntryTheme'), /rain-cafe/);
+    assert.match(html, /aria-label="雨窗咖啡主題"/);
+    assert.match(html, /body\.theme-rain-cafe \{[\s\S]*?background-image:\s*url\('rain-cafe-bg\.jpg'\)/);
+    assert.match(html, /body\.theme-rain-cafe::before \{[\s\S]*?url\('rain-cafe-bg\.jpg'\)/);
+    assert.match(html, /body\.theme-rain-cafe \.glass-card,[\s\S]*?backdrop-filter:\s*blur\(26px\)/);
+    assert.match(html, /html\.view-only:not\(\.share-unlocked\) \.share-lock \{[\s\S]*?url\('rain-cafe-bg\.jpg'\)/);
+    const shareTheme = extractFn(html, 'applyShareEntryTheme');
+    assert.match(shareTheme, /const t = 'rain-cafe'/);
+    assert.doesNotMatch(shareTheme, /provence-field/);
+    assert.doesNotMatch(shareTheme, /localStorage/);
+    const apply = extractFn(html, 'applyTheme');
+    assert.match(apply, /preset = 'rain-cafe'/);
+    assert.match(apply, /persist = false/);
     assert.match(html, /--drag-active-bg:\s*#F6C453/);
     assert.match(html, /body\.theme-provence-field \{[\s\S]*?--drag-active-bg:\s*#E4C04A/);
     assert.match(html, /#6B9F3C/);
     assert.match(html, /#D96B4C/);
   });
 
-  test(name + ' head script paints Provence before schema 12 and keeps a later choice', () => {
+  test(name + ' head script paints rain-cafe before schema 13 and keeps a later choice', () => {
     const fresh = bootTheme(html);
-    assert.equal(fresh.theme, 'provence-field');
-    assert.equal(fresh.color, '#4C9BE0');
+    assert.equal(fresh.theme, 'rain-cafe');
+    assert.equal(fresh.color, '#C5D4E0');
     assert.equal(fresh.written, false);
-    assert.equal(fresh.classes.has('theme-provence-field'), true);
+    assert.equal(fresh.classes.has('theme-rain-cafe'), true);
+    assert.equal(fresh.classes.has('theme-provence-field'), false);
 
     const legacy = bootTheme(html, {
       storage: { 'dash-hub-v1': JSON.stringify({ schemaVersion: 11, theme: 'sunny-beach' }) }
     });
-    assert.equal(legacy.theme, 'provence-field');
+    assert.equal(legacy.theme, 'rain-cafe');
     assert.equal(legacy.written, false);
 
-    const kept = bootTheme(html, {
-      storage: { 'dash-hub-v1': JSON.stringify({ schemaVersion: 12, theme: 'rain-cafe' }) }
+    const forced = bootTheme(html, {
+      storage: { 'dash-hub-v1': JSON.stringify({ schemaVersion: 12, theme: 'provence-field' }) }
     });
-    assert.equal(kept.theme, 'rain-cafe');
-    assert.equal(kept.color, '#C5D4E0');
-    assert.equal(kept.classes.has('theme-rain-cafe'), true);
-    assert.equal(kept.classes.has('theme-provence-field'), false);
+    assert.equal(forced.theme, 'rain-cafe');
+    assert.equal(forced.written, false);
+    assert.equal(forced.classes.has('theme-provence-field'), false);
 
-    const beach = bootTheme(html, {
+    const once = bootTheme(html, {
       storage: { 'dash-hub-v1': JSON.stringify({ schemaVersion: 12, theme: 'sunny-beach' }) }
     });
+    assert.equal(once.theme, 'rain-cafe');
+    assert.equal(once.written, false);
+
+    const kept = bootTheme(html, {
+      storage: { 'dash-hub-v1': JSON.stringify({ schemaVersion: 13, theme: 'provence-field' }) }
+    });
+    assert.equal(kept.theme, 'provence-field');
+    assert.equal(kept.color, '#4C9BE0');
+    assert.equal(kept.classes.has('theme-provence-field'), true);
+    assert.equal(kept.classes.has('theme-rain-cafe'), false);
+
+    const beach = bootTheme(html, {
+      storage: { 'dash-hub-v1': JSON.stringify({ schemaVersion: 13, theme: 'sunny-beach' }) }
+    });
     assert.equal(beach.theme, 'sunny-beach');
+    assert.equal(beach.written, false);
 
     const share = bootTheme(html, {
       search: '?view=1',
-      storage: { 'dash-hub-v1': JSON.stringify({ schemaVersion: 12, theme: 'sunny-beach' }) }
+      storage: { 'dash-hub-v1': JSON.stringify({ schemaVersion: 13, theme: 'sunny-beach' }) }
     });
-    assert.equal(share.theme, 'provence-field');
+    assert.equal(share.theme, 'rain-cafe');
     assert.equal(share.classes.has('view-only'), true);
+    assert.equal(share.classes.has('theme-sunny-beach'), false);
     assert.equal(share.classes.has('theme-rain-window'), false);
     assert.equal(share.written, false);
-    assert.equal(share.meta, '#4C9BE0');
+    assert.equal(share.meta, '#C5D4E0');
   });
 }
 
 test('provence background is a reasonably sized jpeg', () => {
   const file = new URL('../provence-field-bg.jpg', import.meta.url);
+  const size = statSync(file).size;
+  assert.ok(size > 20000 && size < 400000, 'size ' + size);
+  const bytes = readFileSync(file);
+  assert.equal(bytes[0], 0xff);
+  assert.equal(bytes[1], 0xd8);
+});
+
+test('rain-cafe background is a reasonably sized jpeg', () => {
+  const file = new URL('../rain-cafe-bg.jpg', import.meta.url);
   const size = statSync(file).size;
   assert.ok(size > 20000 && size < 400000, 'size ' + size);
   const bytes = readFileSync(file);
