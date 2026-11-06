@@ -3,24 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#87CEEB" />
+  <meta name="theme-color" content="#4C9BE0" />
   <style>
     /* Flat theme colour before the font CSS or the photo. The app stays hidden until one reveal. */
-    html, body { margin: 0; background-color: #87CEEB; }
+    html, body { margin: 0; background-color: #4C9BE0; }
     html.dash-booting .app { opacity: 0; visibility: hidden; }
+    html.dash-booting.theme-provence-field,
+    html.dash-booting.theme-provence-field body { background-color: #4C9BE0 !important; background-image: none !important; }
     html.dash-booting.theme-sunny-beach,
     html.dash-booting.theme-sunny-beach body { background-color: #87CEEB !important; background-image: none !important; }
     html.dash-booting.theme-rain-cafe,
     html.dash-booting.theme-rain-cafe body { background-color: #1E2C3A !important; background-image: none !important; }
+    html.dash-booting.theme-provence-field body::before,
     html.dash-booting.theme-sunny-beach body::before,
     html.dash-booting.theme-rain-cafe body::before { background-image: none !important; }
+    html.dash-booting.view-only .share-lock { background-color: #4C9BE0 !important; background-image: none !important; }
   </style>
   <script>
     /* Theme is device-local (dash-hub-v1). Apply it before paint.
-       ?view=1 always paints rain-cafe / 雨窗咖啡 (theme-rain-window) and does not write localStorage. */
+       ?view=1 paints provence-field / 普羅旺斯田野 and does not write localStorage.
+       Schema below 12 paints provence-field once, same as normalizeState, so the
+       flat boot colour matches the theme that will be revealed. */
     (function () {
-      var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
+      var THEMES = ['provence-field', 'sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
       var COLORS = {
+        'provence-field': '#4C9BE0',
         'sunny-beach': '#87CEEB',
         'rain-cafe': '#C5D4E0',
         sky: '#E8F4FC',
@@ -29,7 +36,20 @@
         dusk: '#D4E0EF',
         toy: '#E8F4FC'
       };
-      var theme = 'sunny-beach';
+      var PHOTO = {
+        'provence-field': 'provence-field-bg.jpg',
+        'sunny-beach': 'sunny-beach-bg.jpg',
+        'rain-cafe': 'rain-cafe-bg.jpg'
+      };
+      var THEME_MIGRATE = {
+        mist: 'sky', mint: 'cloud', sand: 'clear', lilac: 'dusk',
+        steel: 'sky', navy: 'sky', charcoal: 'cloud', copper: 'clear',
+        linen: 'clear', olive: 'cloud', ink: 'dusk',
+        slate: 'sky', graphite: 'sky', amber: 'clear',
+        sakura: 'dusk', peach: 'clear', twilight: 'dusk', matcha: 'cloud',
+        toys: 'toy'
+      };
+      var theme = 'provence-field';
       var viewOnly = false;
       /* Browser scroll restoration and our own scroll restore were moving the page in opposite directions on open. */
       try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e0) {}
@@ -38,27 +58,32 @@
         viewOnly = new URLSearchParams(location.search).get('view') === '1';
       } catch (e) {}
       if (viewOnly) {
-        /* Friend share stays on rain-cafe / 雨窗咖啡 forever. Do not follow sunny-beach or localStorage. */
-        document.documentElement.classList.add('view-only', 'theme-rain-window');
-        theme = 'rain-cafe';
+        /* Friend share uses Provence Field. Do not follow localStorage and do not write it. */
+        document.documentElement.classList.add('view-only');
+        theme = 'provence-field';
       } else {
         try {
           var raw = localStorage.getItem('dash-hub-v1');
           if (raw) {
             bootData = JSON.parse(raw);
-            if (bootData && THEMES.indexOf(bootData.theme) !== -1) theme = bootData.theme;
+            var savedSchema = bootData ? (Number(bootData.schemaVersion) || 0) : 0;
+            /* schema < 12 still has the previous default. Paint Provence before first paint. */
+            if (savedSchema >= 12 && bootData) {
+              var rawTheme = THEME_MIGRATE[bootData.theme] || bootData.theme;
+              if (THEMES.indexOf(rawTheme) !== -1) theme = rawTheme;
+            }
           }
         } catch (e2) {}
       }
       window.__DASH_BOOT_THEME = theme;
       document.documentElement.setAttribute('data-dash-theme', theme);
       document.documentElement.classList.add('theme-' + theme);
-      document.documentElement.style.backgroundColor = viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB');
-      if (theme === 'sunny-beach' || theme === 'rain-cafe') {
+      document.documentElement.style.backgroundColor = COLORS[theme] || '#4C9BE0';
+      if (PHOTO[theme]) {
         var preload = document.createElement('link');
         preload.rel = 'preload';
         preload.as = 'image';
-        preload.href = theme === 'rain-cafe' ? 'rain-cafe-bg.jpg' : 'sunny-beach-bg.jpg';
+        preload.href = PHOTO[theme];
         document.head.appendChild(preload);
       }
       /* Saved expand flags before first paint, so training/bus do not pop open after JS. */
@@ -67,7 +92,7 @@
         if (bootData.busExpanded) document.documentElement.classList.add('boot-bus-open');
       }
       var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', viewOnly ? '#1E2C3A' : (COLORS[theme] || '#87CEEB'));
+      if (meta) meta.setAttribute('content', COLORS[theme] || '#4C9BE0');
       /* Owner opens from this device. A ?view=1 link carries its own snapshot in #s=.
          Pages sync-data.json is prefetched only when that snapshot is absent.
          Signed-in owner list sync is a Firestore pull after auth, not this file. */
@@ -108,7 +133,7 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet"></noscript>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
-    /* ===== Themes (sunny-beach / rain-cafe / sky / cloud / clear / dusk / toy) ===== */
+    /* ===== Themes (provence-field / sunny-beach / rain-cafe / sky / cloud / clear / dusk / toy) ===== */
     :root {
       --primary: #6B7A88;
       --accent: var(--accent-primary, #C9892A);
@@ -562,6 +587,200 @@
     }
 
 
+
+    /* ===== provence-field — lavender, wheat, sky; cream glass ===== */
+    body.theme-provence-field {
+      --bg-gradient: none;
+      background-color: #4C9BE0;
+      background-image: url('provence-field-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: scroll;
+      --accent-primary: #6B9F3C;
+      --accent-light: rgba(107, 159, 60, 0.18);
+      --accent-badge: #E5F0D4;
+      --accent-badge-text: #3E5220;
+      --card-bg: rgba(255, 250, 242, 0.86);
+      --card-border: rgba(255, 255, 255, 0.62);
+      --card-shadow: rgba(62, 48, 24, 0.22);
+      --button-bg: linear-gradient(135deg, #7CAF45, #5E8E32);
+      --accent: #6B9F3C;
+      --accent-soft: rgba(107, 159, 60, 0.16);
+      --text: #3E3826;
+      --text-strong: #2A2618;
+      --muted: #6B614C;
+      --row-bg: rgba(255, 252, 247, 0.74);
+      --surface-2: rgba(255, 252, 247, 0.92);
+      --header-bg: rgba(255, 250, 242, 0.5);
+      --amber: #6B9F3C;
+      --border-soft: rgba(62, 56, 38, 0.12);
+      /* Held card while reordering — sunflower, distinct from the green selected pill. */
+      --drag-active-bg: #E4C04A;
+      --drag-active-border: #8A6412;
+      --drag-active-shadow: rgba(138, 100, 18, 0.45);
+      isolation: isolate;
+    }
+    body.theme-provence-field::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      background: url('provence-field-bg.jpg') center / cover no-repeat;
+    }
+    body.theme-provence-field::after {
+      content: none;
+      display: none;
+    }
+    body.theme-provence-field .app {
+      position: relative;
+      z-index: 1;
+    }
+    body.theme-provence-field .footer-note {
+      color: rgba(42, 38, 24, 0.88);
+      text-shadow: 0 1px 2px rgba(255, 250, 242, 0.65);
+    }
+    body.theme-provence-field .glass-card,
+    body.theme-provence-field .feature-block {
+      background: rgba(255, 250, 242, 0.86);
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      border: 1px solid rgba(255, 255, 255, 0.62);
+      box-shadow:
+        0 12px 32px -14px rgba(62, 48, 24, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+    body.theme-provence-field .block-body-inner > .card.glass-card {
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: none;
+      box-shadow: none;
+    }
+    body.theme-provence-field .page-header {
+      background: rgba(255, 250, 242, 0.5);
+      backdrop-filter: blur(22px) saturate(1.25);
+      -webkit-backdrop-filter: blur(22px) saturate(1.25);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+      box-shadow:
+        0 8px 24px rgba(62, 48, 24, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+    body.theme-provence-field .hdr-glass {
+      background: rgba(255, 250, 242, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      box-shadow:
+        0 4px 16px -8px rgba(62, 48, 24, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+    body.theme-provence-field .todo-item,
+    body.theme-provence-field .event-item,
+    body.theme-provence-field .course-card,
+    body.theme-provence-field .chip:not(.active):not(.cat-manage),
+    body.theme-provence-field .subtabs,
+    body.theme-provence-field .events-search {
+      background: rgba(255, 252, 247, 0.74);
+      backdrop-filter: blur(14px) saturate(1.15);
+      -webkit-backdrop-filter: blur(14px) saturate(1.15);
+      border-color: rgba(62, 56, 38, 0.1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    }
+    body.theme-provence-field .bus-card {
+      backdrop-filter: blur(14px) saturate(1.15);
+      -webkit-backdrop-filter: blur(14px) saturate(1.15);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+    body.theme-provence-field .modal {
+      background: rgba(255, 250, 242, 0.94);
+      backdrop-filter: blur(22px) saturate(1.2);
+      -webkit-backdrop-filter: blur(22px) saturate(1.2);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow:
+        0 24px 48px -12px rgba(62, 48, 24, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    body.theme-provence-field .modal-backdrop {
+      background: rgba(42, 38, 24, 0.38);
+      backdrop-filter: blur(8px) saturate(1.1);
+      -webkit-backdrop-filter: blur(8px) saturate(1.1);
+    }
+    body.theme-provence-field .sc-icon {
+      background: rgba(255, 250, 242, 0.8);
+      backdrop-filter: blur(12px) saturate(1.15);
+      -webkit-backdrop-filter: blur(12px) saturate(1.15);
+      box-shadow: inset 0 0 0 1px rgba(107, 159, 60, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      color: #5E8E32;
+    }
+    body.theme-provence-field .note-banner {
+      background: rgba(255, 244, 230, 0.8);
+      backdrop-filter: blur(12px) saturate(1.1);
+      -webkit-backdrop-filter: blur(12px) saturate(1.1);
+      border: 1px solid rgba(217, 107, 76, 0.28);
+      color: #6B3E2E;
+    }
+    body.theme-provence-field .block-header {
+      background: transparent;
+      border-bottom-color: rgba(62, 56, 38, 0.1);
+    }
+    body.theme-provence-field .block-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    body.theme-provence-field .block-label::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #6B9F3C;
+      box-shadow: 0 0 0 3px rgba(107, 159, 60, 0.2);
+      flex: 0 0 auto;
+    }
+    /* Selected / today: sunflower green. Due / overdue: terracotta. */
+    body.theme-provence-field .subtab.active,
+    body.theme-provence-field .events-view-tabs .subtab.active,
+    body.theme-provence-field #todos .section-toolbar .subtab.active,
+    body.theme-provence-field .chip.active {
+      background: #6B9F3C;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(62, 90, 28, 0.28);
+    }
+    body.theme-provence-field .cal-day.today {
+      background: #6B9F3C;
+      color: #fff;
+      box-shadow: inset 0 0 0 2px #557F2C;
+    }
+    body.theme-provence-field .cal-day.today .cal-day-num,
+    body.theme-provence-field .cal-day.today.sun .cal-day-num,
+    body.theme-provence-field .cal-day.today.sat .cal-day-num {
+      color: #fff;
+    }
+    body.theme-provence-field .cal-day.selected {
+      background: rgba(107, 159, 60, 0.22);
+      box-shadow: 0 0 0 2px #6B9F3C;
+      color: #2A2618;
+    }
+    body.theme-provence-field .badge-warn,
+    body.theme-provence-field .badge-late {
+      background: #D96B4C;
+      color: #fff;
+    }
+    body.theme-provence-field .badge-soon {
+      background: rgba(217, 107, 76, 0.16);
+      color: #A34730;
+    }
+    body.theme-provence-field .cal-weekday,
+    body.theme-provence-field .cal-empty,
+    body.theme-provence-field .cal-day-item .cal-item-meta {
+      color: var(--muted);
+    }
+    html.view-only.theme-provence-field .view-only-banner {
+      background: rgba(255, 250, 242, 0.9);
+      color: #A34730;
+      border: 1px solid rgba(217, 107, 76, 0.45);
+    }
+
     *, *::before, *::after { box-sizing: border-box; }
     html {
       /* auto, not smooth: a smooth root scroller animates overflow-anchor corrections and the page bounces. */
@@ -586,6 +805,11 @@
       pointer-events: none;
     }
     /* Photo themes stay a flat colour until the one reveal. A lone photo, then the UI, is two flashes. */
+    html.dash-booting.theme-provence-field,
+    html.dash-booting.theme-provence-field body {
+      background-color: #4C9BE0 !important;
+      background-image: none !important;
+    }
     html.dash-booting.theme-sunny-beach,
     html.dash-booting.theme-sunny-beach body {
       background-color: #87CEEB !important;
@@ -596,8 +820,13 @@
       background-color: #1E2C3A !important;
       background-image: none !important;
     }
+    html.dash-booting.theme-provence-field body::before,
     html.dash-booting.theme-sunny-beach body::before,
     html.dash-booting.theme-rain-cafe body::before {
+      background-image: none !important;
+    }
+    html.dash-booting.view-only .share-lock {
+      background-color: #4C9BE0 !important;
       background-image: none !important;
     }
     /* Login settle: do not smooth-scroll or anchor-jump while a sync repaint lands. */
@@ -633,6 +862,7 @@
       border-bottom: 1px solid var(--card-border, #334155);
     }
     /* Head script sets these before <body> exists so the first paint matches the saved theme. */
+    html.theme-provence-field { background: #4C9BE0 url('provence-field-bg.jpg') center / cover no-repeat; }
     html.theme-sunny-beach { background: #87CEEB url('sunny-beach-bg.jpg') center / cover no-repeat; }
     html.theme-rain-cafe { background: #1E2C3A url('rain-cafe-bg.jpg') center / cover no-repeat; }
     html.theme-sky { background: linear-gradient(165deg, #F5FBFE 0%, #E8F4FC 45%, #B8D9F0 100%); }
@@ -1083,6 +1313,7 @@
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
+    body.theme-provence-field .hdr-cat-pop-card,
     body.theme-sunny-beach .hdr-cat-pop-card,
     body.theme-rain-cafe .hdr-cat-pop-card,
     body.theme-sky .hdr-cat-pop-card,
@@ -1205,6 +1436,7 @@
     .theme-chip[data-theme="dusk"] { background: linear-gradient(135deg, #4F6FA8, #D4E0EF); }
     .theme-chip[data-theme="toy"] { background: linear-gradient(135deg, #A0673B 0%, #E8B84A 45%, #87B8E0 100%); }
     .theme-chip[data-theme="rain-cafe"] { background: linear-gradient(135deg, #6B8A9E 0%, #C5D4E0 45%, #E8B84A 100%); }
+    .theme-chip[data-theme="provence-field"] { background: linear-gradient(135deg, #6B5BD6 0%, #E4C56A 48%, #6B9F3C 100%); }
     .theme-chip[data-theme="sunny-beach"] { background: linear-gradient(135deg, #38BDF8 0%, #FDE68A 50%, #34D399 100%); }
 
     /* Phone: one dense glass info row. Desktop (≥640px) keeps the richer pills. */
@@ -1304,6 +1536,7 @@
         box-shadow: inset 0 1px 0 rgba(15, 39, 64, 0.12);
       }
       .header-widgets > .glass-card.hdr-glass,
+      body.theme-provence-field .header-widgets > .glass-card.hdr-glass,
       body.theme-sunny-beach .header-widgets > .glass-card.hdr-glass,
       body.theme-rain-cafe .header-widgets > .glass-card.hdr-glass {
         background: transparent;
@@ -1319,6 +1552,7 @@
         align-items: center;
       }
       .header-widgets > .glass-card.hdr-glass + .glass-card.hdr-glass,
+      body.theme-provence-field .header-widgets > .glass-card.hdr-glass + .glass-card.hdr-glass,
       body.theme-sunny-beach .header-widgets > .glass-card.hdr-glass + .glass-card.hdr-glass,
       body.theme-rain-cafe .header-widgets > .glass-card.hdr-glass + .glass-card.hdr-glass {
         box-shadow: inset 1px 0 0 rgba(15, 39, 64, 0.12);
@@ -1363,6 +1597,7 @@
         overflow: hidden;
       }
       .header-widgets .hdr-bus-pair > .glass-card.hdr-bus,
+      body.theme-provence-field .header-widgets .hdr-bus-pair > .glass-card.hdr-bus,
       body.theme-sunny-beach .header-widgets .hdr-bus-pair > .glass-card.hdr-bus,
       body.theme-rain-cafe .header-widgets .hdr-bus-pair > .glass-card.hdr-bus {
         background: transparent;
@@ -1377,6 +1612,7 @@
         gap: 4px;
       }
       .header-widgets .hdr-bus-pair > .glass-card.hdr-bus + .glass-card.hdr-bus,
+      body.theme-provence-field .header-widgets .hdr-bus-pair > .glass-card.hdr-bus + .glass-card.hdr-bus,
       body.theme-sunny-beach .header-widgets .hdr-bus-pair > .glass-card.hdr-bus + .glass-card.hdr-bus,
       body.theme-rain-cafe .header-widgets .hdr-bus-pair > .glass-card.hdr-bus + .glass-card.hdr-bus {
         box-shadow: inset 1px 0 0 rgba(15, 39, 64, 0.12);
@@ -2005,7 +2241,8 @@
     }
     .events-search:focus-within,
     body.theme-rain-cafe .events-search:focus-within,
-    body.theme-sunny-beach .events-search:focus-within {
+    body.theme-sunny-beach .events-search:focus-within,
+    body.theme-provence-field .events-search:focus-within {
       border-color: var(--accent-primary);
       box-shadow: 0 0 0 3px var(--accent-light);
     }
@@ -3252,24 +3489,24 @@
       align-items: center;
       justify-content: center;
       padding: 24px 16px;
-      background-color: #1E2C3A;
-      background-image: url('rain-cafe-bg.jpg');
+      background-color: #4C9BE0;
+      background-image: url('provence-field-bg.jpg');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
     }
-    html.view-only.theme-rain-window .share-lock-card {
-      background: rgba(255, 252, 248, 0.48);
-      backdrop-filter: blur(26px) saturate(1.35);
-      -webkit-backdrop-filter: blur(26px) saturate(1.35);
-      border: 1px solid rgba(255, 255, 255, 0.3);
+    html.view-only.theme-provence-field .share-lock-card {
+      background: rgba(255, 250, 242, 0.88);
+      backdrop-filter: blur(22px) saturate(1.2);
+      -webkit-backdrop-filter: blur(22px) saturate(1.2);
+      border: 1px solid rgba(255, 255, 255, 0.62);
       box-shadow:
-        0 24px 48px -12px rgba(10, 20, 35, 0.5),
-        inset 0 1px 0 rgba(255, 255, 255, 0.55);
-      color: #1E262E;
+        0 24px 48px -12px rgba(62, 48, 24, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.75);
+      color: #3E3826;
     }
-    html.view-only.theme-rain-window .share-lock-msg {
-      color: #7A5420;
+    html.view-only.theme-provence-field .share-lock-msg {
+      color: #A34730;
     }
     .share-lock-card {
       width: min(420px, 100%);
@@ -3359,14 +3596,12 @@
 <script>
   /* Copy the head-script theme onto body before the rest of the page paints. */
   (function () {
-    var THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
-    var viewOnly = document.documentElement.classList.contains('view-only');
-    var theme = viewOnly ? 'rain-cafe' : (window.__DASH_BOOT_THEME || 'sunny-beach');
-    if (THEMES.indexOf(theme) === -1) theme = viewOnly ? 'rain-cafe' : 'sunny-beach';
+    var THEMES = ['provence-field', 'sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
+    var theme = window.__DASH_BOOT_THEME || 'provence-field';
+    if (THEMES.indexOf(theme) === -1) theme = 'provence-field';
     THEMES.forEach(function (p) { document.body.classList.remove('theme-' + p); });
     document.body.classList.remove('theme-rain-window');
     document.body.classList.add('theme-' + theme);
-    if (viewOnly) document.body.classList.add('theme-rain-window');
   })();
 </script>
   <div class="share-lock" id="shareLock" role="dialog" aria-modal="true" aria-labelledby="shareLockTitle">
@@ -3458,8 +3693,9 @@
             </div>
           </div>
           <div class="theme-chips theme-chips-mobile" id="themeChipsMobile" role="group" aria-label="主題">
+            <button type="button" class="theme-chip active" data-theme="provence-field" title="田野" aria-label="普羅旺斯田野主題"></button>
+            <button type="button" class="theme-chip" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
             <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
-            <button type="button" class="theme-chip active" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
             <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
             <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
             <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
@@ -3467,8 +3703,9 @@
             <button type="button" class="theme-chip" data-theme="toy" title="玩具" aria-label="Toy Story 主題"></button>
           </div>
           <div class="theme-chips theme-chips-desktop" id="themeChips" role="group" aria-label="主題">
+            <button type="button" class="theme-chip active" data-theme="provence-field" title="田野" aria-label="普羅旺斯田野主題"></button>
+            <button type="button" class="theme-chip" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
             <button type="button" class="theme-chip" data-theme="rain-cafe" title="雨窗" aria-label="雨窗咖啡主題"></button>
-            <button type="button" class="theme-chip active" data-theme="sunny-beach" title="海灘" aria-label="陽光海灘主題"></button>
             <button type="button" class="theme-chip" data-theme="sky" title="天空" aria-label="天空主題"></button>
             <button type="button" class="theme-chip" data-theme="cloud" title="雲白" aria-label="雲白主題"></button>
             <button type="button" class="theme-chip" data-theme="clear" title="晴空" aria-label="晴空主題"></button>
@@ -3960,7 +4197,7 @@ const TCS_DATA = {
 };
 
 const STORAGE_KEY = 'dash-hub-v1';
-const SCHEMA_VERSION = 11; // 11: drop retired seed todos t_seed_p3_math, t_seed_ai_score, t_seed_dash_tidy
+const SCHEMA_VERSION = 12; // 12: one-time default theme provence-field. 11: drop retired seed todos
 // Drive 檔「布丁仔-sync.json」永久停用：唔讀、唔寫、亦唔會為同步彈 drive.file。
 // 列表只經 Firebase；公開頁只經「推上線」寫 sync-data.json。個人活動仍用 calendar.events。
 const ENABLE_DRIVE_SYNC = false;
@@ -6121,7 +6358,7 @@ function normalizeState(data) {
     trainingExpanded: false,
     busExpanded: false,
     todoTab: 'today',
-    theme: 'sunny-beach',
+    theme: 'provence-field',
     syncUpdatedAt: 0,
     share: { enabled: false, salt: '', passwordHash: '', updatedAt: 0, expiresAt: 0 }
   };
@@ -6237,7 +6474,7 @@ function normalizeState(data) {
   base.busExpanded = !!data.busExpanded;
   // Same rule as eventsFilter: do not restore 明天 / 後日 / 七天內 / 未完成 from storage.
   base.todoTab = 'today';
-  const THEMES = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
+  const THEMES = ['provence-field', 'sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
   const THEME_MIGRATE = {
     mist: 'sky', mint: 'cloud', sand: 'clear', lilac: 'dusk',
     steel: 'sky', navy: 'sky', charcoal: 'cloud', copper: 'clear',
@@ -6247,7 +6484,10 @@ function normalizeState(data) {
     toys: 'toy'
   };
   const rawTheme = THEME_MIGRATE[data.theme] || data.theme;
-  base.theme = THEMES.includes(rawTheme) ? rawTheme : 'sunny-beach';
+  base.theme = THEMES.includes(rawTheme) ? rawTheme : 'provence-field';
+  // One-shot (schema < 12): switch the saved theme to Provence Field once.
+  // saveState writes schema 12, so a later theme-dot choice is kept.
+  if (prevSchema < 12) base.theme = 'provence-field';
   base.share = normalizeShare(data.share);
   base.schemaVersion = SCHEMA_VERSION;
   return base;
@@ -6285,7 +6525,7 @@ function buildExportPayload() {
     shortcuts: Array.isArray(state.shortcuts) ? state.shortcuts : [],
     categories: Array.isArray(state.categories) ? state.categories : [],
     busStops: Array.isArray(state.busStops) ? state.busStops : [],
-    theme: state.theme || 'sunny-beach',
+    theme: state.theme || 'provence-field',
     // Always publish 今天 / 個人活動. This document may show another tab until
     // a full reload; storing that choice made the next load and the other device jump.
     todoTab: 'today',
@@ -6322,7 +6562,7 @@ function saveState(opts) {
         trainingExpanded: !!state.trainingExpanded,
         busExpanded: !!state.busExpanded,
         todoTab: 'today',
-        theme: state.theme || 'sunny-beach',
+        theme: state.theme || 'provence-field',
         syncUpdatedAt: state.syncUpdatedAt || 0,
         share: normalizeShare(state.share)
       };
@@ -6347,24 +6587,23 @@ function saveState(opts) {
 
 
 /* ===== Theme ===== */
-const THEME_PRESETS = ['sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
+const THEME_PRESETS = ['provence-field', 'sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
 
 function applyTheme(preset, persist) {
-  /* ?view=1 always shows rain-cafe / 雨窗咖啡. Do not persist that onto the viewer's device.
+  /* ?view=1 always shows provence-field / 普羅旺斯田野. Do not persist that onto the viewer's device.
      Owner theme (no ?view=1) still follows the argument and localStorage. */
   if (VIEW_ONLY) {
-    preset = 'rain-cafe';
+    preset = 'provence-field';
     persist = false;
   }
-  const t = THEME_PRESETS.includes(preset) ? preset : 'sunny-beach';
+  const t = THEME_PRESETS.includes(preset) ? preset : 'provence-field';
   if (!VIEW_ONLY) state.theme = t;
   const body = document.getElementById('appBody') || document.body;
-  const wantRain = !!VIEW_ONLY;
   const already =
     body.classList.contains('theme-' + t) &&
     document.documentElement.classList.contains('theme-' + t) &&
-    body.classList.contains('theme-rain-window') === wantRain &&
-    document.documentElement.classList.contains('theme-rain-window') === wantRain;
+    !body.classList.contains('theme-rain-window') &&
+    !document.documentElement.classList.contains('theme-rain-window');
   if (!already) {
     if (persist !== false) document.documentElement.classList.add('theme-animate');
     THEME_PRESETS.forEach(p => {
@@ -6375,17 +6614,13 @@ function applyTheme(preset, persist) {
     document.documentElement.classList.remove('theme-rain-window');
     body.classList.add('theme-' + t);
     document.documentElement.classList.add('theme-' + t);
-    if (wantRain) {
-      body.classList.add('theme-rain-window');
-      document.documentElement.classList.add('theme-rain-window');
-    }
   }
   document.querySelectorAll('.theme-chips .theme-chip').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-theme') === t);
   });
   const meta = document.querySelector('meta[name="theme-color"]');
-  const colors = { 'sunny-beach': '#87CEEB', 'rain-cafe': '#C5D4E0', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
-  if (meta) meta.setAttribute('content', VIEW_ONLY ? '#1E2C3A' : (colors[t] || '#87CEEB'));
+  const colors = { 'provence-field': '#4C9BE0', 'sunny-beach': '#87CEEB', 'rain-cafe': '#C5D4E0', sky: '#E8F4FC', cloud: '#F5FAFD', clear: '#D6EBF8', dusk: '#D4E0EF', toy: '#E8F4FC' };
+  if (meta) meta.setAttribute('content', colors[t] || '#4C9BE0');
   if (persist !== false) saveState();
 }
 
@@ -11176,7 +11411,7 @@ function reRenderAfterSyncNow(extras) {
     try { renderEvents(); } catch (e) {}
     try { updateBlockSummaries(); } catch (e) {}
     if (extras) {
-      try { applyTheme(state.theme || 'sunny-beach', false); } catch (e) {}
+      try { applyTheme(state.theme || 'provence-field', false); } catch (e) {}
       try { syncShareOwnerUI(); } catch (e) {}
       try { syncTodoTabUI(); } catch (e) {}
       try { syncEventsFilterUI(); } catch (e) {}
@@ -13486,12 +13721,13 @@ function initViewOnlyChrome() {
   if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 布丁仔';
 }
 
-/** Share / ?view=1, lock screen and unlocked dashboard. Always rain-cafe / 雨窗咖啡.
+/** Share / ?view=1, lock screen and unlocked dashboard. Always provence-field / 普羅旺斯田野.
  *  Does not write localStorage or the owner's theme. */
 function applyShareEntryTheme() {
   if (!VIEW_ONLY) return;
-  const t = 'rain-cafe';
-  document.documentElement.classList.add('view-only', 'theme-rain-window');
+  const t = 'provence-field';
+  document.documentElement.classList.add('view-only');
+  document.documentElement.classList.remove('theme-rain-window');
   THEME_PRESETS.forEach(function (p) {
     document.documentElement.classList.remove('theme-' + p);
   });
@@ -13501,10 +13737,10 @@ function applyShareEntryTheme() {
   if (body) {
     THEME_PRESETS.forEach(function (p) { body.classList.remove('theme-' + p); });
     body.classList.remove('theme-rain-window');
-    body.classList.add('theme-' + t, 'theme-rain-window');
+    body.classList.add('theme-' + t);
   }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', '#1E2C3A');
+  if (meta) meta.setAttribute('content', '#4C9BE0');
 }
 
 /* ===== Share gate =====
@@ -13738,7 +13974,7 @@ function finishDashBootPaint() {
 }
 
 function renderDashboardSurfaces() {
-  applyTheme(state.theme || 'sunny-beach', false);
+  applyTheme(state.theme || 'provence-field', false);
   // First paint of this document opens on 今天 / 個人活動.
   // A later paint (share unlock reloads state) keeps a tab the user already picked.
   applySessionViewFilters();
@@ -13798,8 +14034,9 @@ function waitForBootFonts(ms) {
 
 function waitForBootImage(ms) {
   const theme = window.__DASH_BOOT_THEME || '';
-  const url = theme === 'rain-cafe' ? 'rain-cafe-bg.jpg'
-    : (theme === 'sunny-beach' ? 'sunny-beach-bg.jpg' : '');
+  const url = theme === 'provence-field' ? 'provence-field-bg.jpg'
+    : (theme === 'rain-cafe' ? 'rain-cafe-bg.jpg'
+    : (theme === 'sunny-beach' ? 'sunny-beach-bg.jpg' : ''));
   if (!url || typeof Image !== 'function') return Promise.resolve();
   return new Promise(function (resolve) {
     let settled = false;
