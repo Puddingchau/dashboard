@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>餵餵小怪獸 · 課堂計分板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --pink: #f5a0b8; --pink-deep: #e8789a;
+    --green: #8fd4a0; --green-deep: #5cb870;
+    --blue: #8ec4e8; --blue-deep: #5aa0d0;
+    --yellow: #f5d06a; --yellow-deep: #e0b830;
+    --purple: #c8a0e8; --purple-deep: #a070d0;
+    --orange: #f5b078; --orange-deep: #e08848;
+    --cream: #fff8ee; --cream-dark: #f5e8d4;
+    --ink: #5a3a2a; --ink-soft: #8a6a55;
+    --sky-top: #b8e0f5; --sky-bot: #d4f0c8;
+    --hill: #9ed48a; --hill2: #7ec46a;
+    --shadow: rgba(90, 58, 42, 0.12);
+    --card-radius: 20px; --btn-radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    color: var(--ink);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  body {
+    min-height: 100%;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    background: linear-gradient(180deg, var(--sky-top) 0%, #c8eaf0 35%, var(--sky-bot) 70%, #b8e0a0 100%);
+    position: relative;
+  }
+  .bg-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .cloud { position: absolute; background: #fff; border-radius: 50px; opacity: 0.85; }
+  .cloud::before, .cloud::after { content: ""; position: absolute; background: #fff; border-radius: 50%; }
+  .cloud.c1 { width: 120px; height: 40px; top: 6%; left: 6%; }
+  .cloud.c1::before { width: 50px; height: 50px; top: -28px; left: 18px; }
+  .cloud.c1::after { width: 70px; height: 55px; top: -32px; left: 48px; }
+  .cloud.c2 { width: 90px; height: 32px; top: 10%; right: 14%; background: #ffe8f0; }
+  .cloud.c2::before { width: 40px; height: 40px; top: -22px; left: 12px; background: #ffe8f0; }
+  .cloud.c2::after { width: 55px; height: 45px; top: -26px; left: 36px; background: #ffe8f0; }
+  .cloud.c3 { width: 100px; height: 36px; top: 4%; left: 42%; background: #fff9e0; }
+  .cloud.c3::before { width: 45px; height: 45px; top: -24px; left: 15px; background: #fff9e0; }
+  .cloud.c3::after { width: 60px; height: 48px; top: -28px; left: 40px; background: #fff9e0; }
+  .hills { position: absolute; bottom: 0; left: 0; right: 0; height: 22%; }
+  .hill { position: absolute; bottom: -20%; border-radius: 50% 50% 0 0; background: var(--hill); }
+  .hill.h1 { width: 70%; height: 120%; left: -15%; background: #a8dc90; }
+  .hill.h2 { width: 65%; height: 100%; right: -12%; background: var(--hill2); opacity: 0.9; }
+  .hill.h3 { width: 50%; height: 80%; left: 25%; background: #b4e898; }
+  .corner-cookie {
+    position: absolute; bottom: -16px; width: min(180px, 22vw); height: auto; z-index: 1; opacity: 0.92;
+    filter: drop-shadow(0 8px 12px rgba(90,58,42,0.18));
+  }
+  .corner-cookie.left { left: -36px; transform: rotate(-18deg); }
+  .corner-cookie.right { right: -36px; transform: rotate(22deg); }
+
+  .app {
+    position: relative; z-index: 2;
+    height: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    display: flex; flex-direction: column;
+    padding: 8px 12px 10px; max-width: 1400px; margin: 0 auto;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .header {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; gap: 6px; margin-bottom: 6px;
+    min-height: 0; flex-shrink: 0;
+  }
+  .header-left {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+    justify-self: start; min-width: 0;
+  }
+  .school-name {
+    font-size: clamp(1.15rem, 2.6vw, 1.75rem);
+    font-weight: 900; color: #3a6a40;
+    letter-spacing: 0.06em; line-height: 1.25;
+    white-space: nowrap;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+  }
+  .class-row { display: flex; align-items: center; gap: 6px; }
+  .class-label { font-size: 0.88rem; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+  .class-input {
+    appearance: none; -webkit-appearance: none;
+    border: 3px solid #e8d4c0; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238a6a55' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    color: var(--ink);
+    font-family: inherit; font-size: 1rem; font-weight: 800;
+    padding: 7px 28px 7px 12px;
+    border-radius: 999px; min-width: 5.2em; text-align: center;
+    box-shadow: 0 3px 0 #e0c8b0; outline: none; cursor: pointer;
+  }
+  .class-input:focus { border-color: var(--blue-deep); box-shadow: 0 3px 0 #b0d0e8; }
+  .title-pill {
+    background: #fff; border-radius: 999px; padding: 7px 18px;
+    font-size: clamp(1.05rem, 2vw, 1.45rem); font-weight: 900; color: #c45a3a;
+    box-shadow: 0 4px 0 rgba(196,90,58,0.15), 0 8px 20px var(--shadow);
+    letter-spacing: 0.04em; border: 3px solid #ffe8d8; justify-self: center; white-space: nowrap;
+  }
+  .header-actions {
+    display: flex; gap: 6px; justify-self: end; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .util-btn {
+    appearance: none; border: 2px solid #e8d4c0; background: #fff; color: var(--ink);
+    font-family: inherit; font-size: 0.78rem; font-weight: 700; padding: 7px 11px;
+    border-radius: 999px; cursor: pointer; box-shadow: 0 3px 0 #e0c8b0;
+    transition: transform 0.1s, box-shadow 0.1s; white-space: nowrap;
+  }
+  .util-btn.record {
+    background: linear-gradient(180deg, #7ec8f0, #5aa8d8); color: #fff;
+    border-color: #4a98c8; box-shadow: 0 3px 0 #3a78a8;
+  }
+  .util-btn.cumul {
+    background: linear-gradient(180deg, #c8a0e8, #a070d0); color: #fff;
+    border-color: #9060c0; box-shadow: 0 3px 0 #7040a0;
+  }
+  .util-btn.clean {
+    background: linear-gradient(180deg, #9ed9a8, #5cb870); color: #fff;
+    border-color: #4a9860; box-shadow: 0 3px 0 #3a7a48;
+  }
+  .util-btn.clean:active { box-shadow: 0 1px 0 #3a7a48; }
+  .util-btn.load {
+    background: linear-gradient(180deg, #f5d06a, #e0b830); color: #5a3a2a;
+    border-color: #c89820; box-shadow: 0 3px 0 #a87818;
+    font-size: 0.72rem; padding: 6px 10px;
+  }
+  .util-btn.load:active { box-shadow: 0 1px 0 #a87818; }
+  .class-row .util-btn.load { flex-shrink: 0; }
+  .util-btn:hover { filter: brightness(1.04); }
+  .util-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #e0c8b0; }
+  .util-btn.record:active { box-shadow: 0 1px 0 #3a78a8; }
+  .util-btn.cumul:active { box-shadow: 0 1px 0 #7040a0; }
+  .util-btn.lottery:active { box-shadow: 0 1px 0 #c86020; }
+  .util-btn:focus-visible { outline: 3px solid var(--blue-deep); outline-offset: 2px; }
+
+
+  .util-btn.lottery {
+    background: linear-gradient(180deg, #ffb347, #ff8c42); color: #fff;
+    border-color: #e87830; box-shadow: 0 3px 0 #c86020;
+  }
+  .util-btn.lottery:active { box-shadow: 0 1px 0 #c86020; }
+
+  .lottery-panel {
+    background: var(--cream); border-radius: 22px; padding: 20px 20px 16px;
+    max-width: 520px; width: 100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25); border: 4px solid #ffb070;
+    text-align: center; transform: scale(0.92);
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .modal-backdrop.open .lottery-panel { transform: scale(1); }
+  .lottery-title {
+    font-size: 1.35rem; font-weight: 900; color: #e07830; margin-bottom: 6px;
+  }
+  .lottery-hint {
+    font-size: 0.88rem; font-weight: 700; color: var(--ink-soft); margin-bottom: 14px;
+  }
+  .lottery-groups {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;
+  }
+  .lottery-group-btn {
+    appearance: none; border: 3px solid #e8d4c0; background: #fff; color: var(--ink);
+    font-family: inherit; font-size: 0.9rem; font-weight: 800; padding: 12px 8px;
+    border-radius: 14px; cursor: pointer; min-height: 52px;
+    transition: transform 0.1s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+  .lottery-group-btn:hover { filter: brightness(1.03); }
+  .lottery-group-btn.selected {
+    border-color: var(--accent, #ff8c42); background: #fff8f0;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #ff8c42) 35%, transparent);
+    transform: scale(1.03);
+  }
+  .lottery-group-btn[data-g="0"] { --accent: var(--pink); }
+  .lottery-group-btn[data-g="1"] { --accent: var(--green); }
+  .lottery-group-btn[data-g="2"] { --accent: var(--blue); }
+  .lottery-group-btn[data-g="3"] { --accent: var(--yellow); }
+  .lottery-group-btn[data-g="4"] { --accent: var(--purple); }
+  .lottery-group-btn[data-g="5"] { --accent: var(--orange); }
+  .lottery-group-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .lottery-reel-wrap {
+    position: relative; margin: 8px auto 16px; width: min(280px, 80%);
+    height: 100px; border-radius: 18px; overflow: hidden;
+    background: linear-gradient(180deg, #fff, #fff5e8);
+    border: 4px solid #ffb070; box-shadow: inset 0 0 20px rgba(255,140,60,0.15);
+  }
+  .lottery-reel-wrap::before, .lottery-reel-wrap::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 28px; z-index: 2; pointer-events: none;
+  }
+  .lottery-reel-wrap::before {
+    top: 0; background: linear-gradient(180deg, rgba(255,248,238,0.95), transparent);
+  }
+  .lottery-reel-wrap::after {
+    bottom: 0; background: linear-gradient(0deg, rgba(255,248,238,0.95), transparent);
+  }
+  .lottery-pointer {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 92%; height: 52px; border: 3px solid #ff8c42; border-radius: 12px;
+    z-index: 3; pointer-events: none; box-shadow: 0 0 0 4px rgba(255,140,60,0.15);
+  }
+  .lottery-reel {
+    display: flex; flex-direction: column; align-items: center;
+    will-change: transform; transition: none;
+  }
+  .lottery-reel.spinning {
+    transition: transform 2.6s cubic-bezier(0.12, 0.75, 0.15, 1);
+  }
+  .lottery-item {
+    height: 52px; width: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem; font-weight: 900; color: #e07830; flex-shrink: 0;
+  }
+  .lottery-item.big { color: #e84848; font-size: 2rem; }
+  .lottery-result {
+    min-height: 2.2em; font-size: 1.15rem; font-weight: 900; color: #c45a3a;
+    margin-bottom: 12px;
+  }
+  .lottery-result.win { color: #3a8f48; animation: lotteryPop 0.45s ease; }
+  @keyframes lotteryPop {
+    0% { transform: scale(0.6); opacity: 0; }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .lottery-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .modal-btn.lottery-go {
+    background: linear-gradient(180deg, #ffb347, #ff8c42); color: #fff;
+    box-shadow: 0 4px 0 #c86020; min-width: 140px;
+  }
+  .modal-btn.lottery-go:disabled {
+    background: #c8b8a8; box-shadow: 0 4px 0 #a89888; cursor: not-allowed;
+  }
+
+  @media (max-width: 560px) {
+    .lottery-groups { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .board {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: clamp(4px, 1vh, 10px);
+    align-items: stretch;
+    overflow: hidden;
+    width: 100%;
+    min-height: 0;
+  }
+  .card {
+    background: var(--cream); border-radius: clamp(10px, 1.2vw, 16px);
+    border: clamp(2px, 0.35vw, 3px) solid var(--accent);
+    box-shadow: 0 3px 0 color-mix(in srgb, var(--accent) 55%, #0000), 0 6px 14px var(--shadow);
+    display: flex; flex-direction: column; align-items: center;
+    padding: clamp(2px, 0.35vw, 5px) clamp(2px, 0.3vw, 4px) clamp(3px, 0.5vw, 6px);
+    position: relative; overflow: hidden;
+    min-width: 0; min-height: 0; width: auto;
+  }
+  .card[data-group="0"] { --accent: var(--pink); --accent-deep: var(--pink-deep); }
+  .card[data-group="1"] { --accent: var(--green); --accent-deep: var(--green-deep); }
+  .card[data-group="2"] { --accent: var(--blue); --accent-deep: var(--blue-deep); }
+  .card[data-group="3"] { --accent: var(--yellow); --accent-deep: var(--yellow-deep); }
+  .card[data-group="4"] { --accent: var(--purple); --accent-deep: var(--purple-deep); }
+  .card[data-group="5"] { --accent: var(--orange); --accent-deep: var(--orange-deep); }
+
+  .group-name {
+    font-size: clamp(0.55rem, 1.5vw, 1.05rem); font-weight: 900; color: var(--ink);
+    text-align: center; outline: none; padding: 0 2px; border-radius: 6px;
+    min-width: 0; max-width: 100%; width: 100%;
+    word-break: break-word; overflow-wrap: anywhere; cursor: text;
+    user-select: text; border: 2px solid transparent; line-height: 1.1;
+    margin: 0;
+  }
+  .group-name:hover { background: rgba(255,255,255,0.6); }
+  .group-name:focus { background: #fff; border-color: var(--accent-deep); }
+  .level-label { font-size: clamp(0.5rem, 1.1vw, 0.7rem); font-weight: 700; color: var(--ink-soft); margin: 0; white-space: nowrap; line-height: 1.1; }
+  .level-label .lv-num { color: var(--accent-deep); }
+
+  .stage {
+    flex: 1 1 auto; width: 100%; display: flex; align-items: center; justify-content: center;
+    position: relative; min-height: 0;
+    margin: 0; padding: 0;
+  }
+  .monster-wrap {
+    position: relative;
+    /* Scale with both viewport axes; 2-col layout allows wider monsters */
+    width: clamp(48px, min(28vw, 18vh), 160px);
+    height: clamp(48px, min(28vw, 18vh), 160px);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center bottom;
+  }
+  .monster-wrap.chew { animation: chew 0.45s ease; }
+  .monster-wrap.shake { animation: shake 0.4s ease; }
+  .monster-wrap.rock { animation: rock 2.8s ease-in-out infinite; }
+  @keyframes chew {
+    0%, 100% { transform: scale(var(--scale, 1)); }
+    30% { transform: scale(calc(var(--scale, 1) * 1.12)) rotate(-4deg); }
+    55% { transform: scale(calc(var(--scale, 1) * 0.95)) rotate(3deg); }
+    75% { transform: scale(calc(var(--scale, 1) * 1.05)); }
+  }
+  @keyframes shake {
+    0%, 100% { transform: scale(var(--scale, 1)) translateX(0); }
+    20% { transform: scale(var(--scale, 1)) translateX(-8px) rotate(-3deg); }
+    40% { transform: scale(var(--scale, 1)) translateX(8px) rotate(3deg); }
+    60% { transform: scale(var(--scale, 1)) translateX(-5px); }
+    80% { transform: scale(var(--scale, 1)) translateX(5px); }
+  }
+  @keyframes rock {
+    0%, 100% { transform: scale(var(--scale, 1)) rotate(-3deg); }
+    50% { transform: scale(var(--scale, 1)) rotate(3deg); }
+  }
+  .monster-svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 4px 6px rgba(90,58,42,0.15)); }
+  /* Crown sits on skull/forehead (between ears/horns), not floating above ear tips */
+  /* Crown base rests on skull/forehead (between ears/horns), not ear tips */
+  .crown {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    width: 50%; z-index: 4; pointer-events: none; opacity: 0; transition: opacity 0.3s, top 0.2s;
+    top: 6%;
+    filter: drop-shadow(0 2px 2px rgba(90,58,42,0.25));
+  }
+  .crown.show { opacity: 1; }
+  /* 1-based groups: 1=pink, 2=green, 3=blue, 4=yellow, 5=purple, 6=orange */
+  .card[data-group="0"] .crown { top: 6%;  width: 48%; }  /* 第1組 pink：雙角之間貼頭骨 */
+  .card[data-group="1"] .crown { top: 7%;  width: 48%; }  /* 第2組 green：單眼頭頂（觸角下） */
+  .card[data-group="2"] .crown { top: 8%;  width: 46%; }  /* 第3組 blue：雙耳之間貼頭骨 */
+  .card[data-group="3"] .crown { top: 5%;  width: 48%; }  /* 第4組 yellow：雙角之間貼頭骨 */
+  .card[data-group="4"] .crown { top: 10%; width: 46%; }  /* 第5組 purple：兔耳之間貼頭骨 */
+  .card[data-group="5"] .crown { top: 8%;  width: 48%; }  /* 第6組 orange：刺毛下貼頭骨 */
+
+  .fx-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 10; }
+  .fx-plus {
+    position: absolute; left: 50%; top: 28%; transform: translateX(-50%);
+    font-size: 1.5rem; font-weight: 900; color: #3cb86a;
+    text-shadow: 0 2px 0 #fff; animation: floatUp 0.9s ease-out forwards;
+  }
+  .fx-banner {
+    position: absolute; left: 50%; top: 10%; transform: translateX(-50%) scale(0.5);
+    background: linear-gradient(135deg, #ff6b6b, #ff8e53); color: #fff;
+    font-weight: 900; font-size: 0.95rem; padding: 6px 14px; border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(255,80,60,0.4); white-space: nowrap;
+    animation: bannerPop 1.4s ease forwards; z-index: 12;
+  }
+  .fx-banner.hatch { background: linear-gradient(135deg, #ffb347, #ffcc33); color: #5a3a2a; }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-55px) scale(1.3); }
+  }
+  @keyframes bannerPop {
+    0% { opacity: 0; transform: translateX(-50%) scale(0.3); }
+    20% { opacity: 1; transform: translateX(-50%) scale(1.15); }
+    70% { opacity: 1; transform: translateX(-50%) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-18px) scale(1); }
+  }
+  .fly-cookie {
+    position: absolute; width: 30px; height: 30px; left: 50%; bottom: 6%; margin-left: -15px;
+    z-index: 11; animation: flyCookie 0.55s ease-in forwards; pointer-events: none;
+  }
+  @keyframes flyCookie {
+    0% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+    100% { opacity: 0; transform: translateY(-90px) scale(0.5) rotate(180deg); }
+  }
+  .star {
+    position: absolute; left: 50%; top: 40%; font-size: 1rem;
+    animation: starBurst 0.9s ease-out forwards; pointer-events: none;
+  }
+  @keyframes starBurst {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(0.3); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.2); }
+  }
+
+  .progress { display: flex; gap: clamp(1px, 0.35vw, 4px); justify-content: center; margin: 0; flex-wrap: nowrap; width: 100%; }
+  .slot {
+    width: clamp(9px, 2.2vw, 20px); height: clamp(9px, 2.2vw, 20px);
+    border-radius: 50%; background: #e0d4c4; border: 1.5px solid #d0c0a8;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 1; min-width: 0;
+  }
+  .slot.filled { background: transparent; border-color: transparent; }
+  .slot.filled svg { width: 100%; height: 100%; }
+  .slot.empty::after {
+    content: ""; width: 7px; height: 7px; border-radius: 50%; background: #c8b8a0; opacity: 0.5;
+  }
+  .score-text { font-size: clamp(0.5rem, 1.15vw, 0.78rem); font-weight: 700; color: var(--ink-soft); margin: 0 0 clamp(1px, 0.35vw, 4px); white-space: nowrap; line-height: 1.1; }
+  .actions { display: flex; gap: clamp(2px, 0.5vw, 6px); width: 100%; padding: 0; }
+  .btn-plus {
+    flex: 1; appearance: none; border: none; min-width: 0;
+    background: linear-gradient(180deg, #7ed68a, #4caf60); color: #fff;
+    font-family: inherit; font-size: clamp(0.48rem, 1.05vw, 0.92rem); font-weight: 900;
+    padding: clamp(6px, 1.1vw, 10px) clamp(2px, 0.4vw, 6px);
+    border-radius: clamp(8px, 1vw, 12px); cursor: pointer;
+    box-shadow: 0 3px 0 #3a8f48; min-height: clamp(24px, min(6vw, 5.5vh), 40px);
+  }
+  .btn-plus:hover:not(:disabled) { filter: brightness(1.05); }
+  .btn-plus:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #3a8f48; }
+  .btn-plus:disabled {
+    background: linear-gradient(180deg, #b8c8b0, #9aaa90); box-shadow: 0 4px 0 #7a8a70;
+    cursor: not-allowed; color: #f0f5ee;
+  }
+  .btn-plus:focus-visible, .btn-minus:focus-visible { outline: 3px solid var(--blue-deep); outline-offset: 2px; }
+  .btn-minus {
+    appearance: none; border: none; flex-shrink: 0;
+    background: linear-gradient(180deg, #f5a0b0, #e87898); color: #fff;
+    font-family: inherit; font-size: clamp(0.55rem, 1.1vw, 0.95rem); font-weight: 900;
+    padding: clamp(6px, 1.1vw, 10px) clamp(4px, 0.8vw, 10px);
+    border-radius: clamp(8px, 1vw, 12px); cursor: pointer; box-shadow: 0 3px 0 #c85878;
+    min-height: clamp(24px, min(6vw, 5.5vh), 40px);
+    min-width: clamp(22px, min(5.5vw, 5vh), 40px);
+  }
+  .btn-minus:hover { filter: brightness(1.05); }
+  .btn-minus:active { transform: translateY(3px); box-shadow: 0 1px 0 #c85878; }
+  .btn-minus:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .footer-bar {
+    margin-top: 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    flex-shrink: 0;
+  }
+  .lottery-footer-btn {
+    appearance: none; border: none; cursor: pointer;
+    font-family: inherit; font-weight: 900;
+    font-size: clamp(1rem, min(2.4vw, 3.2vh), 1.45rem);
+    color: #fff;
+    padding: clamp(8px, 1.6vh, 14px) clamp(20px, 4vw, 48px);
+    min-height: clamp(40px, 7vh, 58px);
+    min-width: min(420px, 92%);
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffb347, #ff8c42);
+    box-shadow: 0 6px 0 #c86020, 0 10px 24px rgba(200, 100, 40, 0.35);
+    transition: transform 0.1s, box-shadow 0.1s, filter 0.15s;
+    letter-spacing: 0.06em;
+  }
+  .lottery-footer-btn:hover { filter: brightness(1.05); }
+  .lottery-footer-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #c86020, 0 4px 12px rgba(200, 100, 40, 0.3);
+  }
+  .lottery-footer-btn:focus-visible {
+    outline: 3px solid var(--blue-deep); outline-offset: 3px;
+  }
+  .footer-note {
+    text-align: center; font-size: 0.68rem;
+    color: rgba(90,58,42,0.35); font-weight: 500; letter-spacing: 0.08em;
+  }
+
+  .toast {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #3a8f48; color: #fff; font-weight: 800; font-size: 1rem;
+    padding: 12px 24px; border-radius: 999px; box-shadow: 0 8px 24px rgba(40,100,50,0.35);
+    z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(50, 30, 20, 0.45); z-index: 100;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+    opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s;
+  }
+  /* Nested confirms (e.g. 清累積 over 累積榜) must sit above parent modal */
+  .modal-backdrop.stacked {
+    z-index: 220;
+    background: rgba(40, 25, 15, 0.55);
+  }
+  .modal-backdrop.open { opacity: 1; visibility: visible; }
+  .modal {
+    background: var(--cream); border-radius: 22px; padding: 24px 26px; max-width: 400px; width: 100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25); border: 4px solid #e8d4c0; text-align: center;
+    transform: scale(0.9); transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .modal-backdrop.open .modal { transform: scale(1); }
+  .modal p { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; color: var(--ink); line-height: 1.45; }
+  .modal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .modal-btn {
+    appearance: none; border: none; font-family: inherit; font-size: 0.95rem; font-weight: 800;
+    padding: 11px 20px; border-radius: 14px; cursor: pointer; min-height: 46px;
+  }
+  .modal-btn.cancel { background: #e8dcc8; color: var(--ink); box-shadow: 0 4px 0 #d0c0a8; }
+  .modal-btn.confirm { background: linear-gradient(180deg, #ff7a7a, #e84848); color: #fff; box-shadow: 0 4px 0 #c03030; }
+  .modal-btn:active { transform: translateY(2px); box-shadow: none; }
+  .modal-btn:focus-visible { outline: 3px solid var(--blue-deep); outline-offset: 2px; }
+
+
+  .clean-panel {
+    background: linear-gradient(180deg, #fff8ee, #e8f8e8);
+    border-radius: 22px; padding: 22px 22px 18px; max-width: 440px; width: 100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.28); border: 4px solid #8fd4a0;
+    text-align: center; transform: scale(0.92);
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .modal-backdrop.open .clean-panel { transform: scale(1); }
+  .clean-panel-title {
+    font-size: 1.35rem; font-weight: 900; color: #3a8f48; margin-bottom: 8px;
+  }
+  .clean-panel-eggs {
+    display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+    margin: 12px 0 14px; font-size: 1.8rem; line-height: 1;
+  }
+  .clean-panel-eggs span {
+    display: inline-flex; width: 2.2em; height: 2.2em; align-items: center; justify-content: center;
+    background: #fff; border-radius: 50%; border: 3px solid #e8d4c0;
+    box-shadow: 0 3px 0 #e0c8b0;
+  }
+  .clean-panel p {
+    font-size: 1.05rem; font-weight: 700; color: var(--ink); line-height: 1.45; margin-bottom: 8px;
+  }
+  .clean-panel .clean-note {
+    font-size: 0.88rem; font-weight: 600; color: var(--ink-soft); margin-bottom: 18px;
+  }
+
+  /* Cumulative panel */
+  .cumul-panel {
+    background: var(--cream); border-radius: 22px; padding: 18px 18px 16px;
+    max-width: 720px; width: 100%; max-height: min(88vh, 820px);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25); border: 4px solid #d0b0e8;
+    text-align: left; transform: scale(0.92);
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-backdrop.open .cumul-panel { transform: scale(1); }
+  .cumul-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px;
+  }
+  .cumul-title { font-size: 1.25rem; font-weight: 900; color: #7040a0; }
+  .cumul-class { font-size: 0.95rem; font-weight: 700; color: var(--ink-soft); margin-bottom: 12px; }
+  .cumul-totals {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;
+  }
+  .cumul-total-card {
+    background: #fff; border-radius: 14px; padding: 10px 8px; text-align: center;
+    border: 3px solid var(--accent, #e8d4c0);
+  }
+  .cumul-total-card .cn { font-size: 0.82rem; font-weight: 800; color: var(--ink); margin-bottom: 2px; }
+  .cumul-total-card .ct { font-size: 1.35rem; font-weight: 900; color: var(--accent-deep, #7040a0); }
+  .cumul-total-card[data-g="0"] { --accent: var(--pink); --accent-deep: var(--pink-deep); }
+  .cumul-total-card[data-g="1"] { --accent: var(--green); --accent-deep: var(--green-deep); }
+  .cumul-total-card[data-g="2"] { --accent: var(--blue); --accent-deep: var(--blue-deep); }
+  .cumul-total-card[data-g="3"] { --accent: var(--yellow); --accent-deep: var(--yellow-deep); }
+  .cumul-total-card[data-g="4"] { --accent: var(--purple); --accent-deep: var(--purple-deep); }
+  .cumul-total-card[data-g="5"] { --accent: var(--orange); --accent-deep: var(--orange-deep); }
+
+  .cumul-days-label {
+    font-size: 0.9rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 8px;
+  }
+  .cumul-days {
+    flex: 1; overflow-y: auto; border-radius: 12px; background: #fff8f0;
+    border: 2px solid #e8d4c0; padding: 6px; min-height: 80px; max-height: 280px;
+  }
+  .day-row {
+    border-radius: 10px; background: #fff; margin-bottom: 6px; border: 2px solid #f0e4d4; overflow: hidden;
+  }
+  .day-row:last-child { margin-bottom: 0; }
+  .day-summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 12px; cursor: pointer; font-weight: 700; width: 100%;
+    appearance: none; border: none; background: transparent; font-family: inherit;
+    color: var(--ink); text-align: left; font-size: 0.9rem;
+  }
+  .day-summary:hover { background: #fff5ea; }
+  .day-summary .chev { transition: transform 0.2s; color: var(--ink-soft); }
+  .day-row.open .day-summary .chev { transform: rotate(90deg); }
+  .day-detail {
+    display: none; padding: 0 12px 10px; font-size: 0.82rem; color: var(--ink-soft);
+  }
+  .day-row.open .day-detail { display: block; }
+  .day-scores {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  }
+  .day-score-cell {
+    background: #f8f0e8; border-radius: 8px; padding: 6px; text-align: center;
+  }
+  .day-score-cell strong { display: block; color: var(--ink); font-size: 0.95rem; }
+  .cumul-empty { text-align: center; padding: 24px 12px; color: #b09880; font-weight: 700; }
+  .cumul-foot {
+    display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; margin-top: 14px;
+  }
+  .modal-btn.danger-outline {
+    background: #fff; color: #c84848; border: 2px solid #e87878; box-shadow: none;
+  }
+  .modal-btn.primary {
+    background: linear-gradient(180deg, #c8a0e8, #a070d0); color: #fff; box-shadow: 0 4px 0 #7040a0;
+  }
+
+  /* Always 2 columns × 3 rows; refine sizes below ~1100px */
+  @media (max-width: 1100px) {
+    .card {
+      padding: clamp(2px, 0.6vh, 5px) clamp(2px, 0.5vw, 5px);
+      border-width: 3px;
+      border-radius: 12px;
+    }
+    .monster-wrap {
+      width: clamp(52px, min(26vw, 16vh), 140px);
+      height: clamp(52px, min(26vw, 16vh), 140px);
+    }
+    .group-name { font-size: clamp(0.7rem, min(2vw, 2.4vh), 1.15rem); }
+    .level-label { font-size: clamp(0.55rem, min(1.4vw, 1.8vh), 0.8rem); }
+    .score-text { font-size: clamp(0.55rem, min(1.4vw, 1.8vh), 0.85rem); margin-bottom: 2px; }
+    .slot {
+      width: clamp(10px, min(2.2vw, 2.4vh), 18px);
+      height: clamp(10px, min(2.2vw, 2.4vh), 18px);
+      flex-shrink: 0;
+    }
+    .btn-plus, .btn-minus {
+      min-height: clamp(26px, 4.8vh, 38px);
+      font-size: clamp(0.65rem, min(1.5vw, 2vh), 0.95rem);
+      padding: clamp(4px, 0.8vh, 8px) clamp(2px, 0.5vw, 6px);
+    }
+    .btn-minus { min-width: clamp(26px, 4.8vh, 38px); }
+    .actions { flex-direction: row; gap: 4px; }
+    .header { gap: 4px; margin-bottom: 4px; }
+    .school-name { font-size: clamp(1rem, min(3vw, 3.5vh), 1.55rem); }
+    .cumul-totals { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 900px) {
+    .app { padding: 6px 8px 8px; }
+    .header {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      gap: 4px;
+    }
+    .header-left {
+      justify-self: start;
+      width: 100%;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 12px;
+    }
+    .header-actions { justify-self: center; width: 100%; justify-content: center; }
+    .title-pill { font-size: clamp(0.85rem, min(3.5vw, 3vh), 1.2rem); padding: 4px 12px; }
+    .school-name { font-size: clamp(1rem, min(4vw, 3.2vh), 1.4rem); }
+    .fx-plus { font-size: 1.1rem; }
+    .fx-banner { font-size: 0.75rem; padding: 3px 8px; }
+  }
+
+  @media (max-width: 640px) {
+    .app { padding: 4px 5px 6px; }
+    .board { gap: 4px; }
+    .card {
+      border-width: 2px;
+      border-radius: 10px;
+      box-shadow: 0 2px 0 color-mix(in srgb, var(--accent) 55%, #0000);
+      padding: 2px 2px 4px;
+    }
+    .monster-wrap {
+      width: clamp(48px, min(30vw, 13vh), 110px);
+      height: clamp(48px, min(30vw, 13vh), 110px);
+    }
+    .group-name { font-size: clamp(0.62rem, min(3vw, 2.2vh), 0.9rem); }
+    .level-label, .score-text { font-size: clamp(0.5rem, min(2.4vw, 1.8vh), 0.7rem); }
+    .slot { width: clamp(10px, 3.5vw, 14px); height: clamp(10px, 3.5vw, 14px); border-width: 1px; }
+    .slot.empty::after { width: 4px; height: 4px; }
+    .btn-plus, .btn-minus {
+      min-height: clamp(24px, 4.2vh, 32px); padding: 4px 3px; border-radius: 7px; box-shadow: 0 2px 0 #3a8f48;
+    }
+    .btn-minus { box-shadow: 0 2px 0 #c85878; min-width: clamp(24px, 4.2vh, 32px); }
+    .btn-plus { font-size: clamp(0.55rem, min(2.6vw, 1.8vh), 0.8rem); }
+    .class-input { font-size: 0.8rem; padding: 4px 7px; width: 4em; border-width: 2px; }
+    .class-label { font-size: 0.72rem; }
+    .util-btn { font-size: 0.65rem; padding: 4px 7px; }
+    .corner-cookie { width: 60px; opacity: 0.4; }
+    .school-name { font-size: clamp(0.95rem, min(4.2vw, 3vh), 1.25rem); }
+    .cumul-totals { grid-template-columns: repeat(2, 1fr); }
+    .day-scores { grid-template-columns: repeat(2, 1fr); }
+    .lottery-footer-btn {
+      min-width: 88%; width: 88%; padding: 8px 14px;
+      font-size: clamp(0.9rem, 2.5vh, 1.05rem);
+      min-height: clamp(36px, 6vh, 48px);
+    }
+  }
+
+  @media (max-width: 400px) {
+    .app { padding: 3px 3px 5px; }
+    .board { gap: 3px; }
+    .card { border-radius: 8px; padding: 1px 1px 3px; }
+    .monster-wrap {
+      width: clamp(42px, min(32vw, 12vh), 96px);
+      height: clamp(42px, min(32vw, 12vh), 96px);
+    }
+    .group-name { font-size: 0.62rem; }
+    .btn-plus, .btn-minus { min-height: 24px; font-size: 0.52rem; }
+    .lottery-footer-btn { min-height: 36px; font-size: 0.88rem; padding: 6px 10px; }
+    .school-name { letter-spacing: 0.02em; font-size: 0.95rem; }
+    .footer-note { font-size: 0.5rem; }
+  }
+
+  /* Short viewport: shrink chrome so 2×3 + 抽獎 all fit */
+  @media (max-height: 800px) {
+    .app { padding-top: 4px; padding-bottom: 4px; }
+    .header { margin-bottom: 3px; gap: 3px; }
+    .school-name { font-size: clamp(0.95rem, 3.2vh, 1.35rem); }
+    .title-pill { font-size: clamp(0.85rem, 2.8vh, 1.15rem); padding: 3px 10px; border-width: 2px; }
+    .class-input { font-size: 0.8rem; padding: 3px 8px; border-width: 2px; box-shadow: 0 2px 0 #e0c8b0; }
+    .util-btn { font-size: 0.65rem; padding: 3px 8px; box-shadow: 0 2px 0 #e0c8b0; }
+    .footer-bar { margin-top: 3px; gap: 0; }
+    .footer-note { display: none; }
+    .lottery-footer-btn {
+      min-height: clamp(34px, 5.5vh, 46px);
+      padding: 6px 18px;
+      font-size: clamp(0.9rem, 2.6vh, 1.15rem);
+      box-shadow: 0 3px 0 #c86020, 0 6px 14px rgba(200, 100, 40, 0.28);
+    }
+    .monster-wrap {
+      width: clamp(44px, min(24vw, 14vh), 120px);
+      height: clamp(44px, min(24vw, 14vh), 120px);
+    }
+    .btn-plus, .btn-minus { min-height: clamp(22px, 4vh, 32px); }
+    .hills { height: 14%; }
+    .corner-cookie { opacity: 0.35; width: min(120px, 16vw); }
+  }
+
+  @media (max-height: 640px) {
+    .header-left { gap: 2px; }
+    .class-row { gap: 4px; }
+    .school-name { font-size: clamp(0.85rem, 3vh, 1.15rem); }
+    .monster-wrap {
+      width: clamp(40px, min(22vw, 11vh), 96px);
+      height: clamp(40px, min(22vw, 11vh), 96px);
+    }
+    .group-name { font-size: clamp(0.55rem, 2vh, 0.85rem); }
+    .level-label, .score-text { font-size: clamp(0.45rem, 1.6vh, 0.65rem); }
+    .slot { width: 10px; height: 10px; }
+    .progress { gap: 2px; }
+    .btn-plus, .btn-minus {
+      min-height: 22px; padding: 2px 2px; font-size: 0.55rem; box-shadow: 0 1px 0 #3a8f48;
+    }
+    .btn-minus { box-shadow: 0 1px 0 #c85878; min-width: 22px; }
+    .lottery-footer-btn {
+      min-height: 32px; padding: 4px 14px; font-size: 0.85rem;
+      box-shadow: 0 2px 0 #c86020;
+    }
+    .card { padding: 1px 2px 2px; border-width: 2px; }
+    .board { gap: 3px; }
+  }
+</style>
+</head>
+<body>
+  <div class="bg-layer" aria-hidden="true">
+    <div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>
+    <div class="hills"><div class="hill h1"></div><div class="hill h2"></div><div class="hill h3"></div></div>
+    <svg class="corner-cookie left" viewBox="0 0 120 120"><ellipse cx="60" cy="60" rx="54" ry="52" fill="#d4a05a" stroke="#8a5a28" stroke-width="4"/><ellipse cx="60" cy="58" rx="48" ry="46" fill="#e8b86a"/><circle cx="38" cy="42" r="6" fill="#5a3020"/><circle cx="68" cy="36" r="5" fill="#5a3020"/><circle cx="82" cy="55" r="7" fill="#5a3020"/><circle cx="48" cy="68" r="5.5" fill="#5a3020"/><circle cx="70" cy="78" r="6" fill="#5a3020"/><circle cx="35" cy="58" r="4" fill="#5a3020"/><circle cx="55" cy="48" r="4.5" fill="#5a3020"/></svg>
+    <svg class="corner-cookie right" viewBox="0 0 120 120"><ellipse cx="60" cy="60" rx="54" ry="52" fill="#d4a05a" stroke="#8a5a28" stroke-width="4"/><ellipse cx="60" cy="58" rx="48" ry="46" fill="#e8b86a"/><circle cx="42" cy="40" r="6" fill="#5a3020"/><circle cx="72" cy="38" r="5" fill="#5a3020"/><circle cx="85" cy="60" r="7" fill="#5a3020"/><circle cx="50" cy="72" r="5.5" fill="#5a3020"/><circle cx="68" cy="80" r="6" fill="#5a3020"/><circle cx="38" cy="62" r="4" fill="#5a3020"/><circle cx="58" cy="52" r="4.5" fill="#5a3020"/></svg>
+  </div>
+
+  <div class="app">
+    <header class="header">
+      <div class="header-left">
+        <div class="school-name" aria-label="學校名稱">天水圍官立小學</div>
+        <div class="class-row">
+          <label class="class-label" for="classInput">班別</label>
+          <select id="classInput" class="class-input" aria-label="班別">
+            <option value="">— 揀班 —</option>
+            <option value="1A">1A</option>
+            <option value="1B">1B</option>
+            <option value="1C">1C</option>
+            <option value="1D">1D</option>
+            <option value="1E">1E</option>
+            <option value="2A">2A</option>
+            <option value="2B">2B</option>
+            <option value="2C">2C</option>
+            <option value="2D">2D</option>
+            <option value="2E">2E</option>
+            <option value="3A">3A</option>
+            <option value="3B">3B</option>
+            <option value="3C">3C</option>
+            <option value="3D">3D</option>
+            <option value="3E">3E</option>
+            <option value="4A">4A</option>
+            <option value="4B">4B</option>
+            <option value="4C">4C</option>
+            <option value="4D">4D</option>
+            <option value="4E">4E</option>
+            <option value="5A">5A</option>
+            <option value="5B">5B</option>
+            <option value="5C">5C</option>
+            <option value="5D">5D</option>
+            <option value="5E">5E</option>
+            <option value="6A">6A</option>
+            <option value="6B">6B</option>
+            <option value="6C">6C</option>
+            <option value="6D">6D</option>
+            <option value="6E">6E</option>
+          </select>
+          <button type="button" class="util-btn load" id="btnLoadRecords" aria-label="載入記錄">📂 載入記錄</button>
+        </div>
+      </div>
+      <div class="title-pill" role="heading" aria-level="1">🍪 餵餵小怪獸 🍪</div>
+      <div class="header-actions">
+        <button type="button" class="util-btn record" id="btnRecord" aria-label="記入今日">📥 記入今日</button>
+        <button type="button" class="util-btn cumul" id="btnCumul" aria-label="累積榜">📊 累積榜</button>
+        <button type="button" class="util-btn" id="btnSound" aria-pressed="true" aria-label="音效開關">🔊 音效開</button>
+        <button type="button" class="util-btn clean" id="btnClean" aria-label="清理怪獸">🧹 清理怪獸</button>
+      </div>
+    </header>
+    <main class="board" id="board" role="main"></main>
+    <footer class="footer-bar">
+      <button type="button" class="lottery-footer-btn" id="btnLottery" aria-label="抽獎">🎰 抽獎</button>
+      <p class="footer-note">課堂計分板</p>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="modal-backdrop" id="cleanModal" role="dialog" aria-modal="true" aria-labelledby="cleanTitle" hidden>
+    <div class="clean-panel">
+      <div class="clean-panel-title" id="cleanTitle">🧹 清理怪獸</div>
+      <div class="clean-panel-eggs" aria-hidden="true">
+        <span>🥚</span><span>🥚</span><span>🥚</span>
+        <span>🥚</span><span>🥚</span><span>🥚</span>
+      </div>
+      <p>將六組怪獸清返做<strong>怪獸蛋</strong>？</p>
+      <div class="clean-note">今日餅乾分數會歸零。<br>班別、組名、累積榜會保留。</div>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn cancel" id="btnCancelClean">取消</button>
+        <button type="button" class="modal-btn confirm" id="btnConfirmClean">確定清理</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="cumulModal" role="dialog" aria-modal="true" aria-labelledby="cumulTitle" hidden>
+    <div class="cumul-panel">
+      <div class="cumul-head">
+        <div class="cumul-title" id="cumulTitle">📊 累積榜</div>
+        <button type="button" class="util-btn" id="btnCloseCumul" aria-label="關閉">關閉</button>
+      </div>
+      <div class="cumul-class" id="cumulClassLabel"></div>
+      <div class="cumul-totals" id="cumulTotals"></div>
+      <div class="cumul-days-label">每日紀錄</div>
+      <div class="cumul-days" id="cumulDays"></div>
+      <div class="cumul-foot">
+        <button type="button" class="modal-btn danger-outline" id="btnClearCumul">清累積</button>
+        <button type="button" class="modal-btn primary" id="btnCloseCumul2">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nested confirm: after cumul in DOM + .stacked z-index so it appears on top -->
+  <div class="modal-backdrop stacked" id="clearCumulModal" role="dialog" aria-modal="true" aria-labelledby="clearCumulMsg" hidden>
+    <div class="modal">
+      <p id="clearCumulMsg">確定要清除呢個班別嘅累積分數嗎？<br><small style="font-weight:600;color:#8a6a55">呢個操作唔可以復原。<br>累積榜會留喺後面。</small></p>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn cancel" id="btnCancelClearCumul">取消</button>
+        <button type="button" class="modal-btn confirm" id="btnConfirmClearCumul">確定清除累積</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="lotteryModal" role="dialog" aria-modal="true" aria-labelledby="lotteryTitle" hidden>
+    <div class="lottery-panel">
+      <div class="lottery-title" id="lotteryTitle">🎰 幸運抽獎</div>
+      <div class="lottery-hint">揀一組，再按「開始抽獎」——有機會加 +1 至 +5 餅乾！</div>
+      <div class="lottery-groups" id="lotteryGroups"></div>
+      <div class="lottery-reel-wrap" aria-hidden="true">
+        <div class="lottery-pointer"></div>
+        <div class="lottery-reel" id="lotteryReel"></div>
+      </div>
+      <div class="lottery-result" id="lotteryResult">請先揀組別</div>
+      <div class="lottery-actions">
+        <button type="button" class="modal-btn cancel" id="btnCloseLottery">關閉</button>
+        <button type="button" class="modal-btn lottery-go" id="btnSpinLottery" disabled>開始抽獎</button>
+        <button type="button" class="modal-btn primary" id="btnSpinAgain" hidden>再抽一次</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  const GROUP_COUNT = 6;
+  const COOKIES_PER_LEVEL = 5;
+  const MAX_LEVEL = 4;
+  const MAX_COOKIES = 25;
+  const LEVEL_NAMES = ["怪獸蛋", "小寶寶", "小怪獸", "大怪獸", "怪獸大王"];
+  const LEVEL_SCALES = [0.78, 0.62, 0.78, 0.9, 1];
+  const DEFAULT_NAMES = ["第一組", "第二組", "第三組", "第四組", "第五組", "第六組"];
+  const STORAGE_KEY = "feed-the-monster-classroom-v2";
+  const STORAGE_KEY_V1 = "feed-the-monster-classroom-v1";
+  const EMPTY_CLASS_KEY = "未命名班";
+  const CLASS_OPTIONS = [];
+  for (let g = 1; g <= 6; g++) {
+    for (const L of ["A", "B", "C", "D", "E"]) CLASS_OPTIONS.push(g + L);
+  }
+  function normalizeClassName(raw) {
+    const t = String(raw || "").trim().toUpperCase().replace(/\s+/g, "");
+    // Accept 1A / 6E; also map rare forms like 一年級A → skip, keep compact only
+    const m = t.match(/^([1-6])([A-E])$/);
+    if (m) return m[1] + m[2];
+    return "";
+  }
+
+  let state = {
+    className: "",
+    names: [...DEFAULT_NAMES],
+    todayScores: Array(GROUP_COUNT).fill(0),
+    soundOn: true,
+    cumulativeByClass: {}
+  };
+
+  let audioCtx = null;
+
+  function levelOf(score) { return Math.min(MAX_LEVEL, Math.floor(score / COOKIES_PER_LEVEL)); }
+  function filledOf(score) { return score === MAX_COOKIES ? COOKIES_PER_LEVEL : score % COOKIES_PER_LEVEL; }
+
+  function todayISO() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+
+  function classKey() {
+    const t = (state.className || "").trim();
+    return t || EMPTY_CLASS_KEY;
+  }
+
+  function emptyCumul() {
+    return { totals: Array(GROUP_COUNT).fill(0), days: [] };
+  }
+
+  function getCumul(key) {
+    if (!state.cumulativeByClass[key]) {
+      state.cumulativeByClass[key] = emptyCumul();
+    }
+    const c = state.cumulativeByClass[key];
+    if (!Array.isArray(c.totals) || c.totals.length !== GROUP_COUNT) {
+      c.totals = Array(GROUP_COUNT).fill(0);
+    }
+    if (!Array.isArray(c.days)) c.days = [];
+    return c;
+  }
+
+  function normalizeScores(arr) {
+    return Array.from({ length: GROUP_COUNT }, (_, i) =>
+      Math.max(0, Math.min(MAX_COOKIES, Number(arr && arr[i]) || 0))
+    );
+  }
+  function normalizeNames(arr) {
+    return DEFAULT_NAMES.map((d, i) =>
+      String((arr && arr[i] != null ? arr[i] : d) || d).slice(0, 24)
+    );
+  }
+
+  function migrateV1() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_V1);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      const className = typeof data.className === "string" ? normalizeClassName(data.className) : "";
+      const names = normalizeNames(data.names);
+      const todayScores = normalizeScores(data.scores);
+      return {
+        className, names, todayScores,
+        soundOn: true,
+        cumulativeByClass: {}
+      };
+    } catch (e) { return null; }
+  }
+
+  function load() {
+    try {
+      let raw = localStorage.getItem(STORAGE_KEY);
+      let data = null;
+      if (raw) {
+        data = JSON.parse(raw);
+      } else {
+        data = migrateV1();
+        if (data) {
+          state = data;
+          persist();
+          return;
+        }
+        return;
+      }
+      if (typeof data.className === "string") state.className = normalizeClassName(data.className);
+      if (Array.isArray(data.names)) state.names = normalizeNames(data.names);
+      if (Array.isArray(data.todayScores)) state.todayScores = normalizeScores(data.todayScores);
+      else if (Array.isArray(data.scores)) state.todayScores = normalizeScores(data.scores);
+      if (typeof data.soundOn === "boolean") state.soundOn = data.soundOn;
+      if (data.cumulativeByClass && typeof data.cumulativeByClass === "object") {
+        state.cumulativeByClass = data.cumulativeByClass;
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        className: state.className,
+        names: state.names,
+        todayScores: state.todayScores,
+        soundOn: state.soundOn,
+        cumulativeByClass: state.cumulativeByClass
+      }));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove("show"), 1700);
+  }
+
+  /* Audio */
+  function ensureAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }
+  function beep(freq, dur, type, vol, delay) {
+    if (!state.soundOn || !audioCtx) return;
+    const t0 = audioCtx.currentTime + (delay || 0);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol || 0.15, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+  function playFeed() { ensureAudio(); beep(520, 0.08, "triangle", 0.12); beep(680, 0.1, "sine", 0.1, 0.06); }
+  function playUpgrade() { ensureAudio(); beep(440,0.1,"sine",0.14); beep(554,0.1,"sine",0.14,0.1); beep(659,0.12,"sine",0.14,0.2); beep(880,0.2,"triangle",0.12,0.32); }
+  function playHatch() { ensureAudio(); beep(330,0.12,"square",0.08); beep(440,0.12,"square",0.08,0.1); beep(550,0.15,"sine",0.12,0.22); beep(740,0.25,"triangle",0.1,0.35); }
+  function playMinus() { ensureAudio(); beep(300,0.1,"triangle",0.1); beep(220,0.12,"sine",0.08,0.08); }
+  function playSave() { ensureAudio(); beep(600,0.08,"sine",0.1); beep(800,0.12,"triangle",0.1,0.08); }
+
+  /* SVG */
+  function cookieSVG(size) {
+    const s = size || 28;
+    return `<svg viewBox="0 0 40 40" width="${s}" height="${s}" aria-hidden="true"><ellipse cx="20" cy="20" rx="17" ry="16" fill="#d4a05a" stroke="#8a5a28" stroke-width="2"/><ellipse cx="20" cy="19" rx="14" ry="13" fill="#e8b86a"/><circle cx="13" cy="14" r="2.2" fill="#5a3020"/><circle cx="24" cy="12" r="1.8" fill="#5a3020"/><circle cx="28" cy="20" r="2.4" fill="#5a3020"/><circle cx="16" cy="24" r="2" fill="#5a3020"/><circle cx="22" cy="27" r="1.6" fill="#5a3020"/></svg>`;
+  }
+  function eggSVG() {
+    return `<svg class="monster-svg" viewBox="0 0 100 120" aria-hidden="true"><ellipse cx="50" cy="62" rx="32" ry="42" fill="#fff8f0" stroke="#c8a888" stroke-width="3"/><circle cx="38" cy="55" r="4.5" fill="#f5a0b8"/><circle cx="58" cy="48" r="3.5" fill="#8ec4e8"/><circle cx="48" cy="72" r="4" fill="#f5d06a"/><circle cx="62" cy="68" r="3" fill="#8fd4a0"/><circle cx="36" cy="78" r="3.2" fill="#c8a0e8"/><circle cx="55" cy="88" r="3.5" fill="#f5a0b8"/><circle cx="42" cy="42" r="2.5" fill="#8fd4a0"/></svg>`;
+  }
+  function crownSVG() {
+    return `<svg class="crown" viewBox="0 8 80 42" aria-hidden="true"><path d="M8 38 L12 14 L28 28 L40 8 L52 28 L68 14 L72 38 Z" fill="#f5d06a" stroke="#c89820" stroke-width="2.5" stroke-linejoin="round"/><rect x="8" y="36" width="64" height="10" rx="3" fill="#e8b830" stroke="#c89820" stroke-width="2"/><circle cx="40" cy="26" r="6.5" fill="#f5a0b8" stroke="#e87898" stroke-width="2"/><circle cx="40" cy="26" r="2.8" fill="#fff0f5"/></svg>`;
+  }
+  function monsterPinkSVG() {
+    return `<svg class="monster-svg" viewBox="0 0 120 120" aria-hidden="true"><ellipse cx="38" cy="28" rx="8" ry="14" fill="#d46888" transform="rotate(-20 38 28)"/><ellipse cx="82" cy="28" rx="8" ry="14" fill="#d46888" transform="rotate(20 82 28)"/><ellipse cx="38" cy="26" rx="5" ry="9" fill="#e87898" transform="rotate(-20 38 26)"/><ellipse cx="82" cy="26" rx="5" ry="9" fill="#e87898" transform="rotate(20 82 26)"/><ellipse cx="60" cy="68" rx="42" ry="40" fill="#f5a0b8" stroke="#e87898" stroke-width="3"/><ellipse cx="60" cy="78" rx="28" ry="22" fill="#f8b8c8"/><circle cx="46" cy="60" r="7" fill="#fff"/><circle cx="74" cy="60" r="7" fill="#fff"/><circle cx="47" cy="61" r="4" fill="#5a3a2a"/><circle cx="75" cy="61" r="4" fill="#5a3a2a"/><circle cx="49" cy="59" r="1.5" fill="#fff"/><circle cx="77" cy="59" r="1.5" fill="#fff"/><ellipse cx="36" cy="72" rx="7" ry="5" fill="#e87898" opacity="0.55"/><ellipse cx="84" cy="72" rx="7" ry="5" fill="#e87898" opacity="0.55"/><path d="M42 78 Q60 98 78 78" fill="#e84868" stroke="#c83858" stroke-width="2"/><ellipse cx="60" cy="86" rx="8" ry="5" fill="#f5a0b8"/><ellipse cx="28" cy="88" rx="10" ry="8" fill="#f5a0b8" stroke="#e87898" stroke-width="2"/><ellipse cx="92" cy="88" rx="10" ry="8" fill="#f5a0b8" stroke="#e87898" stroke-width="2"/></svg>`;
+  }
+  function monsterGreenSVG() {
+    return `<svg class="monster-svg" viewBox="0 0 120 120" aria-hidden="true"><ellipse cx="60" cy="22" rx="6" ry="12" fill="#4a9860"/><circle cx="60" cy="12" r="7" fill="#8fd4a0" stroke="#4a9860" stroke-width="2"/><ellipse cx="60" cy="70" rx="40" ry="38" fill="#8fd4a0" stroke="#5cb870" stroke-width="3"/><ellipse cx="60" cy="80" rx="26" ry="20" fill="#a8e0b4"/><circle cx="60" cy="58" r="16" fill="#fff" stroke="#5cb870" stroke-width="2"/><circle cx="60" cy="58" r="9" fill="#5a3a2a"/><circle cx="63" cy="54" r="3" fill="#fff"/><path d="M44 82 Q60 98 76 82" fill="none" stroke="#3a7a48" stroke-width="3" stroke-linecap="round"/><ellipse cx="26" cy="88" rx="9" ry="7" fill="#8fd4a0" stroke="#5cb870" stroke-width="2"/><ellipse cx="94" cy="88" rx="9" ry="7" fill="#8fd4a0" stroke="#5cb870" stroke-width="2"/></svg>`;
+  }
+  function monsterBlueSVG() {
+    return `<svg class="monster-svg" viewBox="0 0 120 120" aria-hidden="true"><ellipse cx="32" cy="32" rx="16" ry="18" fill="#8ec4e8" stroke="#5aa0d0" stroke-width="2.5"/><ellipse cx="88" cy="32" rx="16" ry="18" fill="#8ec4e8" stroke="#5aa0d0" stroke-width="2.5"/><ellipse cx="32" cy="34" rx="9" ry="10" fill="#b0d8f0"/><ellipse cx="88" cy="34" rx="9" ry="10" fill="#b0d8f0"/><ellipse cx="60" cy="68" rx="40" ry="38" fill="#8ec4e8" stroke="#5aa0d0" stroke-width="3"/><circle cx="30" cy="55" r="3" fill="#a8d4f0"/><circle cx="90" cy="58" r="2.5" fill="#a8d4f0"/><circle cx="40" cy="42" r="2.5" fill="#a8d4f0"/><circle cx="80" cy="44" r="3" fill="#a8d4f0"/><ellipse cx="60" cy="78" rx="26" ry="20" fill="#b0d8f0"/><circle cx="46" cy="60" r="7" fill="#fff"/><circle cx="74" cy="60" r="7" fill="#fff"/><circle cx="47" cy="61" r="4" fill="#5a3a2a"/><circle cx="75" cy="61" r="4" fill="#5a3a2a"/><path d="M44 78 Q60 96 76 78" fill="#4a90c0" stroke="#3a70a0" stroke-width="2"/><ellipse cx="26" cy="88" rx="9" ry="7" fill="#8ec4e8" stroke="#5aa0d0" stroke-width="2"/><ellipse cx="94" cy="88" rx="9" ry="7" fill="#8ec4e8" stroke="#5aa0d0" stroke-width="2"/></svg>`;
+  }
+  function monsterYellowSVG() {
+    return `<svg class="monster-svg" viewBox="0 0 120 120" aria-hidden="true"><polygon points="34,38 40,10 52,36" fill="#e0b830" stroke="#c89820" stroke-width="2" stroke-linejoin="round"/><polygon points="68,36 80,10 86,38" fill="#e0b830" stroke="#c89820" stroke-width="2" stroke-linejoin="round"/><ellipse cx="60" cy="68" rx="42" ry="40" fill="#f5d06a" stroke="#e0b830" stroke-width="3"/><circle cx="42" cy="52" r="4" fill="#e8a830" opacity="0.5"/><circle cx="78" cy="48" r="3.5" fill="#e8a830" opacity="0.5"/><ellipse cx="60" cy="78" rx="28" ry="22" fill="#f8e090"/><circle cx="46" cy="60" r="7" fill="#fff"/><circle cx="74" cy="60" r="7" fill="#fff"/><circle cx="47" cy="61" r="4" fill="#5a3a2a"/><circle cx="75" cy="61" r="4" fill="#5a3a2a"/><path d="M42 78 Q60 98 78 78" fill="#e84848" stroke="#c83838" stroke-width="2"/><ellipse cx="28" cy="88" rx="10" ry="8" fill="#f5d06a" stroke="#e0b830" stroke-width="2"/><ellipse cx="92" cy="88" rx="10" ry="8" fill="#f5d06a" stroke="#e0b830" stroke-width="2"/></svg>`;
+  }
+  function monsterPurpleSVG() {
+    return `<svg class="monster-svg" viewBox="0 0 120 120" aria-hidden="true"><ellipse cx="40" cy="22" rx="10" ry="22" fill="#a070d0" transform="rotate(-12 40 22)"/><ellipse cx="80" cy="22" rx="10" ry="22" fill="#a070d0" transform="rotate(12 80 22)"/><ellipse cx="40" cy="20" rx="5" ry="14" fill="#e8c8f8" transform="rotate(-12 40 20)"/><ellipse cx="80" cy="20" rx="5" ry="14" fill="#e8c8f8" transform="rotate(12 80 20)"/><ellipse cx="60" cy="70" rx="40" ry="38" fill="#c8a0e8" stroke="#a070d0" stroke-width="3"/><ellipse cx="60" cy="80" rx="26" ry="20" fill="#d8b8f0"/><circle cx="46" cy="62" r="7" fill="#fff"/><circle cx="74" cy="62" r="7" fill="#fff"/><circle cx="47" cy="63" r="4" fill="#5a3a2a"/><circle cx="75" cy="63" r="4" fill="#5a3a2a"/><path d="M46 80 Q60 94 74 80" fill="none" stroke="#7040a0" stroke-width="3" stroke-linecap="round"/><circle cx="60" cy="78" r="2.5" fill="#e87898"/><ellipse cx="26" cy="90" rx="9" ry="7" fill="#c8a0e8" stroke="#a070d0" stroke-width="2"/><ellipse cx="94" cy="90" rx="9" ry="7" fill="#c8a0e8" stroke="#a070d0" stroke-width="2"/></svg>`;
+  }
+  function monsterOrangeSVG() {
+    return `<svg class="monster-svg" viewBox="0 0 120 120" aria-hidden="true"><path d="M48 40 L54 12 L62 36 L70 8 L76 38" fill="none" stroke="#e08848" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M50 38 L55 16 L61 34 L68 12 L74 36" fill="none" stroke="#f5b078" stroke-width="3" stroke-linecap="round"/><ellipse cx="60" cy="70" rx="42" ry="40" fill="#f5b078" stroke="#e08848" stroke-width="3"/><circle cx="40" cy="55" r="3.5" fill="#e08848" opacity="0.4"/><ellipse cx="60" cy="80" rx="28" ry="22" fill="#f8c898"/><circle cx="46" cy="62" r="7" fill="#fff"/><circle cx="74" cy="62" r="7" fill="#fff"/><circle cx="47" cy="63" r="4" fill="#5a3a2a"/><circle cx="75" cy="63" r="4" fill="#5a3a2a"/><path d="M42 80 Q60 100 78 80" fill="#e86040" stroke="#c84830" stroke-width="2"/><ellipse cx="26" cy="90" rx="10" ry="8" fill="#f5b078" stroke="#e08848" stroke-width="2"/><ellipse cx="94" cy="90" rx="10" ry="8" fill="#f5b078" stroke="#e08848" stroke-width="2"/></svg>`;
+  }
+  const MONSTER_BUILDERS = [monsterPinkSVG, monsterGreenSVG, monsterBlueSVG, monsterYellowSVG, monsterPurpleSVG, monsterOrangeSVG];
+
+  const board = document.getElementById("board");
+  const classInput = document.getElementById("classInput");
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function buildCard(i) {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.dataset.group = String(i);
+    card.setAttribute("aria-label", state.names[i]);
+    card.innerHTML = `
+      <div class="group-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="組別名稱">${escapeHtml(state.names[i])}</div>
+      <div class="level-label" data-level-label></div>
+      <div class="stage">
+        <div class="fx-layer" data-fx></div>
+        <div class="monster-wrap" data-monster-wrap>
+          <div data-crown-host></div>
+          <div data-sprite></div>
+        </div>
+      </div>
+      <div class="progress" data-progress aria-hidden="true"></div>
+      <div class="score-text" data-score-text></div>
+      <div class="actions">
+        <button type="button" class="btn-plus" data-plus aria-label="加一餅乾">＋1 餅乾</button>
+        <button type="button" class="btn-minus" data-minus aria-label="減一餅乾">−1</button>
+      </div>`;
+    const nameEl = card.querySelector(".group-name");
+    nameEl.addEventListener("focus", () => ensureAudio());
+    nameEl.addEventListener("blur", () => {
+      let t = nameEl.textContent.replace(/\s+/g, " ").trim().slice(0, 24);
+      if (!t) t = DEFAULT_NAMES[i];
+      nameEl.textContent = t;
+      state.names[i] = t;
+      card.setAttribute("aria-label", t);
+      persist();
+    });
+    nameEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); nameEl.blur(); }
+      if (nameEl.textContent.length >= 24 && e.key.length === 1 && !e.metaKey && !e.ctrlKey) e.preventDefault();
+    });
+    nameEl.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData("text").slice(0, 24);
+      document.execCommand("insertText", false, text);
+    });
+    card.querySelector("[data-plus]").addEventListener("click", () => addCookie(i));
+    card.querySelector("[data-minus]").addEventListener("click", () => removeCookie(i));
+    return card;
+  }
+
+  function renderSprite(i) {
+    const card = board.children[i];
+    const score = state.todayScores[i];
+    const lv = levelOf(score);
+    const wrap = card.querySelector("[data-monster-wrap]");
+    const sprite = card.querySelector("[data-sprite]");
+    const crownHost = card.querySelector("[data-crown-host]");
+    const scale = LEVEL_SCALES[lv];
+    wrap.style.setProperty("--scale", scale);
+    wrap.style.transform = `scale(${scale})`;
+    if (lv === 0) {
+      sprite.innerHTML = eggSVG();
+      crownHost.innerHTML = "";
+      wrap.classList.add("rock");
+    } else {
+      wrap.classList.remove("rock");
+      sprite.innerHTML = MONSTER_BUILDERS[i]();
+      crownHost.innerHTML = crownSVG();
+      const crown = crownHost.querySelector(".crown");
+      if (lv === MAX_LEVEL) crown.classList.add("show");
+    }
+  }
+
+  function renderProgress(i) {
+    const filled = filledOf(state.todayScores[i]);
+    const prog = board.children[i].querySelector("[data-progress]");
+    let html = "";
+    for (let s = 0; s < COOKIES_PER_LEVEL; s++) {
+      html += s < filled ? `<div class="slot filled">${cookieSVG(14)}</div>` : `<div class="slot empty"></div>`;
+    }
+    prog.innerHTML = html;
+  }
+
+  function renderCard(i) {
+    const card = board.children[i];
+    const score = state.todayScores[i];
+    const lv = levelOf(score);
+    card.querySelector("[data-level-label]").innerHTML = `<span class="lv-num">Lv.${lv}</span> ${LEVEL_NAMES[lv]}`;
+    card.querySelector("[data-score-text]").textContent = `餅乾 × ${score}`;
+    renderSprite(i);
+    renderProgress(i);
+    const plusBtn = card.querySelector("[data-plus]");
+    const minusBtn = card.querySelector("[data-minus]");
+    if (score >= MAX_COOKIES) {
+      plusBtn.textContent = "吃飽了！";
+      plusBtn.disabled = true;
+    } else {
+      plusBtn.textContent = "＋1 餅乾";
+      plusBtn.disabled = false;
+    }
+    minusBtn.disabled = score <= 0;
+  }
+
+  function renderAll() {
+    for (let i = 0; i < GROUP_COUNT; i++) renderCard(i);
+  }
+
+  function spawnFX(i, html) {
+    const layer = board.children[i].querySelector("[data-fx]");
+    const el = document.createElement("div");
+    el.innerHTML = html;
+    const node = el.firstElementChild;
+    layer.appendChild(node);
+    setTimeout(() => node.remove(), 1500);
+  }
+  function flyCookieFX(i) {
+    const stage = board.children[i].querySelector(".stage");
+    const el = document.createElement("div");
+    el.className = "fly-cookie";
+    el.innerHTML = cookieSVG(30);
+    stage.appendChild(el);
+    setTimeout(() => el.remove(), 600);
+  }
+  function starBurstFX(i) {
+    const layer = board.children[i].querySelector("[data-fx]");
+    [0,45,90,135,180,225,270,315].forEach((a, idx) => {
+      const rad = (a * Math.PI) / 180;
+      const dist = 45 + (idx % 2) * 18;
+      const star = document.createElement("div");
+      star.className = "star";
+      star.textContent = "⭐";
+      star.style.setProperty("--dx", (Math.cos(rad) * dist) + "px");
+      star.style.setProperty("--dy", (Math.sin(rad) * dist - 18) + "px");
+      layer.appendChild(star);
+      setTimeout(() => star.remove(), 1000);
+    });
+  }
+  function triggerChew(i) {
+    const wrap = board.children[i].querySelector("[data-monster-wrap]");
+    wrap.classList.remove("chew", "shake"); void wrap.offsetWidth;
+    wrap.classList.add("chew");
+    setTimeout(() => wrap.classList.remove("chew"), 500);
+  }
+  function triggerShake(i) {
+    const wrap = board.children[i].querySelector("[data-monster-wrap]");
+    wrap.classList.remove("chew", "shake"); void wrap.offsetWidth;
+    wrap.classList.add("shake");
+    setTimeout(() => wrap.classList.remove("shake"), 450);
+  }
+
+
+  function applyBonus(i, amount) {
+    ensureAudio();
+    const prev = state.todayScores[i];
+    if (prev >= MAX_COOKIES) {
+      showToast("已經吃飽了");
+      return false;
+    }
+    const next = Math.min(MAX_COOKIES, prev + amount);
+    const added = next - prev;
+    if (added <= 0) {
+      showToast("已經吃飽了");
+      return false;
+    }
+    const prevLv = levelOf(prev);
+    const nextLv = levelOf(next);
+    state.todayScores[i] = next;
+    persist();
+    flyCookieFX(i);
+    spawnFX(i, `<div class="fx-plus">+${added}</div>`);
+    playFeed();
+    triggerChew(i);
+    renderCard(i);
+    if (nextLv > prevLv) {
+      setTimeout(() => {
+        if (prevLv === 0 && nextLv >= 1) {
+          spawnFX(i, `<div class="fx-banner hatch">孵化了！</div>`);
+          playHatch();
+        } else {
+          spawnFX(i, `<div class="fx-banner">升級了！</div>`);
+          playUpgrade();
+        }
+        starBurstFX(i);
+        renderCard(i);
+      }, 280);
+    }
+    return true;
+  }
+
+  function addCookie(i) {
+    applyBonus(i, 1);
+  }
+
+  function removeCookie(i) {
+    ensureAudio();
+    if (state.todayScores[i] <= 0) return;
+    state.todayScores[i] -= 1;
+    persist();
+    playMinus();
+    triggerShake(i);
+    renderCard(i);
+  }
+
+  /* ---- Record today into cumulative ---- */
+  function syncClassFromInput() {
+    state.className = normalizeClassName(classInput.value);
+    classInput.value = state.className;
+  }
+
+  function recordToday() {
+    syncClassFromInput();
+    const key = classKey();
+    const cumul = getCumul(key);
+    const date = todayISO();
+    const scores = state.todayScores.slice();
+    const names = state.names.slice();
+
+    const existingIdx = cumul.days.findIndex((d) => d.date === date);
+    if (existingIdx >= 0) {
+      // overwrite: subtract old day's scores from totals, then add new
+      const old = normalizeScores(cumul.days[existingIdx].scores);
+      for (let i = 0; i < GROUP_COUNT; i++) {
+        cumul.totals[i] = Math.max(0, (Number(cumul.totals[i]) || 0) - old[i] + scores[i]);
+      }
+      cumul.days[existingIdx] = { date, scores, names };
+    } else {
+      for (let i = 0; i < GROUP_COUNT; i++) {
+        cumul.totals[i] = (Number(cumul.totals[i]) || 0) + scores[i];
+      }
+      cumul.days.push({ date, scores, names });
+      cumul.days.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    }
+    persist();
+    playSave();
+    showToast("已記入累積");
+  }
+
+  function applyNamesToBoard(names) {
+    state.names = normalizeNames(names);
+    for (let i = 0; i < GROUP_COUNT; i++) {
+      const card = board.children[i];
+      if (!card) continue;
+      const el = card.querySelector(".group-name");
+      if (el) el.textContent = state.names[i];
+      card.setAttribute("aria-label", state.names[i]);
+    }
+  }
+
+  function loadClassRecords() {
+    syncClassFromInput();
+    const key = classKey();
+    const raw = state.cumulativeByClass[key];
+    const days = raw && Array.isArray(raw.days) ? raw.days : [];
+    const totals = raw && Array.isArray(raw.totals) ? raw.totals : [];
+    const hasData = days.length > 0 || totals.some((t) => Number(t) > 0);
+    if (!hasData) {
+      persist();
+      showToast("未有「" + key + "」嘅記錄");
+      return;
+    }
+
+    const cumul = getCumul(key);
+    // Newest day first (already sorted that way on save)
+    const newest = cumul.days[0];
+    if (newest && newest.names) {
+      applyNamesToBoard(newest.names);
+    }
+
+    // If today’s record exists, restore onto today’s board
+    const today = todayISO();
+    const todayRec = cumul.days.find((d) => d.date === today);
+    if (todayRec) {
+      state.todayScores = normalizeScores(todayRec.scores);
+      if (todayRec.names) applyNamesToBoard(todayRec.names);
+    }
+
+    persist();
+    renderAll();
+    renderCumulPanel();
+    openModal(cumulModal);
+    const n = cumul.days.length;
+    showToast("已載入「" + key + "」· " + n + " 日記錄");
+  }
+
+  /* ---- Cumulative panel ---- */
+  function formatDateHK(iso) {
+    const p = iso.split("-");
+    if (p.length !== 3) return iso;
+    return p[0] + "年" + Number(p[1]) + "月" + Number(p[2]) + "日";
+  }
+
+  function renderCumulPanel() {
+    syncClassFromInput();
+    const key = classKey();
+    const cumul = getCumul(key);
+    document.getElementById("cumulClassLabel").textContent = "班別：" + key;
+
+    const totalsEl = document.getElementById("cumulTotals");
+    totalsEl.innerHTML = state.names.map((n, i) =>
+      `<div class="cumul-total-card" data-g="${i}"><div class="cn">${escapeHtml(n)}</div><div class="ct">${Number(cumul.totals[i]) || 0}</div></div>`
+    ).join("");
+
+    const daysEl = document.getElementById("cumulDays");
+    if (!cumul.days.length) {
+      daysEl.innerHTML = `<div class="cumul-empty">未有每日紀錄<br>按「記入今日」就可以開始累積</div>`;
+      return;
+    }
+    daysEl.innerHTML = cumul.days.map((day, idx) => {
+      const scores = normalizeScores(day.scores);
+      const names = day.names ? normalizeNames(day.names) : state.names;
+      const sum = scores.reduce((a, b) => a + b, 0);
+      const detail = scores.map((s, i) =>
+        `<div class="day-score-cell">${escapeHtml(names[i])}<strong>${s}</strong></div>`
+      ).join("");
+      return `<div class="day-row" data-day="${idx}">
+        <button type="button" class="day-summary" aria-expanded="false">
+          <span>${formatDateHK(day.date)} · 合共 ${sum} 餅</span>
+          <span class="chev">▶</span>
+        </button>
+        <div class="day-detail"><div class="day-scores">${detail}</div></div>
+      </div>`;
+    }).join("");
+
+    daysEl.querySelectorAll(".day-summary").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const row = btn.closest(".day-row");
+        const open = row.classList.toggle("open");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    });
+  }
+
+  function openModal(el, opts) {
+    opts = opts || {};
+    if (opts.stacked) el.classList.add("stacked");
+    el.hidden = false;
+    requestAnimationFrame(() => el.classList.add("open"));
+  }
+  function closeModal(el) {
+    el.classList.remove("open");
+    setTimeout(() => {
+      el.hidden = true;
+      // keep permanent stacked class on clearCumulModal; only strip if dynamically added elsewhere
+    }, 200);
+  }
+
+
+  /* ---- Lottery ---- */
+  const LOTTERY_WEIGHTS = [3, 3, 2, 1, 1]; // +1..+5 slightly favor lower
+  const lotteryModal = document.getElementById("lotteryModal");
+  const lotteryGroupsEl = document.getElementById("lotteryGroups");
+  const lotteryReel = document.getElementById("lotteryReel");
+  const lotteryResult = document.getElementById("lotteryResult");
+  const btnSpinLottery = document.getElementById("btnSpinLottery");
+  const btnSpinAgain = document.getElementById("btnSpinAgain");
+  const btnLottery = document.getElementById("btnLottery");
+  let lotterySelected = null;
+  let lotteryBusy = false;
+
+  function playSpinTick() { ensureAudio(); beep(420 + Math.random() * 180, 0.05, "square", 0.06); }
+  function playSpinWin() {
+    ensureAudio();
+    beep(523, 0.1, "sine", 0.14);
+    beep(659, 0.1, "sine", 0.14, 0.1);
+    beep(784, 0.18, "triangle", 0.14, 0.2);
+  }
+
+  function pickLotteryBonus() {
+    const total = LOTTERY_WEIGHTS.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < LOTTERY_WEIGHTS.length; i++) {
+      r -= LOTTERY_WEIGHTS[i];
+      if (r <= 0) return i + 1;
+    }
+    return 1;
+  }
+
+  function buildReelStrip(finalBonus) {
+    const items = [];
+    for (let i = 0; i < 18; i++) {
+      const n = 1 + Math.floor(Math.random() * 5);
+      items.push(n);
+    }
+    items.push(finalBonus);
+    for (let i = 0; i < 3; i++) items.push(1 + Math.floor(Math.random() * 5));
+    lotteryReel.innerHTML = items.map((n) =>
+      `<div class="lottery-item${n >= 4 ? " big" : ""}">+${n}</div>`
+    ).join("");
+    lotteryReel.classList.remove("spinning");
+    lotteryReel.style.transform = "translateY(0)";
+    return items.length;
+  }
+
+  function renderLotteryGroups() {
+    lotteryGroupsEl.innerHTML = state.names.map((n, i) => {
+      const full = state.todayScores[i] >= MAX_COOKIES;
+      return `<button type="button" class="lottery-group-btn" data-g="${i}" ${full ? "disabled" : ""} aria-pressed="false">${escapeHtml(n)}${full ? "<br><small>吃飽了</small>" : ""}</button>`;
+    }).join("");
+    lotteryGroupsEl.querySelectorAll(".lottery-group-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (lotteryBusy || btn.disabled) return;
+        lotterySelected = Number(btn.dataset.g);
+        lotteryGroupsEl.querySelectorAll(".lottery-group-btn").forEach((b) => {
+          b.classList.toggle("selected", Number(b.dataset.g) === lotterySelected);
+          b.setAttribute("aria-pressed", Number(b.dataset.g) === lotterySelected ? "true" : "false");
+        });
+        lotteryResult.textContent = "準備抽獎：" + state.names[lotterySelected];
+        lotteryResult.classList.remove("win");
+        btnSpinLottery.disabled = false;
+        btnSpinLottery.hidden = false;
+        btnSpinAgain.hidden = true;
+      });
+    });
+  }
+
+  function openLottery() {
+    lotterySelected = null;
+    lotteryBusy = false;
+    btnSpinLottery.disabled = true;
+    btnSpinLottery.hidden = false;
+    btnSpinAgain.hidden = true;
+    lotteryResult.textContent = "請先揀組別";
+    lotteryResult.classList.remove("win");
+    renderLotteryGroups();
+    buildReelStrip(1);
+    openModal(lotteryModal);
+  }
+
+  function resetLotteryForAgain() {
+    lotteryBusy = false;
+    lotteryResult.classList.remove("win");
+    if (lotterySelected != null && state.todayScores[lotterySelected] >= MAX_COOKIES) {
+      lotteryResult.textContent = state.names[lotterySelected] + " 已經吃飽了";
+      btnSpinLottery.disabled = true;
+      btnSpinLottery.hidden = false;
+      btnSpinAgain.hidden = true;
+      renderLotteryGroups();
+      return;
+    }
+    lotteryResult.textContent = lotterySelected != null
+      ? ("再抽：" + state.names[lotterySelected])
+      : "請先揀組別";
+    btnSpinLottery.disabled = lotterySelected == null;
+    btnSpinLottery.hidden = false;
+    btnSpinAgain.hidden = true;
+    renderLotteryGroups();
+    if (lotterySelected != null) {
+      const btn = lotteryGroupsEl.querySelector(`.lottery-group-btn[data-g="${lotterySelected}"]`);
+      if (btn && !btn.disabled) {
+        btn.classList.add("selected");
+        btn.setAttribute("aria-pressed", "true");
+      } else {
+        lotterySelected = null;
+        btnSpinLottery.disabled = true;
+        lotteryResult.textContent = "請先揀組別";
+      }
+    }
+  }
+
+  function runLotterySpin() {
+    if (lotteryBusy || lotterySelected == null) return;
+    const gi = lotterySelected;
+    if (state.todayScores[gi] >= MAX_COOKIES) {
+      showToast("已經吃飽了");
+      return;
+    }
+    lotteryBusy = true;
+    btnSpinLottery.disabled = true;
+    btnSpinAgain.hidden = true;
+    lotteryGroupsEl.querySelectorAll(".lottery-group-btn").forEach((b) => { b.disabled = true; });
+    lotteryResult.textContent = "抽獎中……";
+    lotteryResult.classList.remove("win");
+
+    const bonus = pickLotteryBonus();
+    buildReelStrip(bonus);
+    const itemH = 52;
+    // final bonus is at index 18 (0-based); center it in the 100px window (pointer at mid ≈ 24px offset from top for 52px item)
+    const finalIndex = 18;
+    const targetY = -(finalIndex * itemH - (100 - itemH) / 2);
+
+    // force reflow then spin
+    void lotteryReel.offsetWidth;
+    lotteryReel.classList.add("spinning");
+    lotteryReel.style.transform = `translateY(${targetY}px)`;
+
+    let ticks = 0;
+    const tickTimer = setInterval(() => {
+      playSpinTick();
+      ticks++;
+      if (ticks > 18) clearInterval(tickTimer);
+    }, 120);
+
+    const onEnd = () => {
+      lotteryReel.removeEventListener("transitionend", onEnd);
+      clearInterval(tickTimer);
+      playSpinWin();
+      const ok = applyBonus(gi, bonus);
+      if (ok) {
+        lotteryResult.textContent = state.names[gi] + " 獲得 +" + bonus + " 餅乾！";
+        lotteryResult.classList.add("win");
+      } else {
+        lotteryResult.textContent = "已經吃飽了";
+      }
+      lotteryBusy = false;
+      btnSpinLottery.hidden = true;
+      btnSpinAgain.hidden = false;
+      // re-enable group picks for next round except full
+      renderLotteryGroups();
+      if (lotterySelected != null) {
+        const btn = lotteryGroupsEl.querySelector(`.lottery-group-btn[data-g="${lotterySelected}"]`);
+        if (btn && !btn.disabled) {
+          btn.classList.add("selected");
+          btn.setAttribute("aria-pressed", "true");
+        }
+      }
+    };
+    lotteryReel.addEventListener("transitionend", onEnd);
+  }
+
+  btnLottery.addEventListener("click", openLottery);
+  document.getElementById("btnCloseLottery").addEventListener("click", () => {
+    if (lotteryBusy) return;
+    closeModal(lotteryModal);
+  });
+  lotteryModal.addEventListener("click", (e) => {
+    if (e.target === lotteryModal && !lotteryBusy) closeModal(lotteryModal);
+  });
+  btnSpinLottery.addEventListener("click", runLotterySpin);
+  btnSpinAgain.addEventListener("click", () => {
+    resetLotteryForAgain();
+    if (lotterySelected != null && state.todayScores[lotterySelected] < MAX_COOKIES) {
+      runLotterySpin();
+    }
+  });
+
+  const cumulModal = document.getElementById("cumulModal");
+  const clearCumulModal = document.getElementById("clearCumulModal");
+  const btnSound = document.getElementById("btnSound");
+  const btnClean = document.getElementById("btnClean");
+  const cleanModal = document.getElementById("cleanModal");
+  const btnRecord = document.getElementById("btnRecord");
+  const btnCumul = document.getElementById("btnCumul");
+
+  function updateSoundBtn() {
+    btnSound.textContent = state.soundOn ? "🔊 音效開" : "🔇 音效關";
+    btnSound.setAttribute("aria-pressed", state.soundOn ? "true" : "false");
+  }
+  btnSound.addEventListener("click", () => {
+    state.soundOn = !state.soundOn;
+    updateSoundBtn();
+    persist();
+    if (state.soundOn) { ensureAudio(); playFeed(); }
+  });
+
+  btnRecord.addEventListener("click", recordToday);
+
+  document.getElementById("btnLoadRecords").addEventListener("click", loadClassRecords);
+
+  btnCumul.addEventListener("click", () => {
+    renderCumulPanel();
+    openModal(cumulModal);
+  });
+  document.getElementById("btnCloseCumul").addEventListener("click", () => closeModal(cumulModal));
+  document.getElementById("btnCloseCumul2").addEventListener("click", () => closeModal(cumulModal));
+  cumulModal.addEventListener("click", (e) => { if (e.target === cumulModal) closeModal(cumulModal); });
+
+  document.getElementById("btnClearCumul").addEventListener("click", () => {
+    openModal(clearCumulModal, { stacked: true });
+  });
+  document.getElementById("btnCancelClearCumul").addEventListener("click", () => closeModal(clearCumulModal));
+  document.getElementById("btnConfirmClearCumul").addEventListener("click", () => {
+    const key = classKey();
+    state.cumulativeByClass[key] = emptyCumul();
+    persist();
+    closeModal(clearCumulModal);
+    renderCumulPanel();
+    showToast("已清除累積");
+  });
+  clearCumulModal.addEventListener("click", (e) => { if (e.target === clearCumulModal) closeModal(clearCumulModal); });
+
+  btnClean.addEventListener("click", () => openModal(cleanModal));
+  document.getElementById("btnCancelClean").addEventListener("click", () => closeModal(cleanModal));
+  document.getElementById("btnConfirmClean").addEventListener("click", () => {
+    state.todayScores = Array(GROUP_COUNT).fill(0);
+    persist();
+    renderAll();
+    closeModal(cleanModal);
+    showToast("已清理怪獸");
+  });
+  cleanModal.addEventListener("click", (e) => { if (e.target === cleanModal) closeModal(cleanModal); });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (lotteryBusy) return;
+    if (clearCumulModal.classList.contains("open")) closeModal(clearCumulModal);
+    else if (lotteryModal.classList.contains("open")) closeModal(lotteryModal);
+    else if (cleanModal.classList.contains("open")) closeModal(cleanModal);
+    else if (cumulModal.classList.contains("open")) closeModal(cumulModal);
+  });
+
+  classInput.addEventListener("change", () => {
+    syncClassFromInput();
+    persist();
+  });
+
+  load();
+  classInput.value = state.className;
+  if (state.className && !CLASS_OPTIONS.includes(state.className)) {
+    state.className = "";
+    classInput.value = "";
+  }
+  for (let i = 0; i < GROUP_COUNT; i++) board.appendChild(buildCard(i));
+  renderAll();
+  updateSoundBtn();
+  document.addEventListener("pointerdown", () => ensureAudio(), { once: true });
+})();
+</script>
+</body>
+</html>
