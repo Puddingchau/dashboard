@@ -228,6 +228,16 @@
                     <i class="fas fa-arrow-right"></i>
                 </button>
             </form>
+
+            <div class="w-full max-w-md mt-5 grid grid-cols-2 gap-3">
+                <button type="button" onclick="openLeaderboardPage()" class="bg-white hover:bg-slate-50 text-slate-800 font-bold py-3.5 rounded-2xl text-base md:text-lg border-2 border-slate-300 shadow-sm btn-touch flex items-center justify-center gap-2">
+                    <i class="fas fa-trophy text-amber-500"></i> 排行榜
+                </button>
+                <button type="button" onclick="openAdminPage()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-base md:text-lg shadow-sm btn-touch flex items-center justify-center gap-2">
+                    <i class="fas fa-user-shield"></i> Admin
+                </button>
+            </div>
+            <p id="adminStatusHome" class="hidden mt-3 text-sm font-bold text-emerald-700"></p>
         </section>
 
         <!-- PAGE 2: INTRO -->
@@ -403,7 +413,65 @@
             </div>
         </section>
 
-    </main>
+    
+        <!-- PAGE: LEADERBOARD -->
+        <section id="pageBoard" class="hidden page-section glass-card rounded-3xl p-6 md:p-10 shadow-2xl">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6 border-b border-slate-200 pb-4">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
+                        <i class="fas fa-trophy text-amber-500"></i> 班級高分榜
+                    </h2>
+                    <p class="text-slate-500 text-sm md:text-base">本機模擬記錄儲存（Top 10）</p>
+                </div>
+                <button type="button" onclick="showPage('pageHome')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-5 py-3 rounded-2xl text-base btn-touch">返回主頁</button>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-6">
+                <div class="max-h-[28rem] overflow-y-auto divide-y divide-slate-100" id="leaderboardListBoard"></div>
+            </div>
+            <div id="adminClearWrapBoard" class="hidden">
+                <button type="button" onclick="clearLeaderboard()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 rounded-2xl text-lg btn-touch shadow-md">
+                    <i class="fas fa-trash-alt mr-2"></i> 清空全部排行榜分數
+                </button>
+                <p class="text-xs text-slate-500 mt-2 text-center">需 Admin 登入；清空前會再確認一次</p>
+            </div>
+        </section>
+
+        <!-- PAGE: ADMIN -->
+        <section id="pageAdmin" class="hidden page-section glass-card rounded-3xl p-6 md:p-10 shadow-2xl max-w-lg mx-auto">
+            <div class="flex items-center gap-3 mb-6 border-b border-slate-200 pb-4">
+                <div class="w-12 h-12 bg-slate-800 text-white rounded-2xl flex items-center justify-center text-2xl"><i class="fas fa-user-shield"></i></div>
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-black text-slate-900">Admin 登入</h2>
+                    <p class="text-slate-500 text-sm">老師專用：管理本機排行榜</p>
+                </div>
+            </div>
+            <div id="adminLoginBox" class="space-y-4">
+                <div class="text-left">
+                    <label class="block text-sm md:text-base font-bold text-slate-700 mb-1" for="adminPassword">Admin 密碼</label>
+                    <input type="password" id="adminPassword" placeholder="請輸入密碼" class="w-full px-4 py-3 text-lg rounded-2xl border-2 border-slate-300 focus:border-teal-500 focus:outline-none transition shadow-sm" autocomplete="current-password">
+                </div>
+                <p id="adminLoginError" class="hidden text-rose-600 font-bold text-sm"></p>
+                <div class="flex gap-3">
+                    <button type="button" onclick="showPage('pageHome')" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 rounded-2xl btn-touch">返回</button>
+                    <button type="button" onclick="submitAdminLogin()" class="w-2/3 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-2xl btn-touch">登入</button>
+                </div>
+            </div>
+            <div id="adminPanelBox" class="hidden space-y-4">
+                <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold p-4 rounded-2xl">
+                    ✅ 已以 Admin 身份登入
+                </div>
+                <button type="button" onclick="openLeaderboardPage()" class="w-full bg-white hover:bg-slate-50 text-slate-800 font-bold py-3.5 rounded-2xl border-2 border-slate-300 btn-touch">
+                    <i class="fas fa-trophy text-amber-500 mr-1"></i> 查看排行榜
+                </button>
+                <button type="button" onclick="clearLeaderboard()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 rounded-2xl text-lg btn-touch">
+                    <i class="fas fa-trash-alt mr-2"></i> 清空全部排行榜分數
+                </button>
+                <button type="button" onclick="logoutAdmin()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 rounded-2xl btn-touch">登出 Admin</button>
+                <button type="button" onclick="showPage('pageHome')" class="w-full text-slate-500 font-bold py-2 btn-touch">返回主頁</button>
+            </div>
+        </section>
+
+</main>
 
     
 
@@ -597,7 +665,8 @@
             score: 0,
             soundEnabled: true,
             lifelinesUsed: { '5050': false, 'poll': false, 'hint': false },
-            optionStateDisabled: false
+            optionStateDisabled: false,
+            isAdmin: false
         };
 
         /* ---------- AUDIO ---------- */
@@ -677,7 +746,7 @@
 
         /* ---------- PAGE NAV ---------- */
         function showPage(pageId) {
-            ['pageHome', 'pageIntro', 'pageGame', 'pageResult'].forEach(id => {
+            ['pageHome', 'pageIntro', 'pageGame', 'pageResult', 'pageBoard', 'pageAdmin'].forEach(id => {
                 const el = document.getElementById(id);
                 if (id === pageId) {
                     el.classList.remove('hidden');
@@ -958,8 +1027,20 @@
             document.getElementById('progressBar').style.width = '100%';
         }
 
+        const LB_LS_KEY = 'cell_game_scores';
+        const ADMIN_PASSWORD = 'gpsadmin';
+        const ADMIN_SS_KEY = 'cell-quiz-admin';
+
+        function getLeaderboard() {
+            try {
+                return JSON.parse(localStorage.getItem(LB_LS_KEY) || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
         function saveLeaderboardScore(cls, name, score, title) {
-            let leaderboard = JSON.parse(localStorage.getItem('cell_game_scores') || '[]');
+            let leaderboard = getLeaderboard();
             leaderboard.push({
                 cls: cls,
                 name: name,
@@ -969,17 +1050,14 @@
             });
             leaderboard.sort((a, b) => b.score - a.score);
             leaderboard = leaderboard.slice(0, 10);
-            localStorage.setItem('cell_game_scores', JSON.stringify(leaderboard));
+            localStorage.setItem(LB_LS_KEY, JSON.stringify(leaderboard));
         }
 
-        function renderLeaderboard() {
-            const container = document.getElementById('leaderboardList');
-            const leaderboard = JSON.parse(localStorage.getItem('cell_game_scores') || '[]');
-            if (leaderboard.length === 0) {
-                container.innerHTML = `<div class="p-4 text-center text-slate-400 text-sm">尚無挑戰紀錄</div>`;
-                return;
+        function leaderboardRowsHtml(leaderboard) {
+            if (!leaderboard.length) {
+                return `<div class="p-4 text-center text-slate-400 text-sm">尚無挑戰紀錄</div>`;
             }
-            container.innerHTML = leaderboard.map((item, idx) => {
+            return leaderboard.map((item, idx) => {
                 let medal = `<span class="w-6 text-center font-bold text-slate-400">${idx + 1}</span>`;
                 if (idx === 0) medal = `<span class="w-6 text-center text-lg">🥇</span>`;
                 if (idx === 1) medal = `<span class="w-6 text-center text-lg">🥈</span>`;
@@ -999,6 +1077,98 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        function renderLeaderboard() {
+            const html = leaderboardRowsHtml(getLeaderboard());
+            const a = document.getElementById('leaderboardList');
+            const b = document.getElementById('leaderboardListBoard');
+            if (a) a.innerHTML = html;
+            if (b) b.innerHTML = html;
+            syncAdminUI();
+        }
+
+        function openLeaderboardPage() {
+            playSound('click');
+            renderLeaderboard();
+            showPage('pageBoard');
+        }
+
+        function openAdminPage() {
+            playSound('click');
+            syncAdminUI();
+            showPage('pageAdmin');
+            const input = document.getElementById('adminPassword');
+            if (input) {
+                input.value = '';
+                setTimeout(() => input.focus(), 50);
+            }
+            const err = document.getElementById('adminLoginError');
+            if (err) err.classList.add('hidden');
+        }
+
+        function syncAdminUI() {
+            state.isAdmin = sessionStorage.getItem(ADMIN_SS_KEY) === '1';
+            const loginBox = document.getElementById('adminLoginBox');
+            const panelBox = document.getElementById('adminPanelBox');
+            if (loginBox && panelBox) {
+                loginBox.classList.toggle('hidden', state.isAdmin);
+                panelBox.classList.toggle('hidden', !state.isAdmin);
+            }
+            const clearWrap = document.getElementById('adminClearWrapBoard');
+            if (clearWrap) clearWrap.classList.toggle('hidden', !state.isAdmin);
+            const homeStatus = document.getElementById('adminStatusHome');
+            if (homeStatus) {
+                if (state.isAdmin) {
+                    homeStatus.classList.remove('hidden');
+                    homeStatus.innerText = 'Admin 已登入（可清空排行榜）';
+                } else {
+                    homeStatus.classList.add('hidden');
+                    homeStatus.innerText = '';
+                }
+            }
+        }
+
+        function submitAdminLogin() {
+            const input = document.getElementById('adminPassword');
+            const err = document.getElementById('adminLoginError');
+            const pw = (input && input.value) ? input.value.trim() : '';
+            if (pw === ADMIN_PASSWORD) {
+                sessionStorage.setItem(ADMIN_SS_KEY, '1');
+                state.isAdmin = true;
+                if (err) err.classList.add('hidden');
+                if (input) input.value = '';
+                playSound('correct');
+                syncAdminUI();
+            } else {
+                if (err) {
+                    err.innerText = '密碼不正確，請再試。';
+                    err.classList.remove('hidden');
+                }
+                playSound('wrong');
+            }
+        }
+
+        function logoutAdmin() {
+            sessionStorage.removeItem(ADMIN_SS_KEY);
+            state.isAdmin = false;
+            playSound('click');
+            syncAdminUI();
+            showPage('pageHome');
+        }
+
+        function clearLeaderboard() {
+            if (sessionStorage.getItem(ADMIN_SS_KEY) !== '1') {
+                alert('請先以 Admin 登入。');
+                openAdminPage();
+                return;
+            }
+            const ok = confirm('確定要清空本機排行榜全部分數？此操作不能復原。');
+            if (!ok) return;
+            localStorage.setItem(LB_LS_KEY, '[]');
+            renderLeaderboard();
+            playSound('click');
+            alert('已清空排行榜。');
         }
 
         function restartGame() {
@@ -1142,6 +1312,18 @@
         // boot
         fillPhotoStrips();
         initParticles();
+        syncAdminUI();
+        (function bindAdminEnter() {
+            const adminPw = document.getElementById('adminPassword');
+            if (adminPw) {
+                adminPw.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        submitAdminLogin();
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>
