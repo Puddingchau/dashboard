@@ -1,0 +1,28 @@
+rules_version = '2';
+// Project: pudding-dashboard-5d8c8
+//
+// Deploy by ADDING the shared/feed-monster match to the rules already in
+// the Firebase console. Do not delete existing matches.
+//
+// Safe to publish this file as the entire ruleset only after any extra
+// console matches — including a cell_quiz_scores match — have been copied
+// into this file. The current cell-quiz page does not use Firestore.
+// The retired Google-login build used collection cell_quiz_scores.
+//
+// Unauthenticated clients cannot read or write anything in this file.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Dashboard sync: users/{uid}/dashboard/sync
+    // Old per-user feed-monster docs: users/{uid}/games/feed-monster
+    // Each account can touch only its own tree.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // 餵餵小怪獸共用計分板. One document. Any signed-in Google account.
+    // Do not replace this exact document match with a wildcard. Other ids stay denied.
+    match /shared/feed-monster {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

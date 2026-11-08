@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>餵餵小怪獸 · 課堂計分板</title>
+<title>餵餵小怪獸 · 共用計分板</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
@@ -150,6 +150,18 @@
   .util-btn.sync.is-busy { opacity: 0.8; }
   .util-btn.sync.is-error {
     background: #fff0f0; color: #a84848; border-color: #e8a0a0; box-shadow: 0 3px 0 #e0b0b0;
+  }
+  .shared-chip {
+    font-size: clamp(0.62rem, 1.6vw, 0.72rem);
+    font-weight: 800;
+    color: #246038;
+    background: #e7f8ee;
+    border: 2px solid #7ec49a;
+    border-radius: 999px;
+    padding: 4px 8px;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
   }
   .util-btn:hover { filter: brightness(1.04); }
   .util-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #e0c8b0; }
@@ -733,6 +745,7 @@
     .class-input { font-size: 0.8rem; padding: 4px 7px; width: 4em; border-width: 2px; }
     .class-label { font-size: 0.72rem; }
     .util-btn { font-size: 0.65rem; padding: 4px 7px; }
+    .shared-chip { font-size: 0.6rem; padding: 2px 6px; }
     .corner-cookie { width: 60px; opacity: 0.4; }
     .school-name { font-size: clamp(0.95rem, min(4.2vw, 3vh), 1.25rem); }
     .cumul-totals { grid-template-columns: repeat(2, 1fr); }
@@ -764,6 +777,7 @@
     .title-pill { font-size: clamp(0.85rem, 2.8vh, 1.15rem); padding: 3px 10px; border-width: 2px; }
     .class-input { font-size: 0.8rem; padding: 3px 8px; border-width: 2px; box-shadow: 0 2px 0 #e0c8b0; }
     .util-btn { font-size: 0.65rem; padding: 3px 8px; box-shadow: 0 2px 0 #e0c8b0; }
+    .shared-chip { font-size: 0.6rem; padding: 2px 6px; }
     .footer-bar { margin-top: 3px; gap: 0; }
     .footer-note { display: none; }
     .lottery-footer-btn {
@@ -849,7 +863,8 @@
             <option value="6E">6E</option>
           </select>
           <button type="button" class="util-btn load" id="btnLoadRecords" aria-label="載入記錄">📂 載入記錄</button>
-          <button type="button" class="util-btn sync" id="btnCloudSync" aria-label="登入同步分數" title="用 Google 登入，喺其他電腦睇到同一分數">登入同步</button>
+          <span class="shared-chip" title="登入之後，任何 Google 帳戶都係同一塊計分板">共用計分板</span>
+          <button type="button" class="util-btn sync" id="btnCloudSync" aria-label="用 Google 登入共用計分板" title="用 Google 登入。登入之後，任何 Google 帳戶都係同一塊共用計分板">登入共用</button>
         </div>
       </div>
       <div class="title-pill" role="heading" aria-level="1">🍪 餵餵小怪獸 🍪</div>
@@ -863,7 +878,7 @@
     <main class="board" id="board" role="main"></main>
     <footer class="footer-bar">
       <button type="button" class="lottery-footer-btn" id="btnLottery" aria-label="抽獎">🎰 抽獎</button>
-      <p class="footer-note">課堂計分板</p>
+      <p class="footer-note">共用計分板 · 登入後大家同一塊</p>
     </footer>
   </div>
 
@@ -1063,7 +1078,6 @@
     const payload = serializeState();
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      if (cloudUser && cloudUser.uid) writeUidCache(cloudUser.uid, payload);
     } catch (e) { /* keep playing if storage is full */ }
     if (!opts.localOnly) scheduleCloudPush();
     return true;
@@ -1748,11 +1762,16 @@
     persist();
   });
 
-  /* Cross-device score sync.
-     Firestore: users/{uid}/games/feed-monster
-     (dashboard sync stays at users/{uid}/dashboard/sync).
-     localStorage remains the offline cache. Signed-out play never touches Firebase.
-     First sign-in on this browser will not replace a real cloud board with an empty local one.
+  /* Shared classroom scoreboard.
+     Firestore document: shared/feed-monster
+     Any signed-in Google account reads and writes that one document.
+     Dashboard sync stays at users/{uid}/dashboard/sync and is not used here.
+     localStorage (feed-the-monster-classroom-v2) remains the offline cache.
+     Signed-out play never touches Firebase. Signing out leaves this browser local-only.
+     An empty local board does not replace a real shared board.
+     If the shared doc does not exist yet, this account's old personal doc
+     users/{uid}/games/feed-monster may seed it once. A shared doc that already
+     exists is never replaced by that personal doc.
      Legacy boards (no updatedAt) union cumulative days; after that, newer updatedAt wins. */
   const FIREBASE_WEB_CONFIG = {
     apiKey: "AIzaSyBwdjc5On7RXwNpMgyvR5AJPqNwBjfc0YI",
@@ -1766,7 +1785,7 @@
   const CLOUD_PUSH_MS = 650;
   const CLOUD_FOCUS_DEBOUNCE_MS = 700;
   const CLOUD_FOCUS_GAP_MS = 8000;
-  const CLOUD_UID_KEY = STORAGE_KEY + "-cloud-uid";
+  const SHARED_SEEN_KEY = STORAGE_KEY + "-shared-seen";
 
   let cloudUser = null;
   let cloudDirty = false;
@@ -1779,6 +1798,9 @@
   let cloudUiMode = "";
   let cloudSawAuth = false;
   let cloudMergeUid = "";
+  let cloudMergeGen = 0;
+  let cloudUnsub = null;
+  let cloudHoldWrites = false;
   let cloudOauthQuietUntil = 0;
   let cloudToastAt = 0;
   let cloudLifecycleBound = false;
@@ -2041,7 +2063,7 @@
   function decideInitialMerge(localIn, remoteIn, opts) {
     opts = opts || {};
     const now = opts.now || Date.now();
-    const first = !!opts.firstForUid;
+    const first = !!opts.firstSync;
     const local = normalizePayload(localIn);
     const remote = remoteIn ? normalizePayload(remoteIn) : null;
 
@@ -2090,28 +2112,11 @@
   }
   /* ==== /cloud merge ==== */
 
-  function uidCacheKey(uid) {
-    return STORAGE_KEY + "-uid-" + uid;
+  function readSharedSeen() {
+    try { return localStorage.getItem(SHARED_SEEN_KEY) === "1"; } catch (e) { return false; }
   }
-  function readCloudUid() {
-    try { return localStorage.getItem(CLOUD_UID_KEY) || ""; } catch (e) { return ""; }
-  }
-  function markCloudUid(uid) {
-    try { if (uid) localStorage.setItem(CLOUD_UID_KEY, uid); } catch (e) {}
-  }
-  function readUidCache(uid) {
-    if (!uid) return null;
-    try {
-      const raw = localStorage.getItem(uidCacheKey(uid));
-      if (!raw) return null;
-      const data = JSON.parse(raw);
-      if (!data || typeof data !== "object" || Array.isArray(data)) return null;
-      return data;
-    } catch (e) { return null; }
-  }
-  function writeUidCache(uid, payload) {
-    if (!uid) return;
-    try { localStorage.setItem(uidCacheKey(uid), JSON.stringify(payload)); } catch (e) {}
+  function markSharedSeen() {
+    try { localStorage.setItem(SHARED_SEEN_KEY, "1"); } catch (e) {}
   }
 
   function cloudSdkReady() {
@@ -2121,8 +2126,11 @@
     return cloudSdkReady() && !!(cloudUser && cloudUser.uid);
   }
   function cloudDocRef() {
+    return firebase.firestore().doc("shared/feed-monster");
+  }
+  function legacyPersonalRef(uid) {
     return firebase.firestore()
-      .collection("users").doc(cloudUser.uid)
+      .collection("users").doc(uid)
       .collection("games").doc("feed-monster");
   }
   function cloudOauthQuiet() {
@@ -2144,8 +2152,8 @@
     const now = Date.now();
     if (now - cloudToastAt < 8000) return;
     cloudToastAt = now;
-    if (isPermissionError(err)) showToast("未有權限同步，請檢查 Firestore 規則");
-    else showToast("同步失敗，分數仍留喺呢部電腦");
+    if (isPermissionError(err)) showToast("未有權限寫入共用計分板，請更新 Firestore 規則");
+    else showToast("共用計分板同步失敗，分數仍留喺呢部電腦");
   }
 
   function setCloudUi(mode, label) {
@@ -2158,25 +2166,25 @@
     if (mode === "in") {
       const email = cloudUser && cloudUser.email ? String(cloudUser.email) : "";
       btn.classList.add("is-on");
-      btn.textContent = "已登入";
+      btn.textContent = "共用中";
       btn.title = email
-        ? ("已登入 " + email + " · 分數會同步到其他裝置")
-        : "已登入 · 分數會同步到其他裝置";
-      btn.setAttribute("aria-label", email ? ("已登入 " + email + "，按一下可登出") : "已登入，按一下可登出");
+        ? ("已登入 " + email + " · 共用計分板，其他已登入帳戶都會睇到同一分數")
+        : "已登入 · 共用計分板，其他已登入帳戶都會睇到同一分數";
+      btn.setAttribute("aria-label", email ? ("已登入共用計分板 " + email + "，按一下可登出") : "已登入共用計分板，按一下可登出");
       return;
     }
     if (mode === "busy") {
       btn.classList.add("is-busy");
       btn.textContent = label || "同步中";
-      btn.title = "正在同步分數";
-      btn.setAttribute("aria-label", "正在同步分數");
+      btn.title = "正在同步共用計分板";
+      btn.setAttribute("aria-label", "正在同步共用計分板");
       return;
     }
     if (mode === "error") {
       btn.classList.add("is-error");
       btn.textContent = "同步失敗";
-      btn.title = "同步失敗，按一下再試。分數仍留喺呢部電腦";
-      btn.setAttribute("aria-label", "同步失敗，按一下再試");
+      btn.title = "共用計分板同步失敗，按一下再試。分數仍留喺呢部電腦";
+      btn.setAttribute("aria-label", "共用計分板同步失敗，按一下再試");
       return;
     }
     if (mode === "off") {
@@ -2185,9 +2193,9 @@
       btn.setAttribute("aria-label", "同步元件未載入");
       return;
     }
-    btn.textContent = "登入同步";
-    btn.title = "用 Google 登入，喺其他電腦睇到同一分數";
-    btn.setAttribute("aria-label", "用 Google 登入以同步分數");
+    btn.textContent = "登入共用";
+    btn.title = "用 Google 登入。登入之後，任何 Google 帳戶都係同一塊共用計分板";
+    btn.setAttribute("aria-label", "用 Google 登入共用計分板");
   }
 
   function applyCloudPayload(data, opts) {
@@ -2199,8 +2207,10 @@
     const payload = normalizePayload(data);
     const incomingAt = payload.updatedAt || 0;
     const localAt = Number(state.updatedAt) || 0;
-    if (!opts.force && localAt > incomingAt) return false;
-    if (!opts.force && cloudDirty && localAt >= incomingAt) return false;
+    const localSnap = serializeState();
+    const adoptRichOverBlank = !isBlankPayload(payload) && isBlankPayload(localSnap);
+    if (!opts.force && localAt > incomingAt && !adoptRichOverBlank) return false;
+    if (!opts.force && cloudDirty && localAt >= incomingAt && !adoptRichOverBlank) return false;
     if (!opts.force && sameContent(serializeState(), payload)) {
       if (incomingAt > localAt) {
         state.updatedAt = incomingAt;
@@ -2299,13 +2309,21 @@
   }
 
   function scheduleCloudPush() {
-    if (applyingCloud || !cloudCanWrite()) return;
+    if (applyingCloud || cloudHoldWrites || !cloudCanWrite()) return;
     cloudDirty = true;
     if (cloudPushTimer) clearTimeout(cloudPushTimer);
     cloudPushTimer = setTimeout(function () {
       cloudPushTimer = null;
       flushCloudPush();
     }, CLOUD_PUSH_MS);
+  }
+
+  function shouldTakeRemote(remote) {
+    if (!remote) return false;
+    const remoteNorm = normalizePayload(remote);
+    const local = serializeState();
+    if (!isBlankPayload(remoteNorm) && isBlankPayload(local)) return true;
+    return (remoteNorm.updatedAt || 0) > (local.updatedAt || 0);
   }
 
   function pullCloud() {
@@ -2315,14 +2333,7 @@
     cloudInFlight = true;
     cloudLastPullAt = Date.now();
     cloudDocRef().get().then(function (snap) {
-      if (snap.exists) {
-        const remote = snap.data() || {};
-        const remoteAt = tsMillis(remote.updatedAt);
-        const local = serializeState();
-        if ((isBlankPayload(local) && !isBlankPayload(remote)) || remoteAt > (local.updatedAt || 0)) {
-          applyCloudPayload(remote);
-        }
-      }
+      if (snap.exists && shouldTakeRemote(snap.data() || {})) applyCloudPayload(snap.data() || {});
       setCloudUi("in");
     }).catch(noteCloudError).then(function () {
       cloudInFlight = false;
@@ -2355,51 +2366,81 @@
     }
   }
 
+  function stopCloudWatch() {
+    if (cloudUnsub) {
+      cloudUnsub();
+      cloudUnsub = null;
+    }
+  }
+
+  function startCloudWatch() {
+    stopCloudWatch();
+    if (!cloudCanWrite()) return;
+    cloudUnsub = cloudDocRef().onSnapshot(function (snap) {
+      if (!snap.exists || applyingCloud) return;
+      if (shouldTakeRemote(snap.data() || {})) applyCloudPayload(snap.data() || {});
+    }, noteCloudError);
+  }
+
+  function loadSharedForMerge(uid) {
+    return cloudDocRef().get().then(function (snap) {
+      if (snap.exists) return { remote: snap.data() || null, personal: null };
+      return legacyPersonalRef(uid).get().then(function (personalSnap) {
+        return {
+          remote: null,
+          personal: personalSnap.exists ? (personalSnap.data() || null) : null
+        };
+      }).catch(function () {
+        return { remote: null, personal: null };
+      });
+    });
+  }
+
   function runInitialMerge(user) {
     if (!user || !user.uid || !cloudCanWrite()) return;
+    const gen = ++cloudMergeGen;
+    stopCloudWatch();
     cloudInFlight = true;
     setCloudUi("busy", "同步中");
-    const previousUid = readCloudUid();
-    const switchingUser = !!(previousUid && previousUid !== user.uid);
-    if (switchingUser) writeUidCache(previousUid, serializeState());
-    const cachedLocal = switchingUser ? (readUidCache(user.uid) || blankPayload()) : null;
-    const firstForUid = previousUid !== user.uid;
-    cloudDocRef().get().then(function (snap) {
-      if (!cloudUser || cloudUser.uid !== user.uid) return null;
-      const remote = snap.exists ? (snap.data() || null) : null;
-      const localForMerge = switchingUser ? cachedLocal : serializeState();
+    const firstSync = !readSharedSeen();
+    loadSharedForMerge(user.uid).then(function (pack) {
+      if (gen !== cloudMergeGen || !cloudUser || cloudUser.uid !== user.uid) return null;
+      let localForMerge = serializeState();
+      if (!pack.remote && pack.personal && !isBlankPayload(pack.personal)) {
+        const folded = decideInitialMerge(localForMerge, pack.personal, { firstSync: true, now: Date.now() });
+        localForMerge = folded.payload;
+      }
       const beforeKey = contentKey(serializeState());
-      const decision = decideInitialMerge(localForMerge, remote, { firstForUid: firstForUid, now: Date.now() });
-      if (switchingUser || decision.apply) applyCloudPayload(decision.payload, { force: switchingUser });
+      const decision = decideInitialMerge(localForMerge, pack.remote, { firstSync: firstSync, now: Date.now() });
+      if (decision.apply || contentKey(decision.payload) !== beforeKey) applyCloudPayload(decision.payload);
       const mustPush = !!(decision.push || cloudDirty);
       const afterKey = contentKey(serializeState());
       if (beforeKey !== afterKey) {
-        if (switchingUser) {
-          showToast(isBlankPayload(serializeState()) ? "已轉去另一個帳戶" : "已載入呢個帳戶嘅分數");
-        } else if (decision.fromRemote) {
-          showToast("已載入其他裝置嘅分數");
-        } else {
-          showToast("已合併兩邊嘅分數");
-        }
+        showToast(decision.fromRemote ? "已載入共用計分板" : "已合併本地同共用計分板");
       }
       if (!mustPush) {
-        markCloudUid(user.uid);
+        markSharedSeen();
         cloudDirty = false;
         setCloudUi("in");
         return null;
       }
       cloudDirty = true;
       return writeCloudPayload(serializeState()).then(function (result) {
-        if (!cloudUser || cloudUser.uid !== user.uid) return;
+        if (gen !== cloudMergeGen || !cloudUser || cloudUser.uid !== user.uid) return;
         if (result.ok) cloudDirty = false;
         else if (result.remote) applyCloudPayload(result.remote, { force: !!result.keptRemote });
-        markCloudUid(user.uid);
+        markSharedSeen();
         setCloudUi("in");
       });
     }).catch(function (err) {
+      if (gen !== cloudMergeGen) return;
       if (cloudMergeUid === user.uid) cloudMergeUid = "";
       noteCloudError(err);
-    }).then(finishCloudFlight);
+    }).then(function () {
+      if (gen !== cloudMergeGen) return;
+      finishCloudFlight();
+      if (cloudCanWrite() && cloudUiMode !== "error") startCloudWatch();
+    });
   }
 
   function scheduleForegroundSync() {
@@ -2466,9 +2507,16 @@
   }
 
   function cloudSignOut() {
+    cloudHoldWrites = true;
+    cloudDirty = false;
+    if (cloudPushTimer) { clearTimeout(cloudPushTimer); cloudPushTimer = null; }
+    stopCloudWatch();
+    cloudMergeGen += 1;
     if (!cloudSdkReady()) return;
-    if (cloudUser && cloudUser.uid) writeUidCache(cloudUser.uid, serializeState());
-    firebase.auth().signOut().catch(noteCloudError);
+    firebase.auth().signOut().catch(function (err) {
+      cloudHoldWrites = false;
+      noteCloudError(err);
+    });
   }
 
   function bindCloudUi() {
@@ -2489,7 +2537,7 @@
           else pullCloud();
           return;
         }
-        if (window.confirm("要登出同步嗎？呢部瀏覽器嘅儀表板都會一併登出。課堂分數會留喺呢部電腦。")) cloudSignOut();
+        if (window.confirm("要登出共用計分板嗎？呢部瀏覽器嘅儀表板都會一併登出。登出之後，呢部電腦嘅改動只留喺本地，唔會寫入共用計分板。")) cloudSignOut();
         return;
       }
       cloudSignIn();
@@ -2515,12 +2563,18 @@
         const prev = cloudUser;
         cloudUser = user || null;
         if (!user) {
-          if (cloudSawAuth && prev) showToast("已登出，分數留喺呢部電腦");
+          cloudHoldWrites = true;
+          cloudDirty = false;
+          if (cloudPushTimer) { clearTimeout(cloudPushTimer); cloudPushTimer = null; }
+          cloudMergeGen += 1;
+          stopCloudWatch();
+          if (cloudSawAuth && prev) showToast("已登出，之後嘅改動只留喺呢部電腦");
           cloudSawAuth = true;
           cloudMergeUid = "";
           setCloudUi("out");
           return;
         }
+        cloudHoldWrites = false;
         cloudSawAuth = true;
         if (cloudMergeUid === user.uid) {
           setCloudUi("in");
