@@ -1,147 +1,102 @@
 {
-  "share": {
-    "passwordHash": "",
-    "enabled": false,
-    "expiresAt": 0,
-    "updatedAt": 1792815370327,
-    "salt": ""
-  },
-  "shortcuts": [
-    {
-      "id": "s1",
-      "title": "Gemini",
-      "url": "https://gemini.google.com/app",
-      "category": "work"
-    },
-    {
-      "id": "s2",
-      "title": "Google",
-      "url": "https://www.google.com/",
-      "category": "work"
-    },
-    {
-      "id": "s3",
-      "title": "ILOVEPDF",
-      "url": "https://www.ilovepdf.com/zh-tw",
-      "category": "work"
-    },
-    {
-      "id": "s4",
-      "title": "Gmail",
-      "url": "https://mail.google.com/mail/",
-      "category": "work"
-    },
-    {
-      "id": "s5",
-      "title": "Hotmail",
-      "url": "https://www.outlook.com/",
-      "category": "work"
-    },
-    {
-      "id": "s6",
-      "title": "Esmart 2.0",
-      "url": "https://ebookweb.ephhk.com/bookviewer.php",
-      "category": "school"
-    },
-    {
-      "id": "s7",
-      "title": "現代教育",
-      "url": "https://www.mers.hk/login/gateway/pmath_th.php",
-      "category": "school"
-    },
-    {
-      "id": "s8",
-      "title": "Google Classroom",
-      "url": "https://classroom.google.com/?pli=1",
-      "category": "school"
-    },
-    {
-      "id": "s9",
-      "title": "天水圍官立小學",
-      "url": "https://www.tswgps.edu.hk/",
-      "category": "school"
-    },
-    {
-      "id": "s10",
-      "title": "Brightly(教師版面)",
-      "url": "https://dashboard.learnbrightly.ai/",
-      "category": "school"
-    },
-    {
-      "id": "s11",
-      "title": "Brightly(學生版面)",
-      "url": "https://app.learnbrightly.ai/",
-      "category": "school"
-    },
-    {
-      "id": "s12",
-      "title": "慧學慧教",
-      "url": "http://tswgps.eclassroom.ai",
-      "category": "school"
-    },
-    {
-      "id": "s13",
-      "title": "EDB Eservice",
-      "url": "https://eservices.edb.gov.hk/edis/es/login?locale=zh",
-      "category": "school"
-    },
-    {
-      "id": "s14",
-      "title": "EDB Portal",
-      "url": "https://auth-sts.edb.gov.hk/adfs/ls/",
-      "category": "school"
-    },
-    {
-      "id": "s15",
-      "title": "Youtube",
-      "url": "https://www.youtube.com/",
-      "category": "life"
-    },
-    {
-      "id": "s16",
-      "title": "香港天文台",
-      "url": "https://www.hko.gov.hk/tc/index.html",
-      "category": "life"
-    },
-    {
-      "id": "s17",
-      "title": "Google Map",
-      "url": "https://www.google.com/maps",
-      "category": "life"
-    },
-    {
-      "id": "s_mvieq3zue8092",
-      "title": "倉頡",
-      "url": "https://www.xn--0vqu8au0tro7d.com/",
-      "category": "work"
-    },
-    {
-      "id": "s_mvmho06g2ynyu",
-      "title": "GROK",
-      "url": "https://grok.com/",
-      "category": "work"
-    },
-    {
-      "id": "s_mvmwtual10skx",
-      "title": "天官小科學科",
-      "url": "https://thlch-tswgps-science.web.app/#/scoring",
-      "category": "work"
-    },
-    {
-      "id": "s_mw1vh2ft84war",
-      "title": "天官小科學科",
-      "url": "https://thlch-tswgps-science.web.app/",
-      "category": "school"
-    }
-  ],
   "todos": [
+    {
+      "id": "t_mw7oybjm5pabw",
+      "title": "常識百搭 (11:30)",
+      "due": "2026-11-08",
+      "done": false,
+      "createdAt": 1794133820146,
+      "updatedAt": 1794133820146,
+      "sortOrder": -10240,
+      "orderUpdatedAt": 1794133820146
+    },
+    {
+      "id": "t_mw7ovw0ewy8js",
+      "title": "超市 (9:45)",
+      "due": "2026-11-08",
+      "done": false,
+      "createdAt": 1794133706702,
+      "updatedAt": 1794133706702,
+      "sortOrder": -9216,
+      "orderUpdatedAt": 1794133706702
+    },
+    {
+      "id": "t_mw7ov5u03murn",
+      "title": "EDB觀課 (6:30)",
+      "due": "2026-11-08",
+      "done": false,
+      "createdAt": 1794133672776,
+      "updatedAt": 1794133684736,
+      "sortOrder": -8192,
+      "orderUpdatedAt": 1794133672776
+    },
+    {
+      "id": "t_mw7ourqxp3bec",
+      "title": "香港學校教育展講稿",
+      "due": "2026-11-09",
+      "done": false,
+      "createdAt": 1794133654521,
+      "updatedAt": 1794133654521,
+      "sortOrder": -7168,
+      "orderUpdatedAt": 1794133654521
+    },
+    {
+      "id": "t_mw6hxxnm3aw5n",
+      "title": "濕地上校網",
+      "due": "2026-11-09",
+      "done": false,
+      "createdAt": 1794061578658,
+      "updatedAt": 1794061578658,
+      "sortOrder": -6144,
+      "orderUpdatedAt": 1794061578658
+    },
+    {
+      "id": "t_mw6hwmtcntbjm",
+      "title": "入心繫家國相",
+      "due": "2026-11-09",
+      "done": false,
+      "createdAt": 1794061517952,
+      "updatedAt": 1794061517952,
+      "sortOrder": -5120,
+      "orderUpdatedAt": 1794061517952
+    },
+    {
+      "id": "t_mw3qedpka1gwd",
+      "title": "book sat dinner",
+      "due": "2026-11-06",
+      "done": true,
+      "createdAt": 1793894384360,
+      "updatedAt": 1793975050085,
+      "sortOrder": -4096,
+      "orderUpdatedAt": 1793894384360
+    },
+    {
+      "id": "t_mw3p2u454mp3d",
+      "title": "mon video record",
+      "due": "2026-11-06",
+      "done": true,
+      "createdAt": 1793892166133,
+      "updatedAt": 1793975051433,
+      "sortOrder": -3072,
+      "orderUpdatedAt": 1793892166133
+    },
+    {
+      "id": "t_mw3p2mujic7oy",
+      "title": "Ray facebook",
+      "due": "2026-11-06",
+      "done": true,
+      "createdAt": 1793892156714,
+      "updatedAt": 1793975052050,
+      "sortOrder": -2048,
+      "orderUpdatedAt": 1793892156714
+    },
     {
       "id": "t_mw2rnox2zxof7",
       "title": "Book dinner",
       "due": "2026-11-05",
-      "done": false,
+      "done": true,
       "createdAt": 1793836032230,
-      "updatedAt": 1793836032230,
+      "updatedAt": 1793887846879,
       "sortOrder": -1024,
       "orderUpdatedAt": 1793836032230
     },
@@ -1012,6 +967,144 @@
       "updatedAt": 1792378691787
     }
   ],
+  "updatedAt": 1794133863130,
+  "syncUpdatedAt": 1794133863130,
+  "theme": "rain-cafe",
+  "shortcuts": [
+    {
+      "id": "s1",
+      "title": "Gemini",
+      "url": "https://gemini.google.com/app",
+      "category": "work"
+    },
+    {
+      "id": "s_mvmho06g2ynyu",
+      "title": "GROK",
+      "url": "https://grok.com/",
+      "category": "work"
+    },
+    {
+      "id": "s2",
+      "title": "Google",
+      "url": "https://www.google.com/",
+      "category": "work"
+    },
+    {
+      "id": "s3",
+      "title": "ILOVEPDF",
+      "url": "https://www.ilovepdf.com/zh-tw",
+      "category": "work"
+    },
+    {
+      "id": "s4",
+      "title": "Gmail",
+      "url": "https://mail.google.com/mail/",
+      "category": "work"
+    },
+    {
+      "id": "s5",
+      "title": "Hotmail",
+      "url": "https://www.outlook.com/",
+      "category": "work"
+    },
+    {
+      "id": "s6",
+      "title": "Esmart 2.0",
+      "url": "https://ebookweb.ephhk.com/bookviewer.php",
+      "category": "school"
+    },
+    {
+      "id": "s7",
+      "title": "現代教育",
+      "url": "https://www.mers.hk/login/gateway/pmath_th.php",
+      "category": "school"
+    },
+    {
+      "id": "s8",
+      "title": "Google Classroom",
+      "url": "https://classroom.google.com/?pli=1",
+      "category": "school"
+    },
+    {
+      "id": "s9",
+      "title": "天水圍官立小學",
+      "url": "https://www.tswgps.edu.hk/",
+      "category": "school"
+    },
+    {
+      "id": "s10",
+      "title": "Brightly(教師版面)",
+      "url": "https://dashboard.learnbrightly.ai/",
+      "category": "school"
+    },
+    {
+      "id": "s11",
+      "title": "Brightly(學生版面)",
+      "url": "https://app.learnbrightly.ai/",
+      "category": "school"
+    },
+    {
+      "id": "s12",
+      "title": "慧學慧教",
+      "url": "http://tswgps.eclassroom.ai",
+      "category": "school"
+    },
+    {
+      "id": "s13",
+      "title": "EDB Eservice",
+      "url": "https://eservices.edb.gov.hk/edis/es/login?locale=zh",
+      "category": "school"
+    },
+    {
+      "id": "s14",
+      "title": "EDB Portal",
+      "url": "https://auth-sts.edb.gov.hk/adfs/ls/",
+      "category": "school"
+    },
+    {
+      "id": "s15",
+      "title": "Youtube",
+      "url": "https://www.youtube.com/",
+      "category": "life"
+    },
+    {
+      "id": "s16",
+      "title": "香港天文台",
+      "url": "https://www.hko.gov.hk/tc/index.html",
+      "category": "life"
+    },
+    {
+      "id": "s17",
+      "title": "Google Map",
+      "url": "https://www.google.com/maps",
+      "category": "life"
+    },
+    {
+      "id": "s_mvieq3zue8092",
+      "title": "倉頡",
+      "url": "https://www.xn--0vqu8au0tro7d.com/",
+      "category": "work"
+    },
+    {
+      "id": "s_mvmwtual10skx",
+      "title": "天官小科學科",
+      "url": "https://thlch-tswgps-science.web.app/#/scoring",
+      "category": "work"
+    },
+    {
+      "id": "s_mw1vh2ft84war",
+      "title": "天官小科學科",
+      "url": "https://thlch-tswgps-science.web.app/",
+      "category": "school"
+    },
+    {
+      "id": "s_mw57j0vfh2sni",
+      "title": "AI研究所",
+      "url": "https://lab.coreaihk.com/",
+      "category": "life"
+    }
+  ],
+  "eventsFilter": "today",
   "busStops": [
     {
       "id": "bus_e36a_yl",
@@ -1026,62 +1119,8 @@
         "元朗"
       ],
       "apiDir": "I",
-      "nearbyDistM": 186,
+      "nearbyDistM": 244,
       "nearbySeq": 13,
-      "serviceType": 1
-    },
-    {
-      "id": "bus_265b_mk",
-      "route": "265B",
-      "operator": "KMB",
-      "direction": "往旺角(柏景灣)",
-      "stopName": "大欖隧道轉車站",
-      "stopId": "YL794",
-      "kmbStopId": "447C1D79A10C83E2",
-      "ctbStopId": "",
-      "destKeywords": [
-        "旺角",
-        "柏景"
-      ],
-      "apiDir": "O",
-      "nearbyDistM": 18228,
-      "nearbySeq": 11,
-      "serviceType": 1
-    },
-    {
-      "id": "bus_69x_wk",
-      "route": "69X",
-      "operator": "KMB",
-      "direction": "往高鐵(西九龍站)",
-      "stopName": "天耀邨耀民樓",
-      "stopId": "TN583",
-      "kmbStopId": "0BC0F64B076ED373",
-      "ctbStopId": "",
-      "destKeywords": [
-        "高鐵",
-        "西九"
-      ],
-      "apiDir": "O",
-      "nearbyDistM": 18040,
-      "nearbySeq": 4,
-      "serviceType": 1
-    },
-    {
-      "id": "bus_mv813ciqn6rgv",
-      "route": "E21D",
-      "operator": "CTB",
-      "direction": "往大角咀 (維港灣)",
-      "stopName": "裕雅苑雅盛閣, 怡東路",
-      "stopId": "003814",
-      "kmbStopId": "",
-      "ctbStopId": "003814",
-      "destKeywords": [
-        "大角咀 (維港灣)",
-        "大角咀"
-      ],
-      "apiDir": "I",
-      "nearbyDistM": 193,
-      "nearbySeq": 17,
       "serviceType": 1
     },
     {
@@ -1097,7 +1136,7 @@
         "東涌"
       ],
       "apiDir": "O",
-      "nearbyDistM": 186,
+      "nearbyDistM": 244,
       "nearbySeq": 13,
       "serviceType": 1
     },
@@ -1114,8 +1153,44 @@
         "機場"
       ],
       "apiDir": "O",
-      "nearbyDistM": 1314,
+      "nearbyDistM": 1259,
       "nearbySeq": 17,
+      "serviceType": 1
+    },
+    {
+      "id": "bus_69x_wk",
+      "route": "69X",
+      "operator": "KMB",
+      "direction": "往高鐵(西九龍站)",
+      "stopName": "天耀邨耀民樓",
+      "stopId": "TN583",
+      "kmbStopId": "0BC0F64B076ED373",
+      "ctbStopId": "",
+      "destKeywords": [
+        "高鐵",
+        "西九"
+      ],
+      "apiDir": "O",
+      "nearbyDistM": 18108,
+      "nearbySeq": 4,
+      "serviceType": 1
+    },
+    {
+      "id": "bus_265b_mk",
+      "route": "265B",
+      "operator": "KMB",
+      "direction": "往旺角(柏景灣)",
+      "stopName": "大欖隧道轉車站",
+      "stopId": "YL794",
+      "kmbStopId": "447C1D79A10C83E2",
+      "ctbStopId": "",
+      "destKeywords": [
+        "旺角",
+        "柏景"
+      ],
+      "apiDir": "O",
+      "nearbyDistM": 18285,
+      "nearbySeq": 11,
       "serviceType": 1
     },
     {
@@ -1132,156 +1207,29 @@
         "航天城"
       ],
       "apiDir": "O",
-      "nearbyDistM": 193,
+      "nearbyDistM": 249,
       "nearbySeq": 22,
+      "serviceType": 1
+    },
+    {
+      "id": "bus_mv813ciqn6rgv",
+      "route": "E21D",
+      "operator": "CTB",
+      "direction": "往大角咀 (維港灣)",
+      "stopName": "裕雅苑雅盛閣, 怡東路",
+      "stopId": "003814",
+      "kmbStopId": "",
+      "ctbStopId": "003814",
+      "destKeywords": [
+        "大角咀 (維港灣)",
+        "大角咀"
+      ],
+      "apiDir": "I",
+      "nearbyDistM": 249,
+      "nearbySeq": 17,
       "serviceType": 1
     }
   ],
-  "eventsFilter": "today",
-  "deletedIds": [
-    {
-      "kind": "event",
-      "id": "e_mv7xzhkwjds1y",
-      "at": 1792091434035,
-      "blockSync": false,
-      "contentKey": "P6共備\u00012026-10-16\u000116:30\u0001"
-    },
-    {
-      "kind": "event",
-      "id": "e_mv8fczsv670bg",
-      "at": 1792091434035,
-      "blockSync": false,
-      "contentKey": "劉校長示範課\u00012026-10-20\u000113:20\u0001"
-    },
-    {
-      "kind": "todo",
-      "id": "t_mv9ulp9kreuqz",
-      "at": 1792376299523,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mv9nk8mkrqoy8",
-      "at": 1792391776351,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvc7gjcojn1kc",
-      "at": 1792233036209,
-      "blockSync": true
-    },
-    {
-      "kind": "event",
-      "id": "e_mvf8hfrn71kld",
-      "at": 1792413125044,
-      "blockSync": true,
-      "gcalEventId": "ccq64c1h68o3ab9lc4o64b9k60o6abb16ss3ebb36tj32oph6gpm6ob4cg",
-      "contentKey": "one\u00012026-10-19\u000120:30\u0001"
-    },
-    {
-      "kind": "event",
-      "id": "e_mvf7kxgoenp4l",
-      "at": 1792413151975,
-      "blockSync": true,
-      "gcalEventId": "6mddjj981299n99sc1ejjp3584",
-      "contentKey": "Test\u00012026-10-19\u0001\u0001"
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvenztu3t7f1c",
-      "at": 1792430537191,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvccb7ldfzroj",
-      "at": 1792431751291,
-      "blockSync": true
-    },
-    {
-      "kind": "event",
-      "id": "e_mv9o6npwck4o0",
-      "at": 1792502059463,
-      "blockSync": true,
-      "gcalEventId": "71ijgcpj6tgjgb9nc9im8b9k65h30bb160qmcbb3ccom4p336soj0phic4",
-      "contentKey": "跑馬地養和\u00012026-10-21\u000114:00\u0001"
-    },
-    {
-      "kind": "event",
-      "id": "e_hksh_eye_20261021",
-      "at": 1792502059463,
-      "blockSync": true,
-      "gcalEventId": "68mgdhs58cp76k8125tn8jskk8",
-      "contentKey": "養和眼科覆診\u00012026-10-21\u000114:00\u0001"
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvhl95nq4l28c",
-      "at": 1792795843266,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvmg3sexqvky2",
-      "at": 1792849173428,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvyjokme1k1ud",
-      "at": 1793582900143,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvz9u97qctjca",
-      "at": 1793661635500,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvz9uwj9nazm1",
-      "at": 1793661640454,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvzubnozx1k18",
-      "at": 1793835319374,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvzubbk6n90ol",
-      "at": 1793835320637,
-      "blockSync": true
-    },
-    {
-      "kind": "todo",
-      "id": "t_mvzubvw8satd8",
-      "at": 1793835323321,
-      "blockSync": true
-    }
-  ],
-  "theme": "rain-cafe",
-  "eventsKind": "personal",
-  "syncUpdatedAt": 1793887896263,
-  "categories": [
-    {
-      "id": "work",
-      "name": "工作"
-    },
-    {
-      "id": "school",
-      "name": "學校"
-    },
-    {
-      "id": "life",
-      "name": "個人"
-    }
-  ],
-  "schemaVersion": 11,
   "events": [
     {
       "id": "e_seed_monthly_20260924",
@@ -2012,28 +1960,6 @@
       "gcalEventId": ""
     },
     {
-      "id": "e_seed_siufan_prep_20261015",
-      "title": "P4,5 Siufan共備",
-      "date": "2026-10-15",
-      "time": "14:30",
-      "work": "P.4、P.5 Siufan 共備。",
-      "kind": "school",
-      "done": false,
-      "updatedAt": 1791993247613,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_seed_exam_sci_gs_weight_20261015",
-      "title": "上學期期考：P.3／P.6 科學與人文各佔常識50%",
-      "date": "2026-11-17",
-      "time": "",
-      "work": "峯／科學科；P.3、P.6 科學與人文各佔合併常識分 50%；P.4、P.5 科學與人文於成績表分列獨立科目。乙類通告第055號。",
-      "kind": "school",
-      "done": false,
-      "updatedAt": 1728900001000,
-      "gcalEventId": ""
-    },
-    {
       "id": "e_seed_exam_sci_exempt_p2_20261117",
       "title": "上學期期考：P.2 免考科學／人文等",
       "date": "2026-11-17",
@@ -2097,6 +2023,28 @@
       "kind": "school",
       "done": false,
       "updatedAt": 1728900001000,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_seed_exam_sci_gs_weight_20261015",
+      "title": "上學期期考：P.3／P.6 科學與人文各佔常識50%",
+      "date": "2026-11-17",
+      "time": "",
+      "work": "峯／科學科；P.3、P.6 科學與人文各佔合併常識分 50%；P.4、P.5 科學與人文於成績表分列獨立科目。乙類通告第055號。",
+      "kind": "school",
+      "done": false,
+      "updatedAt": 1728900001000,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_seed_siufan_prep_20261015",
+      "title": "P4,5 Siufan共備",
+      "date": "2026-10-15",
+      "time": "14:30",
+      "work": "P.4、P.5 Siufan 共備。",
+      "kind": "school",
+      "done": false,
+      "updatedAt": 1791993247613,
       "gcalEventId": ""
     },
     {
@@ -2252,18 +2200,6 @@
       "gcalEventId": ""
     },
     {
-      "id": "e_seed_steam_briefing_20261016",
-      "title": "「常識百搭」STEAM 展覽簡介會（Zoom）",
-      "date": "2026-10-16",
-      "time": "14:30",
-      "work": "教育局資優組 EI0020270016；16/10 14:30–17:30；等候室 14:15 開放。Zoom 會議 ID 853 4068 6501，密碼 737942。用英文全名登入；遲到／早退超 30 分鐘無 CPD。查詢 3698 3457。",
-      "kind": "school",
-      "done": true,
-      "updatedAt": 1792133764333,
-      "contentUpdatedAt": 1792133764333,
-      "gcalEventId": ""
-    },
-    {
       "id": "e_mv9365bb2q2st",
       "title": "羽毛球",
       "date": "2026-10-19",
@@ -2315,6 +2251,18 @@
       "contentUpdatedAt": 1792074258435,
       "gcalEventId": "5vuqnubukpheam5aah0os4tjq4",
       "gcalUpdated": 1792076689430
+    },
+    {
+      "id": "e_seed_steam_briefing_20261016",
+      "title": "「常識百搭」STEAM 展覽簡介會（Zoom）",
+      "date": "2026-10-16",
+      "time": "14:30",
+      "work": "教育局資優組 EI0020270016；16/10 14:30–17:30；等候室 14:15 開放。Zoom 會議 ID 853 4068 6501，密碼 737942。用英文全名登入；遲到／早退超 30 分鐘無 CPD。查詢 3698 3457。",
+      "kind": "school",
+      "done": true,
+      "updatedAt": 1792133764333,
+      "contentUpdatedAt": 1792133764333,
+      "gcalEventId": ""
     },
     {
       "id": "e_mv9o6fcohh2iv",
@@ -2696,6 +2644,16 @@
       "gcalEventId": ""
     },
     {
+      "id": "e_seed_kite_ai_hkust_20261107",
+      "title": "風箏製作及AI應用（科大）",
+      "date": "2026-11-07",
+      "time": "09:30",
+      "work": "09:30 集合；活動 10:00–13:00；香港科技大學鄭裕彤樓地下 CMA 演講廳（LT-L）。陪同老師自備筆電（約每 3–4 人一部）、電量充足、可用 Chrome，自備充電線／插頭；學生穿運動服；自備飲用水及健康小食（場內禁飲食）。來源：安埔官小行政助理陳小姐電郵（回覆：心繫家國·香港回歸30周年暨風箏續傳統·智創繫未來）。",
+      "kind": "school",
+      "done": false,
+      "gcalEventId": ""
+    },
+    {
       "id": "e_mvke5ndlz5lzh",
       "title": "通知老師插班生",
       "date": "2026-11-18",
@@ -2706,16 +2664,6 @@
       "updatedAt": 1792724964249,
       "createdAt": 1792724964249,
       "contentUpdatedAt": 1792724964249,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_seed_kite_ai_hkust_20261107",
-      "title": "風箏製作及AI應用（科大）",
-      "date": "2026-11-07",
-      "time": "09:30",
-      "work": "09:30 集合；活動 10:00–13:00；香港科技大學鄭裕彤樓地下 CMA 演講廳（LT-L）。陪同老師自備筆電（約每 3–4 人一部）、電量充足、可用 Chrome，自備充電線／插頭；學生穿運動服；自備飲用水及健康小食（場內禁飲食）。來源：安埔官小行政助理陳小姐電郵（回覆：心繫家國·香港回歸30周年暨風箏續傳統·智創繫未來）。",
-      "kind": "school",
-      "done": false,
       "gcalEventId": ""
     },
     {
@@ -2809,32 +2757,6 @@
       "gcalEventId": ""
     },
     {
-      "id": "e_mvyl58tigzqbi",
-      "title": "區主任卷會",
-      "date": "2026-11-11",
-      "time": "15:45",
-      "work": "",
-      "kind": "school",
-      "done": false,
-      "updatedAt": 1793583229158,
-      "createdAt": 1793583229158,
-      "contentUpdatedAt": 1793583229158,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_mvyl5yibachl6",
-      "title": "見插班生",
-      "date": "2026-11-11",
-      "time": "15:00",
-      "work": "",
-      "kind": "school",
-      "done": false,
-      "updatedAt": 1793583262451,
-      "createdAt": 1793583262451,
-      "contentUpdatedAt": 1793583262451,
-      "gcalEventId": ""
-    },
-    {
       "id": "e_seed_sci_kg_venue_plan_20261106",
       "title": "幼稚園體驗・場地規劃限期",
       "date": "2026-11-06",
@@ -2912,6 +2834,32 @@
       "work": "09:00–17:00；香港亞洲國際博覽館。峯展品／簡報同上。科學科 1/11 工作分配。",
       "kind": "school",
       "done": false,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_mvyl58tigzqbi",
+      "title": "區主任卷會",
+      "date": "2026-11-11",
+      "time": "15:45",
+      "work": "",
+      "kind": "school",
+      "done": false,
+      "updatedAt": 1793583229158,
+      "createdAt": 1793583229158,
+      "contentUpdatedAt": 1793583229158,
+      "gcalEventId": ""
+    },
+    {
+      "id": "e_mvyl5yibachl6",
+      "title": "見插班生",
+      "date": "2026-11-11",
+      "time": "15:00",
+      "work": "",
+      "kind": "school",
+      "done": false,
+      "updatedAt": 1793583262451,
+      "createdAt": 1793583262451,
+      "contentUpdatedAt": 1793583262451,
       "gcalEventId": ""
     },
     {
@@ -3035,6 +2983,16 @@
       "gcalEventId": ""
     },
     {
+      "id": "e_seed_smc1_20261124",
+      "title": "SMC 1 Meeting",
+      "date": "2026-11-24",
+      "time": "15:00",
+      "work": "科學科發展報告；檔案 26-27SMC1_科學科發展報告_導賞團slide.pptx（內容不含導賞團）。來源：Flora WhatsApp。",
+      "kind": "school",
+      "done": false,
+      "gcalEventId": ""
+    },
+    {
       "id": "e_mw1ui0azsi58y",
       "title": "見插班生",
       "date": "2026-11-13",
@@ -3045,16 +3003,6 @@
       "updatedAt": 1793780339723,
       "createdAt": 1793780339723,
       "contentUpdatedAt": 1793780339723,
-      "gcalEventId": ""
-    },
-    {
-      "id": "e_seed_smc1_20261124",
-      "title": "SMC 1 Meeting",
-      "date": "2026-11-24",
-      "time": "15:00",
-      "work": "科學科發展報告；檔案 26-27SMC1_科學科發展報告_導賞團slide.pptx（內容不含導賞團）。來源：Flora WhatsApp。",
-      "kind": "school",
-      "done": false,
       "gcalEventId": ""
     },
     {
@@ -3178,17 +3126,32 @@
       "gcalEventId": ""
     },
     {
-      "id": "e_mv9o6sam9q5yx",
-      "title": "伊利沙伯耳鼻喉",
-      "date": "2027-05-11",
+      "id": "e_storage_return_20261221",
+      "title": "儲物送回（大型物品）",
+      "date": "2026-12-21",
       "time": "09:00",
-      "work": "",
+      "work": "即將預約：送回；大型物品 ×1；時段 9am–1pm；狀態：已預約。來源：儲物預約截圖。",
       "kind": "personal",
       "done": false,
-      "updatedAt": 1777482696184,
-      "createdAt": 1777482696184,
-      "gcalEventId": "c4o66pj374rj2b9j6ooj2b9k64qjib9pc8smcb9g6ph30e9g61gjip1n64",
-      "gcalUpdated": 1792076686283
+      "updatedAt": 1793887896263,
+      "createdAt": 1793887896263,
+      "contentUpdatedAt": 1793887896263,
+      "gcalEventId": "pfpgbsm0j95qt9odflnf4musqo",
+      "gcalUpdated": 1793887996509
+    },
+    {
+      "id": "e_storage_collect_20270102",
+      "title": "儲物收取（大型物品）",
+      "date": "2027-01-02",
+      "time": "09:00",
+      "work": "即將預約：收取；大型物品 ×1；時段 9am–1pm；狀態：已預約。來源：儲物預約截圖。",
+      "kind": "personal",
+      "done": false,
+      "updatedAt": 1793887896263,
+      "createdAt": 1793887896263,
+      "contentUpdatedAt": 1793887896263,
+      "gcalEventId": "rms2q2lphuf2ompcvf9r873ruc",
+      "gcalUpdated": 1793887997185
     },
     {
       "id": "e_seed_exam_notice_055_20261015",
@@ -3202,32 +3165,180 @@
       "gcalEventId": ""
     },
     {
-      "id": "e_storage_return_20261221",
-      "title": "儲物送回（大型物品）",
-      "date": "2026-12-21",
+      "id": "e_mv9o6sam9q5yx",
+      "title": "伊利沙伯耳鼻喉",
+      "date": "2027-05-11",
       "time": "09:00",
-      "work": "即將預約：送回；大型物品 ×1；時段 9am–1pm；狀態：已預約。來源：儲物預約截圖。",
+      "work": "",
       "kind": "personal",
       "done": false,
-      "updatedAt": 1793887896263,
-      "createdAt": 1793887896263,
-      "contentUpdatedAt": 1793887896263,
-      "gcalEventId": ""
+      "updatedAt": 1777482696184,
+      "createdAt": 1777482696184,
+      "gcalEventId": "c4o66pj374rj2b9j6ooj2b9k64qjib9pc8smcb9g6ph30e9g61gjip1n64",
+      "gcalUpdated": 1792076686283
     },
     {
-      "id": "e_storage_collect_20270102",
-      "title": "儲物收取（大型物品）",
-      "date": "2027-01-02",
-      "time": "09:00",
-      "work": "即將預約：收取；大型物品 ×1；時段 9am–1pm；狀態：已預約。來源：儲物預約截圖。",
+      "id": "e_parking_lease_sign_20261111",
+      "title": "會所簽車位租約",
+      "date": "2026-11-11",
+      "time": "20:00",
+      "work": "會所見面簽署；對方 CL Choi（CLchoi生）；租約名寫 chau hang fung freddy；草稿檔 車位租約2027New.pdf。來源：WhatsApp 約定星期三晚 8:00 會所等。",
       "kind": "personal",
       "done": false,
-      "updatedAt": 1793887896263,
-      "createdAt": 1793887896263,
-      "contentUpdatedAt": 1793887896263,
+      "updatedAt": 1794133863130,
+      "createdAt": 1794133863130,
+      "contentUpdatedAt": 1794133863130,
       "gcalEventId": ""
     }
   ],
+  "categories": [
+    {
+      "id": "work",
+      "name": "工作"
+    },
+    {
+      "id": "school",
+      "name": "學校"
+    },
+    {
+      "id": "life",
+      "name": "個人"
+    }
+  ],
   "todoTab": "today",
-  "updatedAt": 1793887896263
+  "schemaVersion": 13,
+  "deletedIds": [
+    {
+      "kind": "todo",
+      "id": "t_mv9nk8mkrqoy8",
+      "at": 1792391776351,
+      "blockSync": true
+    },
+    {
+      "kind": "event",
+      "id": "e_mv7xzhkwjds1y",
+      "at": 1792091434035,
+      "blockSync": false,
+      "contentKey": "P6共備\u00012026-10-16\u000116:30\u0001"
+    },
+    {
+      "kind": "event",
+      "id": "e_mv8fczsv670bg",
+      "at": 1792091434035,
+      "blockSync": false,
+      "contentKey": "劉校長示範課\u00012026-10-20\u000113:20\u0001"
+    },
+    {
+      "kind": "todo",
+      "id": "t_mv9ulp9kreuqz",
+      "at": 1792376299523,
+      "blockSync": true
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvc7gjcojn1kc",
+      "at": 1792233036209,
+      "blockSync": true
+    },
+    {
+      "kind": "event",
+      "id": "e_mvf8hfrn71kld",
+      "at": 1792413125044,
+      "blockSync": true,
+      "gcalEventId": "ccq64c1h68o3ab9lc4o64b9k60o6abb16ss3ebb36tj32oph6gpm6ob4cg",
+      "contentKey": "one\u00012026-10-19\u000120:30\u0001"
+    },
+    {
+      "kind": "event",
+      "id": "e_mvf7kxgoenp4l",
+      "at": 1792413151975,
+      "blockSync": true,
+      "gcalEventId": "6mddjj981299n99sc1ejjp3584",
+      "contentKey": "Test\u00012026-10-19\u0001\u0001"
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvenztu3t7f1c",
+      "at": 1792430537191,
+      "blockSync": true
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvccb7ldfzroj",
+      "at": 1792431751291,
+      "blockSync": true
+    },
+    {
+      "kind": "event",
+      "id": "e_mv9o6npwck4o0",
+      "at": 1792502059463,
+      "blockSync": true,
+      "gcalEventId": "71ijgcpj6tgjgb9nc9im8b9k65h30bb160qmcbb3ccom4p336soj0phic4",
+      "contentKey": "跑馬地養和\u00012026-10-21\u000114:00\u0001"
+    },
+    {
+      "kind": "event",
+      "id": "e_hksh_eye_20261021",
+      "at": 1792502059463,
+      "blockSync": true,
+      "gcalEventId": "68mgdhs58cp76k8125tn8jskk8",
+      "contentKey": "養和眼科覆診\u00012026-10-21\u000114:00\u0001"
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvhl95nq4l28c",
+      "at": 1792795843266,
+      "blockSync": true
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvmg3sexqvky2",
+      "at": 1792849173428,
+      "blockSync": true
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvyjokme1k1ud",
+      "at": 1793582900143,
+      "blockSync": true
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvz9u97qctjca",
+      "at": 1793661635500,
+      "blockSync": true
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvz9uwj9nazm1",
+      "at": 1793661640454,
+      "blockSync": true
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvzubnozx1k18",
+      "at": 1793835319374,
+      "blockSync": true
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvzubbk6n90ol",
+      "at": 1793835320637,
+      "blockSync": true
+    },
+    {
+      "kind": "todo",
+      "id": "t_mvzubvw8satd8",
+      "at": 1793835323321,
+      "blockSync": true
+    }
+  ],
+  "eventsKind": "personal",
+  "share": {
+    "passwordHash": "",
+    "enabled": false,
+    "expiresAt": 0,
+    "updatedAt": 1792815370327,
+    "salt": ""
+  }
 }
