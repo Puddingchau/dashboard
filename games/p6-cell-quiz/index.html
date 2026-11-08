@@ -9,6 +9,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     
     <script>
         tailwind.config = {
@@ -102,7 +106,10 @@
         }
         .btn-touch:active { transform: scale(0.97); }
 
-        .option-btn { min-height: 4.5rem; }
+        .option-btn { min-height: 4.5rem; height: 100%; }
+        #optionsGrid .option-btn { min-height: 5.5rem; align-items: flex-start; }
+        #optionsGrid .option-btn-with-img { min-height: 7rem; align-items: center; }
+        #optionsGrid .option-btn-with-img img { box-shadow: 0 2px 8px rgba(15,23,42,0.18); }
 
         .page-section {
             animation: fadeIn 0.35s ease both;
@@ -157,6 +164,182 @@
             border-radius: 1.5rem;
             z-index: 5;
         }
+
+        /* Smartboard 字型三級：細(1 預設)／中(2)／大(3) */
+        body.sb-size-2 header .leading-snug {
+            font-size: 0.98rem !important;
+            line-height: 1.35 !important;
+        }
+        body.sb-size-3 header .leading-snug {
+            font-size: 1.05rem !important;
+            line-height: 1.35 !important;
+        }
+        body.sb-size-2 #pageHome h1 {
+            font-size: clamp(2.1rem, 4.5vw, 3.2rem) !important;
+        }
+        body.sb-size-3 #pageHome h1 {
+            font-size: clamp(2.4rem, 5vw, 3.75rem) !important;
+        }
+        body.sb-size-2 #pageHome p,
+        body.sb-size-2 #pageIntro p,
+        body.sb-size-2 #pageIntro h2,
+        body.sb-size-2 #pageResult h2,
+        body.sb-size-2 #pageResult p {
+            font-size: 1.18em !important;
+        }
+        body.sb-size-3 #pageHome p,
+        body.sb-size-3 #pageIntro p,
+        body.sb-size-3 #pageIntro h2,
+        body.sb-size-3 #pageResult h2,
+        body.sb-size-3 #pageResult p {
+            font-size: 1.35em !important;
+        }
+        body.sb-size-2 #loginForm label,
+        body.sb-size-2 #loginForm select,
+        body.sb-size-2 #loginForm input {
+            font-size: 1.12rem !important;
+        }
+        body.sb-size-3 #loginForm label,
+        body.sb-size-3 #loginForm select,
+        body.sb-size-3 #loginForm input {
+            font-size: 1.25rem !important;
+        }
+        body.sb-size-2 #loginForm button[type="submit"],
+        body.sb-size-2 #pageIntro button,
+        body.sb-size-2 #pageResult button {
+            font-size: 1.25rem !important;
+            padding-top: 0.95rem !important;
+            padding-bottom: 0.95rem !important;
+            min-height: 3.25rem;
+        }
+        body.sb-size-3 #loginForm button[type="submit"],
+        body.sb-size-3 #pageIntro button,
+        body.sb-size-3 #pageResult button {
+            font-size: 1.45rem !important;
+            padding-top: 1.1rem !important;
+            padding-bottom: 1.1rem !important;
+            min-height: 3.75rem;
+        }
+        body.sb-size-2 #hudName { font-size: 1.35rem !important; }
+        body.sb-size-3 #hudName { font-size: 1.55rem !important; }
+        body.sb-size-2 #hudClass,
+        body.sb-size-2 #difficultyBadge {
+            font-size: 0.92rem !important;
+            padding: 0.35rem 0.75rem !important;
+        }
+        body.sb-size-3 #hudClass,
+        body.sb-size-3 #difficultyBadge {
+            font-size: 1rem !important;
+            padding: 0.4rem 0.85rem !important;
+        }
+        body.sb-size-2 #hudScore { font-size: 2.2rem !important; }
+        body.sb-size-3 #hudScore { font-size: 2.6rem !important; }
+        body.sb-size-2 #btnLifeline5050,
+        body.sb-size-2 #btnLifelinePoll,
+        body.sb-size-2 #btnLifelineHint {
+            font-size: 0.92rem !important;
+            padding: 0.55rem 0.8rem !important;
+            min-height: 2.5rem;
+        }
+        body.sb-size-3 #btnLifeline5050,
+        body.sb-size-3 #btnLifelinePoll,
+        body.sb-size-3 #btnLifelineHint {
+            font-size: 1rem !important;
+            padding: 0.65rem 0.9rem !important;
+            min-height: 2.75rem;
+        }
+        body.sb-size-2 #qTitle {
+            font-size: clamp(1.3rem, 2.4vw, 1.85rem) !important;
+            line-height: 1.4 !important;
+        }
+        body.sb-size-3 #qTitle {
+            font-size: clamp(1.55rem, 2.8vw, 2.15rem) !important;
+            line-height: 1.4 !important;
+        }
+        body.sb-size-2 #qPhotoCaption { font-size: 0.95rem !important; }
+        body.sb-size-3 #qPhotoCaption { font-size: 1.05rem !important; }
+        body.sb-size-2 .photo-frame img { max-height: 240px !important; }
+        body.sb-size-3 .photo-frame img { max-height: 280px !important; }
+        body.sb-size-2 #optionsGrid .option-btn {
+            min-height: 5.75rem !important;
+            font-size: 1.12rem !important;
+            padding: 0.85rem 0.8rem !important;
+            line-height: 1.35 !important;
+        }
+        body.sb-size-3 #optionsGrid .option-btn {
+            min-height: 7rem !important;
+            font-size: 1.25rem !important;
+            padding: 1rem 0.9rem !important;
+            line-height: 1.35 !important;
+        }
+        body.sb-size-2 #optionsGrid .option-btn-with-img { min-height: 7.25rem !important; }
+        body.sb-size-3 #optionsGrid .option-btn-with-img { min-height: 8.5rem !important; }
+        body.sb-size-2 #optionsGrid .option-btn-with-img img {
+            max-height: 4.75rem !important;
+            width: auto !important;
+        }
+        body.sb-size-3 #optionsGrid .option-btn-with-img img {
+            max-height: 5.5rem !important;
+            width: auto !important;
+        }
+        body.sb-size-2 #optionsGrid .option-btn > span:first-child {
+            width: 2.3rem !important;
+            height: 2.3rem !important;
+            font-size: 1.05rem !important;
+        }
+        body.sb-size-3 #optionsGrid .option-btn > span:first-child {
+            width: 2.6rem !important;
+            height: 2.6rem !important;
+            font-size: 1.2rem !important;
+        }
+        body.sb-size-2 #optionsGrid .option-btn img {
+            width: 5rem !important;
+            height: 5rem !important;
+            max-height: 5rem !important;
+        }
+        body.sb-size-3 #optionsGrid .option-btn img {
+            width: 6rem !important;
+            height: 6rem !important;
+            max-height: 6rem !important;
+        }
+        body.sb-size-2 #optionsGrid .option-key,
+        body.sb-size-2 #optionsGrid .opt-key,
+        body.sb-size-2 #optionsGrid span.font-black { font-size: 1.08em !important; }
+        body.sb-size-3 #optionsGrid .option-key,
+        body.sb-size-3 #optionsGrid .opt-key,
+        body.sb-size-3 #optionsGrid span.font-black { font-size: 1.15em !important; }
+        body.sb-size-2 #feedbackTitle { font-size: 1.45rem !important; }
+        body.sb-size-3 #feedbackTitle { font-size: 1.75rem !important; }
+        body.sb-size-2 #feedbackSubtitle { font-size: 1rem !important; }
+        body.sb-size-3 #feedbackSubtitle { font-size: 1.1rem !important; }
+        body.sb-size-2 #feedbackBox .leading-relaxed,
+        body.sb-size-2 #feedbackExplanation {
+            font-size: 1.08rem !important;
+            line-height: 1.5 !important;
+        }
+        body.sb-size-3 #feedbackBox .leading-relaxed,
+        body.sb-size-3 #feedbackExplanation {
+            font-size: 1.2rem !important;
+            line-height: 1.55 !important;
+        }
+        body.sb-size-2 #btnNextQuestion,
+        body.sb-size-2 #btnPrevQuestion,
+        body.sb-size-2 #btnPrevInFeedback {
+            font-size: 1.2rem !important;
+            padding-top: 0.85rem !important;
+            padding-bottom: 0.85rem !important;
+            min-height: 3rem;
+        }
+        body.sb-size-3 #btnNextQuestion,
+        body.sb-size-3 #btnPrevQuestion,
+        body.sb-size-3 #btnPrevInFeedback {
+            font-size: 1.4rem !important;
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
+            min-height: 3.5rem;
+        }
+        body.sb-size-2 #mascotSpeech { font-size: 0.9rem !important; }
+        body.sb-size-3 #mascotSpeech { font-size: 0.95rem !important; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-indigo-950 to-teal-950 min-h-screen text-slate-800 flex flex-col justify-between overflow-x-hidden p-2 md:p-4 relative">
@@ -169,7 +352,15 @@
             <span class="text-2xl">🔬</span>
             <span class="text-xs sm:text-sm md:text-base leading-snug">天水圍官立小學 · 小六科學科：動植物細胞單元</span>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+            <button id="sbLargeToggleBtn" onclick="toggleSbLarge()" class="bg-white/20 hover:bg-white/30 backdrop-blur px-3 py-1.5 rounded-full flex items-center gap-2 transition btn-touch" type="button" title="切換字型大小（細／中／大）" aria-label="切換字型大小">
+                <i class="fas fa-text-height"></i>
+                <span id="sbLargeText" class="text-xs md:text-sm font-medium">字型: 大</span>
+            </button>
+            <button id="fullscreenBtn" onclick="togglePageFullscreen()" class="bg-white/20 hover:bg-white/30 backdrop-blur px-3 py-1.5 rounded-full flex items-center gap-2 transition btn-touch" type="button" title="全螢幕" aria-label="進入全螢幕">
+                <i id="fullscreenIcon" class="fas fa-expand"></i>
+                <span id="fullscreenText" class="text-xs md:text-sm font-medium">全螢幕</span>
+            </button>
             <button id="soundToggleBtn" onclick="toggleSound()" class="bg-white/20 hover:bg-white/30 backdrop-blur px-3 py-1.5 rounded-full flex items-center gap-2 transition btn-touch">
                 <i id="soundIcon" class="fas fa-volume-up"></i>
                 <span id="soundText" class="text-xs md:text-sm font-medium">音效: 開</span>
@@ -228,6 +419,16 @@
                     <i class="fas fa-arrow-right"></i>
                 </button>
             </form>
+
+            <div class="w-full max-w-md mt-5 grid grid-cols-2 gap-3">
+                <button type="button" onclick="openLeaderboardPage()" class="bg-white hover:bg-slate-50 text-slate-800 font-bold py-3.5 rounded-2xl text-base md:text-lg border-2 border-slate-300 shadow-sm btn-touch flex items-center justify-center gap-2">
+                    <i class="fas fa-trophy text-amber-500"></i> 排行榜
+                </button>
+                <button type="button" onclick="openAdminPage()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-base md:text-lg shadow-sm btn-touch flex items-center justify-center gap-2">
+                    <i class="fas fa-user-shield"></i> Admin
+                </button>
+            </div>
+            <p id="adminStatusHome" class="hidden mt-3 text-sm font-bold text-emerald-700"></p>
         </section>
 
         <!-- PAGE 2: INTRO -->
@@ -343,6 +544,11 @@
                 </div>
             </div>
 
+            <div class="flex flex-wrap gap-2 mb-3">
+                <button id="btnPrevQuestion" type="button" onclick="prevQuestion()" class="hidden bg-white hover:bg-slate-50 text-slate-700 font-bold px-4 py-3 rounded-xl text-base md:text-lg border-2 border-slate-300 shadow-sm btn-touch">
+                    <i class="fas fa-arrow-left mr-1"></i> 上一題
+                </button>
+            </div>
             <div id="optionsGrid" class="grid grid-cols-1 gap-3 md:gap-4 mb-6"></div>
 
             <div id="feedbackBox" class="hidden bg-slate-900 text-white p-5 md:p-6 rounded-2xl shadow-xl space-y-3 animate-fade-in">
@@ -357,9 +563,14 @@
                     <strong class="text-teal-400 block mb-1">🔍 學理解析：</strong>
                     <span id="feedbackExplanation">解析內容...</span>
                 </div>
-                <button id="btnNextQuestion" onclick="nextQuestion()" class="w-full bg-gradient-to-r from-teal-400 to-blue-500 hover:from-teal-500 hover:to-blue-600 text-white font-bold py-3.5 rounded-xl text-lg shadow-md btn-touch mt-2">
-                    下一題 <i class="fas fa-arrow-right ml-1"></i>
-                </button>
+                <div class="flex flex-col sm:flex-row gap-2 mt-2">
+                    <button id="btnPrevInFeedback" type="button" onclick="prevQuestion()" class="hidden sm:flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3.5 rounded-xl text-lg shadow-md btn-touch border border-slate-500">
+                        <i class="fas fa-arrow-left mr-1"></i> 上一題
+                    </button>
+                    <button id="btnNextQuestion" onclick="nextQuestion()" class="w-full sm:flex-1 bg-gradient-to-r from-teal-400 to-blue-500 hover:from-teal-500 hover:to-blue-600 text-white font-bold py-3.5 rounded-xl text-lg shadow-md btn-touch">
+                        下一題 <i class="fas fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -389,8 +600,9 @@
                     <h3 class="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-2">
                         <i class="fas fa-list-ol text-purple-600"></i> 班級高分榜 (Top Champions)
                     </h3>
-                    <span class="text-xs text-slate-500">本機模擬記錄儲存</span>
+                    <span id="lbSourceLabelResult" class="text-xs text-slate-500">雲端共用排行榜（全班一致）</span>
                 </div>
+                <p class="text-xs text-emerald-700 font-bold mb-2">雲端共用排行榜（全班一致）</p>
                 <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                     <div class="max-h-56 overflow-y-auto divide-y divide-slate-100" id="leaderboardList"></div>
                 </div>
@@ -403,7 +615,68 @@
             </div>
         </section>
 
-    </main>
+    
+        <!-- PAGE: LEADERBOARD -->
+        <section id="pageBoard" class="hidden page-section glass-card rounded-3xl p-6 md:p-10 shadow-2xl">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6 border-b border-slate-200 pb-4">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
+                        <i class="fas fa-trophy text-amber-500"></i> 班級高分榜
+                    </h2>
+                    <p class="text-slate-500 text-sm md:text-base">雲端共用排行榜（全班一致）</p>
+                    <p id="lbSourceLabelBoard" class="text-xs text-emerald-700 font-bold mt-1">載入雲端中…</p>
+                </div>
+                <button type="button" onclick="showPage('pageHome')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-5 py-3 rounded-2xl text-base btn-touch">返回主頁</button>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-6">
+                <div class="max-h-[28rem] overflow-y-auto divide-y divide-slate-100" id="leaderboardListBoard"></div>
+            </div>
+            <div id="adminClearWrapBoard" class="hidden">
+                <button type="button" onclick="clearLeaderboard()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 rounded-2xl text-lg btn-touch shadow-md">
+                    <i class="fas fa-trash-alt mr-2"></i> 清空全部排行榜分數
+                </button>
+                <p class="text-xs text-slate-500 mt-2 text-center">需 Admin 密碼登入；清空時會再以 Google（g.sci@tswgps.edu.hk）確認</p>
+            </div>
+        </section>
+
+        <!-- PAGE: ADMIN -->
+        <section id="pageAdmin" class="hidden page-section glass-card rounded-3xl p-6 md:p-10 shadow-2xl max-w-lg mx-auto">
+            <div class="flex items-center gap-3 mb-6 border-b border-slate-200 pb-4">
+                <div class="w-12 h-12 bg-slate-800 text-white rounded-2xl flex items-center justify-center text-2xl"><i class="fas fa-user-shield"></i></div>
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-black text-slate-900">Admin 登入</h2>
+                    <p class="text-slate-500 text-sm">老師專用：管理雲端共用排行榜</p>
+                </div>
+            </div>
+            <div id="adminLoginBox" class="space-y-4">
+                <div class="text-left">
+                    <label class="block text-sm md:text-base font-bold text-slate-700 mb-1" for="adminPassword">Admin 密碼</label>
+                    <input type="password" id="adminPassword" placeholder="請輸入密碼" class="w-full px-4 py-3 text-lg rounded-2xl border-2 border-slate-300 focus:border-teal-500 focus:outline-none transition shadow-sm" autocomplete="current-password">
+                </div>
+                <p id="adminLoginError" class="hidden text-rose-600 font-bold text-sm"></p>
+                <div class="flex gap-3">
+                    <button type="button" onclick="showPage('pageHome')" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 rounded-2xl btn-touch">返回</button>
+                    <button type="button" onclick="submitAdminLogin()" class="w-2/3 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-2xl btn-touch">登入</button>
+                </div>
+            </div>
+            <div id="adminPanelBox" class="hidden space-y-4">
+                <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold p-4 rounded-2xl">
+                    ✅ 已以 Admin 身份登入
+                    <div class="text-xs font-bold text-emerald-700 mt-1">雲端共用排行榜（全班一致）</div>
+                    <div id="adminCloudStatus" class="text-xs font-medium text-emerald-700 mt-1"></div>
+                </div>
+                <button type="button" onclick="openLeaderboardPage()" class="w-full bg-white hover:bg-slate-50 text-slate-800 font-bold py-3.5 rounded-2xl border-2 border-slate-300 btn-touch">
+                    <i class="fas fa-trophy text-amber-500 mr-1"></i> 查看排行榜
+                </button>
+                <button type="button" onclick="clearLeaderboard()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 rounded-2xl text-lg btn-touch">
+                    <i class="fas fa-trash-alt mr-2"></i> 清空全部排行榜分數
+                </button>
+                <button type="button" onclick="logoutAdmin()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 rounded-2xl btn-touch">登出 Admin</button>
+                <button type="button" onclick="showPage('pageHome')" class="w-full text-slate-500 font-bold py-2 btn-touch">返回主頁</button>
+            </div>
+        </section>
+
+</main>
 
     
 
@@ -597,7 +870,9 @@
             score: 0,
             soundEnabled: true,
             lifelinesUsed: { '5050': false, 'poll': false, 'hint': false },
-            optionStateDisabled: false
+            optionStateDisabled: false,
+            isAdmin: false,
+            qResults: []
         };
 
         /* ---------- AUDIO ---------- */
@@ -675,9 +950,79 @@
             }
         }
 
+        /* ---------- SMARTBOARD / FULLSCREEN ---------- */
+        const SB_LS_KEY = 'cell-quiz-sb-v2';
+        const SB_SIZE_LABELS = { 1: '細', 2: '中', 3: '大' };
+
+        function getSbSize() {
+            const saved = localStorage.getItem(SB_LS_KEY);
+            if (saved === null) {
+                return 3; // default 大 for Smartboard
+            }
+            const n = parseInt(saved, 10);
+            return (n === 1 || n === 2 || n === 3) ? n : 3;
+        }
+
+        function applySbSize(level) {
+            const size = (level === 1 || level === 2 || level === 3) ? level : 3;
+            document.body.classList.remove('sb-large', 'sb-size-1', 'sb-size-2', 'sb-size-3');
+            document.body.classList.add('sb-size-' + size);
+            const label = document.getElementById('sbLargeText');
+            if (label) label.innerText = '字型: ' + SB_SIZE_LABELS[size];
+            const btn = document.getElementById('sbLargeToggleBtn');
+            if (btn) {
+                btn.title = '字型大小：' + SB_SIZE_LABELS[size] + '（點擊切換 細／中／大）';
+                btn.setAttribute('aria-label', '切換字型大小，目前為' + SB_SIZE_LABELS[size]);
+                btn.setAttribute('data-sb-size', String(size));
+            }
+        }
+
+        function toggleSbLarge() {
+            const cur = getSbSize();
+            const next = cur >= 3 ? 1 : cur + 1;
+            localStorage.setItem(SB_LS_KEY, String(next));
+            applySbSize(next);
+            try { playSound('click'); } catch (e) {}
+        }
+
+        function applySbLarge() { applySbSize(getSbSize()); }
+        function isSbLargeEnabled() { return getSbSize() >= 2; }
+
+        function togglePageFullscreen() {
+            const docEl = document.documentElement;
+            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            try {
+                if (!isFs) {
+                    if (docEl.requestFullscreen) docEl.requestFullscreen();
+                    else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+                } else {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                }
+            } catch (err) {
+                console.warn('Fullscreen toggle failed', err);
+            }
+        }
+
+        function syncFullscreenButton() {
+            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            const textLabel = isFs ? '退出全螢幕' : '全螢幕';
+            const label = document.getElementById('fullscreenText');
+            const icon = document.getElementById('fullscreenIcon');
+            const btn = document.getElementById('fullscreenBtn');
+            if (label) label.innerText = textLabel;
+            if (icon) icon.className = isFs ? 'fas fa-compress' : 'fas fa-expand';
+            if (btn) {
+                btn.title = textLabel;
+                btn.setAttribute('aria-label', textLabel);
+            }
+        }
+        document.addEventListener('fullscreenchange', syncFullscreenButton);
+        document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
+
         /* ---------- PAGE NAV ---------- */
         function showPage(pageId) {
-            ['pageHome', 'pageIntro', 'pageGame', 'pageResult'].forEach(id => {
+            ['pageHome', 'pageIntro', 'pageGame', 'pageResult', 'pageBoard', 'pageAdmin'].forEach(id => {
                 const el = document.getElementById(id);
                 if (id === pageId) {
                     el.classList.remove('hidden');
@@ -705,6 +1050,7 @@
             playSound('start');
             state.currentQIndex = 0;
             state.score = 0;
+            state.qResults = QUESTIONS.map(() => null);
             state.lifelinesUsed = { '5050': false, 'poll': false, 'hint': false };
             ['5050', 'poll', 'hint'].forEach(type => {
                 const btn = document.getElementById('btnLifeline' + type.charAt(0).toUpperCase() + type.slice(1));
@@ -726,6 +1072,7 @@
             hideMascotSpeech();
             resetMascotFace();
             clearPulse();
+            updatePrevButtons();
 
             document.getElementById('qCategory').innerText = `【${q.category}】`;
             document.getElementById('qIndexText').innerText = `第 ${state.currentQIndex + 1} / ${QUESTIONS.length} 題`;
@@ -745,7 +1092,7 @@
             grid.innerHTML = '';
             q.options.forEach((opt, idx) => {
                 const btn = document.createElement('button');
-                btn.className = `option-btn w-full bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-teal-400 text-slate-800 text-left p-4 rounded-2xl font-medium text-sm md:text-base transition-all duration-200 shadow-sm flex items-center gap-3 btn-touch`;
+                btn.className = `option-btn w-full bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-teal-400 text-slate-800 text-left p-3 md:p-4 rounded-2xl font-medium text-sm md:text-base transition-all duration-200 shadow-sm flex items-center gap-3 btn-touch`;
                 btn.id = `optBtn_${idx}`;
                 btn.onclick = () => selectAnswer(idx);
                 btn.innerHTML = `
@@ -754,6 +1101,61 @@
                 `;
                 grid.appendChild(btn);
             });
+
+            const saved = state.qResults[state.currentQIndex];
+            if (saved) {
+                restoreAnsweredQuestion(saved);
+            }
+        }
+
+        function updatePrevButtons() {
+            const show = state.currentQIndex > 0;
+            ['btnPrevQuestion', 'btnPrevInFeedback'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.classList.toggle('hidden', !show);
+                el.disabled = !show;
+            });
+        }
+
+        function restoreAnsweredQuestion(saved) {
+            const q = QUESTIONS[state.currentQIndex];
+            state.optionStateDisabled = true;
+            const grid = document.getElementById('optionsGrid');
+            const buttons = grid.querySelectorAll('button');
+            const selectedIndex = saved.selectedIndex;
+            const isCorrect = !!saved.isCorrect;
+            buttons.forEach((btn, idx) => {
+                btn.disabled = true;
+                if (q.options[idx].isCorrect) {
+                    btn.classList.remove('bg-white', 'border-slate-200');
+                    btn.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600', 'font-bold');
+                } else if (idx === selectedIndex && !isCorrect) {
+                    btn.classList.remove('bg-white', 'border-slate-200');
+                    btn.classList.add('bg-rose-500', 'text-white', 'border-rose-600');
+                } else {
+                    btn.classList.add('opacity-50');
+                }
+            });
+            const feedbackBox = document.getElementById('feedbackBox');
+            const feedbackTitle = document.getElementById('feedbackTitle');
+            const feedbackSubtitle = document.getElementById('feedbackSubtitle');
+            const feedbackExplanation = document.getElementById('feedbackExplanation');
+            const feedbackIcon = document.getElementById('feedbackIcon');
+            if (isCorrect) {
+                feedbackTitle.innerText = "回答正確！太棒了！";
+                feedbackTitle.className = "text-xl font-black text-emerald-400";
+                feedbackSubtitle.innerText = `+${q.points} 分已成功計入總分！`;
+                feedbackIcon.innerText = "🎉";
+            } else {
+                feedbackTitle.innerText = "答案不對哦，繼續努力！";
+                feedbackTitle.className = "text-xl font-black text-rose-400";
+                feedbackSubtitle.innerText = "本題得 0 分（不會扣減既有得分）";
+                feedbackIcon.innerText = "💡";
+            }
+            feedbackExplanation.innerText = q.explanation;
+            feedbackBox.classList.remove('hidden');
+            updatePrevButtons();
         }
 
         function showScoreFloat(points) {
@@ -820,9 +1222,20 @@
             const feedbackExplanation = document.getElementById('feedbackExplanation');
             const feedbackIcon = document.getElementById('feedbackIcon');
 
+            const prevResult = state.qResults[state.currentQIndex];
+            if (prevResult) {
+                state.score -= prevResult.points;
+            }
+            const awarded = isCorrect ? q.points : 0;
+            state.qResults[state.currentQIndex] = {
+                selectedIndex: selectedIndex,
+                isCorrect: isCorrect,
+                points: awarded
+            };
+
             if (isCorrect) {
                 playSound('correct');
-                state.score += q.points;
+                state.score += awarded;
                 document.getElementById('hudScore').innerText = state.score;
                 showScoreFloat(q.points);
                 pulseCorrect();
@@ -834,6 +1247,7 @@
                 triggerConfetti(false);
             } else {
                 playSound('wrong');
+                document.getElementById('hudScore').innerText = state.score;
                 pulseWrong();
                 feedbackTitle.innerText = "答案不對哦，繼續努力！";
                 feedbackTitle.className = "text-xl font-black text-rose-400";
@@ -844,6 +1258,7 @@
 
             feedbackExplanation.innerText = q.explanation;
             feedbackBox.classList.remove('hidden');
+            updatePrevButtons();
         }
 
         function nextQuestion() {
@@ -854,6 +1269,13 @@
             } else {
                 endGame();
             }
+        }
+
+        function prevQuestion() {
+            if (state.currentQIndex <= 0) return;
+            playSound('click');
+            state.currentQIndex--;
+            loadQuestion();
         }
 
         /* ---------- LIFELINES ---------- */
@@ -942,7 +1364,56 @@
         }
 
         /* ---------- END / LEADERBOARD ---------- */
-        function endGame() {
+        const FIREBASE_WEB_CONFIG = {
+            apiKey: 'AIzaSyBwdjc5On7RXwNpMgyvR5AJPqNwBjfc0YI',
+            authDomain: 'pudding-dashboard-5d8c8.firebaseapp.com',
+            projectId: 'pudding-dashboard-5d8c8',
+            storageBucket: 'pudding-dashboard-5d8c8.firebasestorage.app',
+            messagingSenderId: '1033223249070',
+            appId: '1:1033223249070:web:ee4f9596490c6d4a4e613f',
+            measurementId: 'G-5FNPG7D0GH'
+        };
+        const ADMIN_EMAIL = 'g.sci@tswgps.edu.hk';
+        const GAME_ID = 'p6-cell-quiz';
+        const SCORE_COLLECTION = 'cell_quiz_scores';
+        const LB_LS_KEY = 'cell_game_scores';
+        const ADMIN_PASSWORD = 'gpsadmin';
+        const ADMIN_SS_KEY = 'cell-quiz-admin';
+
+        firebase.initializeApp(FIREBASE_WEB_CONFIG);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let cloudAvailable = false;
+        let lastLbSource = 'local';
+
+        function setLbStatus(msg, isWarn) {
+            const ids = ['lbSourceLabelResult', 'lbSourceLabelBoard', 'adminCloudStatus'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = msg || '';
+                if (isWarn) {
+                    el.classList.remove('text-emerald-700');
+                    el.classList.add('text-amber-700');
+                } else {
+                    el.classList.remove('text-amber-700');
+                    el.classList.add('text-emerald-700');
+                }
+            });
+        }
+
+        async function ensureAnonymousUser() {
+            if (auth.currentUser) return auth.currentUser;
+            const cred = await auth.signInAnonymously();
+            return cred.user;
+        }
+
+        function isGoogleAdminUser(user) {
+            return !!(user && !user.isAnonymous && user.email && user.email.toLowerCase() === ADMIN_EMAIL);
+        }
+
+        async function endGame() {
             let title = "細胞解密新手";
             if (state.score >= 250) title = "頂尖細胞科學家 🔬🏆";
             else if (state.score >= 180) title = "資深細胞解密大師 🧬";
@@ -950,18 +1421,19 @@
 
             document.getElementById('finalScore').innerText = state.score;
             document.getElementById('finalTitle').innerText = title;
-            saveLeaderboardScore(state.studentClass, state.studentName, state.score, title);
-            renderLeaderboard();
+            await saveLeaderboardScore(state.studentClass, state.studentName, state.score, title);
+            await renderLeaderboard();
             showPage('pageResult');
             playSound('finish');
             triggerConfetti(true);
             document.getElementById('progressBar').style.width = '100%';
         }
 
-        function saveLeaderboardScore(cls, name, score, title) {
-            let leaderboard = JSON.parse(localStorage.getItem('cell_game_scores') || '[]');
+        function saveLocalLeaderboardFallback(cls, name, score, title) {
+            let leaderboard = getLeaderboardLocal();
             leaderboard.push({
                 cls: cls,
+                className: cls,
                 name: name,
                 score: score,
                 title: title,
@@ -969,28 +1441,81 @@
             });
             leaderboard.sort((a, b) => b.score - a.score);
             leaderboard = leaderboard.slice(0, 10);
-            localStorage.setItem('cell_game_scores', JSON.stringify(leaderboard));
+            localStorage.setItem(LB_LS_KEY, JSON.stringify(leaderboard));
+            return leaderboard;
         }
 
-        function renderLeaderboard() {
-            const container = document.getElementById('leaderboardList');
-            const leaderboard = JSON.parse(localStorage.getItem('cell_game_scores') || '[]');
-            if (leaderboard.length === 0) {
-                container.innerHTML = `<div class="p-4 text-center text-slate-400 text-sm">尚無挑戰紀錄</div>`;
-                return;
+        async function saveLeaderboardScore(cls, name, score, title) {
+            const safeScore = Math.round(Number(score) || 0);
+            const safeName = String(name || '').slice(0, 40);
+            const safeClass = String(cls || '').slice(0, 20);
+            const safeTitle = String(title || '').slice(0, 80);
+            saveLocalLeaderboardFallback(safeClass, safeName, safeScore, safeTitle);
+
+            try {
+                const user = await ensureAnonymousUser();
+                await db.collection(SCORE_COLLECTION).add({
+                    className: safeClass,
+                    name: safeName,
+                    score: safeScore,
+                    title: safeTitle,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    uid: user.uid,
+                    gameId: GAME_ID,
+                    email: ''
+                });
+                cloudAvailable = true;
+                setLbStatus('已寫入雲端共用排行榜（全班一致）', false);
+            } catch (err) {
+                console.error(err);
+                cloudAvailable = false;
+                setLbStatus('雲端暫時不可用，已改存本機（離線備用）', true);
             }
-            container.innerHTML = leaderboard.map((item, idx) => {
+        }
+
+        function getLeaderboardLocal() {
+            try {
+                return JSON.parse(localStorage.getItem(LB_LS_KEY) || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        async function fetchCloudLeaderboard(limitN) {
+            const snap = await db.collection(SCORE_COLLECTION)
+                .orderBy('score', 'desc')
+                .limit(limitN || 10)
+                .get();
+            return snap.docs.map(doc => {
+                const d = doc.data() || {};
+                return {
+                    cls: d.className || '',
+                    className: d.className || '',
+                    name: d.name || '',
+                    score: d.score || 0,
+                    title: d.title || '',
+                    email: d.email || ''
+                };
+            });
+        }
+
+        function leaderboardRowsHtml(leaderboard) {
+            if (!leaderboard.length) {
+                return `<div class="p-4 text-center text-slate-400 text-sm">尚無挑戰紀錄</div>`;
+            }
+            return leaderboard.map((item, idx) => {
                 let medal = `<span class="w-6 text-center font-bold text-slate-400">${idx + 1}</span>`;
                 if (idx === 0) medal = `<span class="w-6 text-center text-lg">🥇</span>`;
                 if (idx === 1) medal = `<span class="w-6 text-center text-lg">🥈</span>`;
                 if (idx === 2) medal = `<span class="w-6 text-center text-lg">🥉</span>`;
+                const cls = item.cls || item.className || '';
                 return `
                     <div class="p-3.5 flex items-center justify-between text-sm hover:bg-slate-50 transition">
                         <div class="flex items-center gap-3">
                             ${medal}
                             <div>
                                 <span class="font-bold text-slate-800">${item.name}</span>
-                                <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full ml-2">${item.cls}</span>
+                                <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full ml-2">${cls}</span>
                             </div>
                         </div>
                         <div class="text-right">
@@ -999,6 +1524,169 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        async function renderLeaderboard() {
+            let leaderboard = [];
+            try {
+                await ensureAnonymousUser();
+                leaderboard = await fetchCloudLeaderboard(10);
+                cloudAvailable = true;
+                lastLbSource = 'cloud';
+                setLbStatus('雲端共用排行榜（全班一致）', false);
+            } catch (err) {
+                console.error(err);
+                cloudAvailable = false;
+                lastLbSource = 'local';
+                leaderboard = getLeaderboardLocal();
+                setLbStatus('雲端暫時不可用，已顯示本機備用榜', true);
+            }
+            const html = leaderboardRowsHtml(leaderboard);
+            const a = document.getElementById('leaderboardList');
+            const b = document.getElementById('leaderboardListBoard');
+            if (a) a.innerHTML = html;
+            if (b) b.innerHTML = html;
+            syncAdminUI();
+        }
+
+        async function openLeaderboardPage() {
+            playSound('click');
+            showPage('pageBoard');
+            await renderLeaderboard();
+        }
+
+        function openAdminPage() {
+            playSound('click');
+            syncAdminUI();
+            showPage('pageAdmin');
+            const input = document.getElementById('adminPassword');
+            if (input) {
+                input.value = '';
+                setTimeout(() => input.focus(), 50);
+            }
+            const err = document.getElementById('adminLoginError');
+            if (err) err.classList.add('hidden');
+        }
+
+        function syncAdminUI() {
+            state.isAdmin = sessionStorage.getItem(ADMIN_SS_KEY) === '1';
+            const loginBox = document.getElementById('adminLoginBox');
+            const panelBox = document.getElementById('adminPanelBox');
+            if (loginBox && panelBox) {
+                loginBox.classList.toggle('hidden', state.isAdmin);
+                panelBox.classList.toggle('hidden', !state.isAdmin);
+            }
+            const clearWrap = document.getElementById('adminClearWrapBoard');
+            if (clearWrap) clearWrap.classList.toggle('hidden', !state.isAdmin);
+            const homeStatus = document.getElementById('adminStatusHome');
+            if (homeStatus) {
+                if (state.isAdmin) {
+                    homeStatus.classList.remove('hidden');
+                    homeStatus.innerText = 'Admin 已登入（可清空雲端排行榜）';
+                } else {
+                    homeStatus.classList.add('hidden');
+                    homeStatus.innerText = '';
+                }
+            }
+        }
+
+        function submitAdminLogin() {
+            const input = document.getElementById('adminPassword');
+            const err = document.getElementById('adminLoginError');
+            const pw = (input && input.value) ? input.value.trim() : '';
+            if (pw === ADMIN_PASSWORD) {
+                sessionStorage.setItem(ADMIN_SS_KEY, '1');
+                state.isAdmin = true;
+                if (err) err.classList.add('hidden');
+                if (input) input.value = '';
+                playSound('correct');
+                syncAdminUI();
+                setLbStatus('雲端共用排行榜（全班一致）· Admin 已就緒', false);
+            } else {
+                if (err) {
+                    err.innerText = '密碼不正確，請再試。';
+                    err.classList.remove('hidden');
+                }
+                playSound('wrong');
+            }
+        }
+
+        async function logoutAdmin() {
+            sessionStorage.removeItem(ADMIN_SS_KEY);
+            state.isAdmin = false;
+            playSound('click');
+            try {
+                const user = auth.currentUser;
+                if (isGoogleAdminUser(user)) {
+                    await auth.signOut();
+                    await auth.signInAnonymously();
+                }
+            } catch (err) {
+                console.error(err);
+                try { await auth.signInAnonymously(); } catch (e2) { console.error(e2); }
+            }
+            syncAdminUI();
+            showPage('pageHome');
+        }
+
+        async function ensureGoogleAdminForClear() {
+            const user = auth.currentUser;
+            if (isGoogleAdminUser(user)) return user;
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+            const cred = await auth.signInWithPopup(provider);
+            if (!isGoogleAdminUser(cred.user)) {
+                await auth.signOut();
+                await auth.signInAnonymously();
+                throw new Error('此 Google 帳戶不是授權 Admin（需 ' + ADMIN_EMAIL + '）。已取消清空。');
+            }
+            return cred.user;
+        }
+
+        async function clearLeaderboard() {
+            if (sessionStorage.getItem(ADMIN_SS_KEY) !== '1') {
+                alert('請先以 Admin 登入。');
+                openAdminPage();
+                return;
+            }
+            const ok = confirm('確定要清空雲端共用排行榜全部分數？此操作不能復原。');
+            if (!ok) return;
+            setLbStatus('正在以 Google Admin 驗證…', false);
+            try {
+                await ensureGoogleAdminForClear();
+                const snap = await db.collection(SCORE_COLLECTION).get();
+                const docs = snap.docs;
+                let deleted = 0;
+                for (let i = 0; i < docs.length; i += 400) {
+                    const batch = db.batch();
+                    const chunk = docs.slice(i, i + 400);
+                    chunk.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    deleted += chunk.length;
+                }
+                localStorage.setItem(LB_LS_KEY, '[]');
+                await renderLeaderboard();
+                playSound('click');
+                setLbStatus('已清空雲端排行榜（刪除 ' + deleted + ' 筆）', false);
+                alert('已清空雲端共用排行榜（共 ' + deleted + ' 筆）。');
+            } catch (err) {
+                console.error(err);
+                const msg = (err && err.message) ? err.message : String(err);
+                setLbStatus('清空失敗：' + msg, true);
+                alert('清空失敗：' + msg);
+            }
+        }
+
+        async function bootCloudAuth() {
+            try {
+                await ensureAnonymousUser();
+                cloudAvailable = true;
+                setLbStatus('雲端共用排行榜（全班一致）', false);
+            } catch (err) {
+                console.error(err);
+                cloudAvailable = false;
+                setLbStatus('雲端暫時不可用，將使用本機備用榜', true);
+            }
         }
 
         function restartGame() {
@@ -1140,8 +1828,23 @@
         }
 
         // boot
+        applySbSize(getSbSize());
+        syncFullscreenButton();
         fillPhotoStrips();
         initParticles();
+        syncAdminUI();
+        bootCloudAuth();
+        (function bindAdminEnter() {
+            const adminPw = document.getElementById('adminPassword');
+            if (adminPw) {
+                adminPw.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        submitAdminLogin();
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>
