@@ -36,4 +36,4 @@
 - [三年級「長度」大冒險](https://puddingchau.github.io/dashboard/games/p3-length/)
 - [三年級「公里和毫米」大冒險](https://puddingchau.github.io/dashboard/games/p3-km-mm/)
 - [細胞解密大挑戰](https://puddingchau.github.io/dashboard/games/p6-cell-quiz/)
-- [餵餵小怪獸 · 課堂計分板](https://puddingchau.github.io/dashboard/games/feed-monster/)
+- [餵餵小怪獸 · 共用計分板](https://puddingchau.github.io/dashboard/games/feed-monster/)
