@@ -147,6 +147,13 @@
     color: #246038; border-color: #7ec49a; box-shadow: 0 3px 0 #6aaf86;
   }
   .util-btn.sync.is-on:active { box-shadow: 0 1px 0 #6aaf86; }
+  .util-btn.large-text.is-on {
+    background: linear-gradient(180deg, #ffe28a, #f0b020);
+    color: #5a3a12;
+    border-color: #e0a010;
+    box-shadow: 0 3px 0 #c88810;
+  }
+  .util-btn.large-text.is-on:active { box-shadow: 0 1px 0 #c88810; }
   .util-btn.sync.is-busy { opacity: 0.8; }
   .util-btn.sync.is-error {
     background: #fff0f0; color: #a84848; border-color: #e8a0a0; box-shadow: 0 3px 0 #e0b0b0;
@@ -288,6 +295,10 @@
     padding: clamp(2px, 0.35vw, 5px) clamp(2px, 0.3vw, 4px) clamp(3px, 0.5vw, 6px);
     position: relative; overflow: hidden;
     min-width: 0; min-height: 0; width: auto;
+  }
+  .card-side {
+    display: flex; flex-direction: column; align-items: center;
+    width: 100%; min-width: 0;
   }
   .card[data-group="0"] { --accent: var(--pink); --accent-deep: var(--pink-deep); }
   .card[data-group="1"] { --accent: var(--green); --accent-deep: var(--green-deep); }
@@ -813,7 +824,281 @@
     .card { padding: 1px 2px 2px; border-width: 2px; }
     .board { gap: 3px; }
   }
+
+  /* Classroom large text (課堂大字).
+     Device display preference only — toggled from localStorage, never the shared board.
+     Wide landscape: names, level, and cookie dots move beside the monster so the art,
+     score, and labels can grow while six groups and the +/− buttons stay on screen.
+     Around 1080px tall that is roughly 1.5× monsters and 1.6–2× names/scores.
+     Shorter projectors and phones keep the toggle but use a gentler scale so controls
+     are not clipped. */
+  html.classroom-large .school-name {
+    font-size: clamp(1.35rem, min(2.6vw, 3.6vh), 2.15rem);
+    line-height: 1.05;
+  }
+  html.classroom-large .title-pill {
+    font-size: clamp(1.2rem, min(2.1vw, 3.4vh), 1.9rem);
+    padding: 6px 16px;
+  }
+  html.classroom-large .class-label { font-size: clamp(0.95rem, 1.5vw, 1.25rem); }
+  html.classroom-large .class-input {
+    font-size: clamp(1.05rem, 1.7vw, 1.4rem);
+    padding: 6px 30px 6px 12px;
+    min-width: 5.4em;
+  }
+  html.classroom-large .util-btn,
+  html.classroom-large .util-btn.load,
+  html.classroom-large .util-btn.sync,
+  html.classroom-large .util-btn.large-text {
+    font-size: clamp(0.92rem, 1.2vw, 1.12rem);
+    padding: 7px 11px;
+  }
+  html.classroom-large .shared-chip {
+    font-size: clamp(0.88rem, 1.15vw, 1.05rem);
+    padding: 5px 10px;
+  }
+  html.classroom-large .footer-note { display: none; }
+  html.classroom-large .lottery-footer-btn {
+    font-size: clamp(1.2rem, min(2.4vw, 3.2vh), 1.85rem);
+    min-height: clamp(44px, 6vh, 62px);
+    padding: 8px 28px;
+  }
+  html.classroom-large .toast { font-size: 1.25rem; padding: 14px 28px; }
+  html.classroom-large .modal p { font-size: 1.35rem; }
+  html.classroom-large .modal-btn { font-size: 1.12rem; min-height: 52px; }
+  html.classroom-large .clean-panel-title,
+  html.classroom-large .lottery-title,
+  html.classroom-large .cumul-title { font-size: 1.7rem; }
+  html.classroom-large .lottery-hint,
+  html.classroom-large .clean-panel .clean-note,
+  html.classroom-large .cumul-class { font-size: 1.12rem; }
+  html.classroom-large .lottery-group-btn { font-size: 1.12rem; min-height: 64px; }
+  html.classroom-large .lottery-result { font-size: 1.45rem; }
+  html.classroom-large .cumul-total-card .cn { font-size: 1.05rem; }
+  html.classroom-large .cumul-total-card .ct { font-size: 1.85rem; }
+  html.classroom-large .day-summary { font-size: 1.12rem; }
+  html.classroom-large .corner-cookie { width: min(240px, 22vw); }
+
+  @media (min-width: 801px) and (min-height: 641px) {
+    html.classroom-large .app {
+      max-width: none;
+      padding: 4px 12px 6px;
+    }
+    html.classroom-large .header { margin-bottom: 2px; gap: 4px; }
+    html.classroom-large .footer-bar { margin-top: 2px; }
+    html.classroom-large .board { gap: 6px; min-height: 0; }
+    html.classroom-large .card {
+      display: grid;
+      grid-template-columns: minmax(0, 0.4fr) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) auto;
+      align-items: stretch;
+      justify-items: stretch;
+      column-gap: clamp(4px, 0.6vw, 12px);
+      padding: 3px 6px 4px;
+      min-height: 0;
+    }
+    html.classroom-large .card-side {
+      grid-column: 1;
+      grid-row: 1;
+      align-self: center;
+      justify-self: stretch;
+      width: auto;
+      min-height: 0;
+      gap: 2px;
+      padding-bottom: 38px;
+    }
+    html.classroom-large .group-name {
+      font-size: clamp(1.25rem, min(2.5vw, 4vh), 2.15rem);
+      line-height: 1.12;
+    }
+    html.classroom-large .level-label {
+      font-size: clamp(0.95rem, min(1.45vw, 2.6vh), 1.35rem);
+    }
+    html.classroom-large .progress {
+      grid-column: 1;
+      grid-row: 1;
+      align-self: end;
+      justify-self: center;
+      width: 100%;
+      margin: 0;
+      padding-bottom: 2px;
+    }
+    html.classroom-large .stage {
+      grid-column: 2;
+      grid-row: 1;
+      grid-template-columns: auto minmax(0, 1fr);
+      height: 100%;
+      min-height: 0;
+      align-self: stretch;
+      --monster-size: clamp(120px, 21vh, 236px);
+    }
+    html.classroom-large .monster-wrap {
+      grid-column: 1;
+      /* Fill the stage, but never exceed the classroom target size.
+         min-height: 0 lets a short projector shrink the art instead of
+         covering 抽獎. */
+      width: auto;
+      height: min(var(--monster-size), 100%);
+      max-height: var(--monster-size);
+      aspect-ratio: 1;
+      min-height: 0;
+      min-width: 0;
+      max-width: 100%;
+      align-self: center;
+      justify-self: center;
+    }
+    html.classroom-large .score-badge {
+      grid-column: 2;
+      max-width: 100%;
+      max-height: 100%;
+      padding: clamp(4px, 0.6vh, 10px) clamp(8px, 1vw, 18px);
+    }
+    html.classroom-large .score-num {
+      font-size: clamp(
+        2.4rem,
+        min(22vh, 34cqw, calc(var(--monster-size) * 1.08)),
+        16rem
+      );
+    }
+    html.classroom-large .score-label {
+      font-size: clamp(1rem, min(2.2vw, 2.8vh), 1.7rem);
+      letter-spacing: 0.12em;
+    }
+    html.classroom-large .slot {
+      width: clamp(18px, min(2.6vw, 3.2vh), 36px);
+      height: clamp(18px, min(2.6vw, 3.2vh), 36px);
+    }
+    html.classroom-large .actions { grid-column: 1 / -1; grid-row: 2; min-height: 0; }
+    html.classroom-large .footer-bar { flex-shrink: 0; }
+    html.classroom-large .btn-plus,
+    html.classroom-large .btn-minus {
+      font-size: clamp(1rem, min(1.7vw, 2.5vh), 1.5rem);
+      min-height: clamp(40px, 5.2vh, 56px);
+      border-radius: 12px;
+    }
+    html.classroom-large .btn-minus { min-width: clamp(44px, 5.2vh, 64px); }
+    html.classroom-large .fx-plus { font-size: 2rem; }
+    html.classroom-large .fx-banner { font-size: 1.25rem; padding: 8px 16px; }
+  }
+
+  @media (min-width: 801px) and (min-height: 641px) and (max-height: 900px) {
+    html.classroom-large .stage { --monster-size: clamp(96px, 16vh, 180px); }
+    html.classroom-large .group-name { font-size: clamp(1.15rem, 3.8vh, 1.85rem); }
+    html.classroom-large .level-label { font-size: clamp(0.9rem, 2.6vh, 1.2rem); }
+    html.classroom-large .score-num {
+      font-size: clamp(1.8rem, min(14vh, 26cqw), 8rem);
+    }
+    html.classroom-large .btn-plus,
+    html.classroom-large .btn-minus {
+      font-size: clamp(0.9rem, 2.3vh, 1.2rem);
+      min-height: clamp(34px, 5vh, 46px);
+    }
+    html.classroom-large .slot {
+      width: clamp(14px, 2.6vh, 26px);
+      height: clamp(14px, 2.6vh, 26px);
+    }
+    html.classroom-large .card-side { padding-bottom: 30px; }
+    html.classroom-large .school-name { font-size: clamp(1.15rem, 3.2vh, 1.7rem); }
+    html.classroom-large .title-pill { font-size: clamp(1rem, 2.8vh, 1.45rem); padding: 4px 12px; }
+    html.classroom-large .util-btn,
+    html.classroom-large .util-btn.load,
+    html.classroom-large .util-btn.sync,
+    html.classroom-large .util-btn.large-text { font-size: 0.88rem; padding: 4px 8px; }
+    html.classroom-large .lottery-footer-btn { min-height: 42px; font-size: 1.15rem; }
+  }
+
+  /* Keep 班別 / 登入共用 on one line when the projector is wide but not full HD. */
+  @media (min-width: 801px) and (max-width: 1440px) and (min-height: 641px) {
+    html.classroom-large .class-row { gap: 4px; }
+    html.classroom-large .class-input {
+      font-size: 0.95rem;
+      padding: 4px 22px 4px 8px;
+      min-width: 4.4em;
+    }
+    html.classroom-large .class-label { font-size: 0.85rem; }
+    html.classroom-large .util-btn.load,
+    html.classroom-large .util-btn.sync,
+    html.classroom-large .util-btn.large-text {
+      font-size: 0.8rem;
+      padding: 4px 7px;
+    }
+    html.classroom-large .shared-chip { font-size: 0.75rem; padding: 3px 6px; }
+  }
+
+  @media (max-width: 800px) {
+    html.classroom-large .app { padding: 4px 6px 6px; }
+    html.classroom-large .group-name { font-size: clamp(0.85rem, min(3.8vw, 2.6vh), 1.2rem); }
+    html.classroom-large .level-label { font-size: clamp(0.72rem, min(3vw, 2vh), 0.95rem); }
+    html.classroom-large .stage { --monster-size: clamp(52px, min(30vw, 12vh), 130px); }
+    html.classroom-large .score-num {
+      font-size: clamp(
+        1.45rem,
+        min(11vh, calc(var(--monster-size) * 0.78), calc((100cqw - var(--monster-size)) * 0.32)),
+        5rem
+      );
+    }
+    html.classroom-large .score-label { font-size: clamp(0.8rem, 2.4vw, 1rem); letter-spacing: 0.08em; }
+    html.classroom-large .slot {
+      width: clamp(12px, 3.6vw, 18px);
+      height: clamp(12px, 3.6vw, 18px);
+    }
+    html.classroom-large .btn-plus,
+    html.classroom-large .btn-minus {
+      font-size: clamp(0.72rem, 3.1vw, 0.98rem);
+      min-height: 34px;
+    }
+    html.classroom-large .btn-minus { min-width: 34px; }
+    html.classroom-large .school-name { font-size: clamp(1.05rem, 4.4vw, 1.35rem); }
+    html.classroom-large .title-pill { font-size: clamp(0.95rem, 3.8vw, 1.2rem); padding: 4px 10px; }
+    html.classroom-large .class-input { font-size: 0.95rem; padding: 4px 22px 4px 8px; }
+    html.classroom-large .class-label { font-size: 0.85rem; }
+    html.classroom-large .util-btn,
+    html.classroom-large .util-btn.load,
+    html.classroom-large .util-btn.sync,
+    html.classroom-large .util-btn.large-text { font-size: 0.78rem; padding: 5px 8px; }
+    html.classroom-large .shared-chip { font-size: 0.75rem; padding: 3px 7px; }
+    html.classroom-large .lottery-footer-btn {
+      font-size: 1.05rem;
+      min-height: 42px;
+      padding: 8px 16px;
+    }
+  }
+
+  /* Very short viewports (phone landscape, short windows): stay stacked and gentler. */
+  @media (max-height: 640px) {
+    html.classroom-large .group-name { font-size: clamp(0.72rem, 2.6vh, 1rem); }
+    html.classroom-large .level-label { font-size: clamp(0.62rem, 2.2vh, 0.85rem); }
+    html.classroom-large .stage { --monster-size: clamp(32px, 9vh, 72px); }
+    html.classroom-large .score-num {
+      font-size: clamp(1.05rem, min(10vh, calc((100cqw - var(--monster-size)) * 0.3)), 3.5rem);
+    }
+    html.classroom-large .score-label { font-size: 0.72rem; letter-spacing: 0.06em; }
+    html.classroom-large .slot { width: 11px; height: 11px; }
+    html.classroom-large .btn-plus,
+    html.classroom-large .btn-minus {
+      font-size: 0.68rem;
+      min-height: 22px;
+    }
+    html.classroom-large .btn-minus { min-width: 22px; }
+    html.classroom-large .school-name { font-size: clamp(0.95rem, 4.2vh, 1.2rem); }
+    html.classroom-large .title-pill { font-size: clamp(0.88rem, 3.8vh, 1.1rem); padding: 3px 8px; }
+    html.classroom-large .class-input { font-size: 0.85rem; padding: 3px 18px 3px 8px; }
+    html.classroom-large .util-btn,
+    html.classroom-large .util-btn.load,
+    html.classroom-large .util-btn.sync,
+    html.classroom-large .util-btn.large-text { font-size: 0.72rem; padding: 3px 6px; }
+    html.classroom-large .shared-chip { font-size: 0.68rem; padding: 2px 6px; }
+    html.classroom-large .lottery-footer-btn { min-height: 32px; font-size: 0.92rem; padding: 4px 12px; }
+    html.classroom-large .card-side { padding-bottom: 0; }
+  }
 </style>
+<script>
+  try {
+    if (localStorage.getItem("feed-the-monster-classroom-large") === "1") {
+      document.documentElement.classList.add("classroom-large");
+    }
+  } catch (e) { /* display preference only */ }
+</script>
 </head>
 <body>
   <div class="bg-layer" aria-hidden="true">
@@ -864,6 +1149,7 @@
           </select>
           <button type="button" class="util-btn load" id="btnLoadRecords" aria-label="載入記錄">📂 載入記錄</button>
           <span class="shared-chip" title="登入之後，任何 Google 帳戶都係同一塊計分板">共用計分板</span>
+          <button type="button" class="util-btn large-text" id="btnLargeText" aria-pressed="false" aria-label="開啟課堂大字" title="放大名稱、分數同按鈕，方便課堂投影。只影響呢部電腦。">課堂大字</button>
           <button type="button" class="util-btn sync" id="btnCloudSync" aria-label="用 Google 登入共用計分板" title="用 Google 登入。登入之後，任何 Google 帳戶都係同一塊共用計分板">登入共用</button>
         </div>
       </div>
@@ -1162,8 +1448,10 @@
     card.dataset.group = String(i);
     card.setAttribute("aria-label", state.names[i]);
     card.innerHTML = `
-      <div class="group-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="組別名稱">${escapeHtml(state.names[i])}</div>
-      <div class="level-label" data-level-label></div>
+      <div class="card-side">
+        <div class="group-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="組別名稱">${escapeHtml(state.names[i])}</div>
+        <div class="level-label" data-level-label></div>
+      </div>
       <div class="stage">
         <div class="fx-layer" data-fx></div>
         <div class="monster-wrap" data-monster-wrap>
@@ -1704,6 +1992,36 @@
     btnSound.textContent = state.soundOn ? "🔊 音效開" : "🔇 音效關";
     btnSound.setAttribute("aria-pressed", state.soundOn ? "true" : "false");
   }
+  /* Per-device projection size. Not part of state, localStorage board cache, or shared/feed-monster. */
+  const LARGE_TEXT_KEY = "feed-the-monster-classroom-large";
+  const btnLargeText = document.getElementById("btnLargeText");
+  function readLargeTextPref() {
+    try { return localStorage.getItem(LARGE_TEXT_KEY) === "1"; }
+    catch (e) { return false; }
+  }
+  function writeLargeTextPref(on) {
+    try {
+      if (on) localStorage.setItem(LARGE_TEXT_KEY, "1");
+      else localStorage.removeItem(LARGE_TEXT_KEY);
+    } catch (e) { /* keep the toggle for this visit if storage is blocked */ }
+  }
+  function applyLargeText(on) {
+    document.documentElement.classList.toggle("classroom-large", !!on);
+    if (!btnLargeText) return;
+    btnLargeText.classList.toggle("is-on", !!on);
+    btnLargeText.setAttribute("aria-pressed", on ? "true" : "false");
+    btnLargeText.textContent = on ? "大字中" : "課堂大字";
+    btnLargeText.setAttribute("aria-label", on ? "關閉課堂大字" : "開啟課堂大字");
+    btnLargeText.title = on
+      ? "還原一般大小。只影響呢部電腦。"
+      : "放大名稱、分數同按鈕，方便課堂投影。只影響呢部電腦。";
+  }
+  applyLargeText(readLargeTextPref());
+  btnLargeText.addEventListener("click", () => {
+    const next = !document.documentElement.classList.contains("classroom-large");
+    writeLargeTextPref(next);
+    applyLargeText(next);
+  });
   btnSound.addEventListener("click", () => {
     state.soundOn = !state.soundOn;
     updateSoundBtn();
@@ -2598,6 +2916,7 @@
   for (let i = 0; i < GROUP_COUNT; i++) board.appendChild(buildCard(i));
   renderAll();
   updateSoundBtn();
+  applyLargeText(readLargeTextPref());
   document.addEventListener("pointerdown", () => ensureAudio(), { once: true });
   startCloudSync();
 })();
