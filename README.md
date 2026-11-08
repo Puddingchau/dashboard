@@ -1,6 +1,6 @@
 # dashboard
 
-布丁仔個人工作台（GitHub Pages）。
+小布丁個人工作台（GitHub Pages）。
 
 ## 只睇連結
 

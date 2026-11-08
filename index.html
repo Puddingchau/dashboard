@@ -127,7 +127,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="description" content="Fred Chau 個人流動儀表板" />
-  <title>布丁仔</title>
+  <title>小布丁</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link id="dash-fonts" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
@@ -3705,7 +3705,7 @@
           <div class="header-brand-main">
             <div class="header-brand-icon btn-theme-primary" aria-hidden="true">⚙</div>
             <div class="header-brand-text">
-              <h1 class="font-display">布丁仔</h1>
+              <h1 class="font-display">小布丁</h1>
               <p class="header-subtitle">個人工作台</p>
             </div>
           </div>
@@ -3991,7 +3991,7 @@
         <p id="shareOwnerStatus" aria-live="polite"></p>
         <div id="shareToast" class="share-toast" role="status"></div>
       </div>
-      <p class="footer-note">本機儲存；列表經 Firebase 自動同步 · 布丁仔</p>
+      <p class="footer-note">本機儲存；列表經 Firebase 自動同步 · 小布丁</p>
     </footer>
   </div>
 
@@ -11951,17 +11951,32 @@ function bindFirebaseForegroundSync() {
   });
 }
 
+function ensureFirebasePersistence() {
+  try {
+    const auth = firebase.auth();
+    const mode = firebase.auth.Auth && firebase.auth.Auth.Persistence && firebase.auth.Auth.Persistence.LOCAL;
+    if (auth && mode && typeof auth.setPersistence === 'function') return auth.setPersistence(mode);
+  } catch (e) {}
+  return Promise.resolve();
+}
+
 function firebaseSignIn() {
   if (VIEW_ONLY || !firebaseSdkReady()) return;
   beginOauthUi();
   const provider = new firebase.auth.GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-  firebase.auth().signInWithPopup(provider).then(function () {
+  // select_account forces the account page on every sign-in, even when this
+  // browser already has Fred's Google session. login_hint picks that account;
+  // Google shows a page only when the session is actually gone.
+  provider.setCustomParameters({ login_hint: GCAL_ACCOUNT_EMAIL });
+  const auth = firebase.auth();
+  ensureFirebasePersistence().then(function () {
+    return auth.signInWithPopup(provider);
+  }).then(function () {
     endOauthUi();
   }).catch(function (err) {
     const code = err && err.code;
     if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
-      firebase.auth().signInWithRedirect(provider).then(function () {
+      auth.signInWithRedirect(provider).then(function () {
         endOauthUi();
       }).catch(function (err2) {
         endOauthUi();
@@ -12027,10 +12042,14 @@ function startFirebaseSync() {
       if (!firebase.apps.length) firebase.initializeApp(FIREBASE_WEB_CONFIG);
       const db = firebase.firestore();
       try { db.settings({ ignoreUndefinedProperties: true }); } catch (e) {}
-      firebase.auth().getRedirectResult().catch(function (err) {
+      const auth = firebase.auth();
+      // LOCAL keeps the Firebase user in this browser. A cold open restores it
+      // here and does not send the phone to accounts.google.com.
+      ensureFirebasePersistence().then(function () {
+      auth.getRedirectResult().catch(function (err) {
         if (err && err.code && err.code !== 'auth/no-auth-event') noteFirebaseError(err);
       });
-      firebase.auth().onAuthStateChanged(function (user) {
+      auth.onAuthStateChanged(function (user) {
         firebaseAuthBootSeen = true;
         firebaseAuthUser = user || null;
         if (!user) {
@@ -12051,6 +12070,7 @@ function startFirebaseSync() {
         if (firebaseDirtyAt()) queueFirebasePush();
         Promise.resolve(pending).then(ready, ready);
       });
+      }).catch(function () { ready(); });
     } catch (e) {
       noteFirebaseError(e);
       if (gdriveAccessToken) scheduleGcalSync();
@@ -12148,10 +12168,11 @@ function storeGdriveToken(token, expiresIn) {
   gdriveAccessToken = token || null;
   try {
     if (token) {
-      sessionStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, token);
       const secs = Number(expiresIn) || 3600;
       const exp = Date.now() + Math.max(120, secs - 90) * 1000;
-      localStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, JSON.stringify({ token: token, exp: exp }));
+      const saved = JSON.stringify({ token: token, exp: exp });
+      sessionStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, saved);
+      localStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, saved);
     } else {
       sessionStorage.removeItem(GDRIVE_TOKEN_SESSION_KEY);
       localStorage.removeItem(GDRIVE_TOKEN_SESSION_KEY);
@@ -12159,33 +12180,37 @@ function storeGdriveToken(token, expiresIn) {
   } catch (e) {}
 }
 
-function restoreGdriveTokenFromSession() {
+/** Unexpired Calendar access token from one storage, or a legacy raw string. */
+function takeStoredGcalToken(storage) {
+  let raw = '';
+  try { raw = storage.getItem(GDRIVE_TOKEN_SESSION_KEY) || ''; } catch (e) { return ''; }
+  if (!raw) return '';
+  if (raw.charCodeAt(0) !== 123) return raw;
   try {
-    const t = sessionStorage.getItem(GDRIVE_TOKEN_SESSION_KEY);
-    if (t) {
-      gdriveAccessToken = t;
-      try {
-        if (!localStorage.getItem(GDRIVE_TOKEN_SESSION_KEY)) {
-          const exp = Date.now() + (3600 - 90) * 1000;
-          localStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, JSON.stringify({ token: t, exp: exp }));
-        }
-      } catch (e2) {}
-      return gdriveAccessToken;
-    }
-  } catch (e) {}
-  try {
-    const raw = localStorage.getItem(GDRIVE_TOKEN_SESSION_KEY);
-    if (!raw) return gdriveAccessToken;
-    const saved = raw.charAt(0) === '{' ? JSON.parse(raw) : null;
-    const token = saved && saved.token ? saved.token : (!saved ? raw : '');
+    const saved = JSON.parse(raw);
+    const token = saved && saved.token ? String(saved.token) : '';
     const exp = saved && saved.exp ? Number(saved.exp) : 0;
-    if (token && (!saved || exp > Date.now())) {
-      gdriveAccessToken = token;
-      try { sessionStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, token); } catch (e2) {}
-    } else if (saved) {
-      localStorage.removeItem(GDRIVE_TOKEN_SESSION_KEY);
-    }
-  } catch (e3) {}
+    if (token && exp > Date.now()) return token;
+  } catch (e2) {}
+  try { storage.removeItem(GDRIVE_TOKEN_SESSION_KEY); } catch (e3) {}
+  return '';
+}
+
+function restoreGdriveTokenFromSession() {
+  let token = '';
+  try { token = takeStoredGcalToken(sessionStorage) || ''; } catch (e) {}
+  if (!token) {
+    try { token = takeStoredGcalToken(localStorage) || ''; } catch (e2) {}
+  }
+  if (token) {
+    gdriveAccessToken = token;
+    try {
+      if (!localStorage.getItem(GDRIVE_TOKEN_SESSION_KEY)) {
+        const exp = Date.now() + (3600 - 90) * 1000;
+        localStorage.setItem(GDRIVE_TOKEN_SESSION_KEY, JSON.stringify({ token: token, exp: exp }));
+      }
+    } catch (e3) {}
+  }
   return gdriveAccessToken;
 }
 
@@ -12540,22 +12565,23 @@ function gcalAuthFailure(e) {
 
 async function refreshGcalAccessToken() {
   if (VIEW_ONLY || !gdriveHasClientId()) return false;
-  // A Firebase or Calendar popup is already up, or the last silent popup was dismissed.
-  // Another prompt:'' here is the flash loop.
+  // A Firebase or Calendar popup is already up, or the last silent attempt was dismissed.
+  // Another one here is the flash loop.
   if (oauthPopupOpen) return false;
   if (Date.now() < gcalSilentRefreshNotBefore) return false;
   if (refreshGcalAccessToken.inflight) return refreshGcalAccessToken.inflight;
   refreshGcalAccessToken.inflight = new Promise(function (resolve) {
     let settled = false;
     let opened = false;
+    let started = false;
     let restore = function () {};
     function finish(ok) {
       if (settled) return;
       settled = true;
       gcalSilentAuth = false;
       try { restore(); } catch (e) {}
-      if (opened) endOauthUi();
-      if (!ok && opened) gcalSilentRefreshNotBefore = Date.now() + 30000;
+      if (started) endOauthUi();
+      if (!ok && started) gcalSilentRefreshNotBefore = Date.now() + 30000;
       refreshGcalAccessToken.inflight = null;
       refreshGcalAccessToken.finish = null;
       resolve(!!ok);
@@ -12586,17 +12612,31 @@ async function refreshGcalAccessToken() {
       }
     };
     gcalSilentAuth = true;
-    opened = true;
+    opened = false;
+    started = true;
     beginOauthUi();
+    const origOpen = window.open;
+    // GIS drops an empty prompt (it is falsy), so Google then shows the full
+    // "繼續使用" sign-in page. prompt 'none' is actually sent. If this phone
+    // turns the popup into the current tab, refuse it — that is the page Fred sees.
+    window.open = function () {
+      const win = origOpen.apply(window, arguments);
+      if (!win || win === window) return null;
+      opened = true;
+      return win;
+    };
     try {
       client.requestAccessToken({
-        prompt: '',
+        prompt: 'none',
         login_hint: GCAL_ACCOUNT_EMAIL,
         scope: GCAL_SCOPE,
-        include_granted_scopes: !!ENABLE_DRIVE_SYNC
+        include_granted_scopes: !!ENABLE_DRIVE_SYNC,
+        enable_granular_consent: false
       });
     } catch (e) {
       finish(false);
+    } finally {
+      window.open = origOpen;
     }
     setTimeout(function () { finish(false); }, 8000);
   });
@@ -13271,7 +13311,12 @@ function ensureGdriveTokenClient() {
         if (ENABLE_DRIVE_SYNC) setGdriveStatus('已連接', '列表由 Firebase 自動同步');
         scheduleGcalSync();
       } else if (resp && resp.error) {
-        if (ENABLE_DRIVE_SYNC) setGdriveStatus('授權失敗');
+        const errName = String(resp.error);
+        // prompt 'none' reports these when the browser has no usable session.
+        // They are not a failed tap, so they must not toast or open Google again.
+        if (errName === 'interaction_required' || errName === 'login_required' || errName === 'consent_required') {
+          console.warn('Calendar silent auth needs a tap', resp.error);
+        } else if (ENABLE_DRIVE_SYNC) setGdriveStatus('授權失敗');
         else { try { showShareToast('Calendar 授權失敗'); } catch (e) {} }
         console.warn('Google auth error', resp);
       }
@@ -13338,7 +13383,7 @@ function applyDrivePauseChrome() {
   const syncBtn = document.getElementById('gdriveSyncNowBtn');
   if (syncBtn) syncBtn.hidden = true;
   const note = document.querySelector('.footer-note');
-  if (note) note.textContent = '本機儲存；列表經 Firebase 自動同步 · 布丁仔';
+  if (note) note.textContent = '本機儲存；列表經 Firebase 自動同步 · 小布丁';
 }
 
 function bindGdriveUi() {
@@ -13794,7 +13839,7 @@ function initViewOnlyChrome() {
     btn.setAttribute('aria-disabled', 'true');
   });
   const note = document.querySelector('.footer-note');
-  if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 布丁仔';
+  if (note) note.textContent = '只睇模式 · 改動唔會儲存 · 小布丁';
 }
 
 /** Share / ?view=1, lock screen and unlocked dashboard. Always rain-cafe / 雨窗咖啡.

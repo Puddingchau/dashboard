@@ -24,7 +24,7 @@ function extractFn(html, name) {
 }
 
 test('index.html and dashboard.html share the login-settle helpers', () => {
-  for (const name of ['foregroundSyncPlan', 'dashboardVisibleSig', 'tryGdriveSilentRestore', 'refreshGcalAccessToken', 'scheduleGcalSync', 'holdDashBoot', 'reRenderAfterSyncNow', 'startFirebaseSync']) {
+  for (const name of ['foregroundSyncPlan', 'dashboardVisibleSig', 'tryGdriveSilentRestore', 'refreshGcalAccessToken', 'scheduleGcalSync', 'holdDashBoot', 'reRenderAfterSyncNow', 'startFirebaseSync', 'ensureFirebasePersistence', 'firebaseSignIn', 'takeStoredGcalToken', 'storeGdriveToken', 'restoreGdriveTokenFromSession']) {
     assert.equal(extractFn(indexHtml, name), extractFn(dashHtml, name), name);
   }
 });
@@ -75,6 +75,64 @@ test('open stays covered until the first pull, and the root scroller does not bo
     assert.match(html, /waitDashBootHolds\(2500\)/);
     assert.match(extractFn(html, 'reRenderAfterSyncNow'), /minHeight/);
   }
+});
+
+test('user-visible brand is 小布丁', () => {
+  for (const html of [indexHtml, dashHtml]) {
+    const visible = html.replace(/布丁仔-sync\.json/g, '');
+    assert.equal(visible.includes('布丁仔'), false);
+    assert.match(html, /<title>小布丁<\/title>/);
+    assert.match(html, /<h1 class="font-display">小布丁<\/h1>/);
+    assert.match(html, /本機儲存；列表經 Firebase 自動同步 · 小布丁/);
+    assert.match(html, /只睇模式 · 改動唔會儲存 · 小布丁/);
+    assert.match(html, /const GDRIVE_SYNC_FILENAME = '布丁仔-sync\.json';/);
+  }
+});
+
+test('cold open restores Firebase and Calendar without the Google sign-in page', () => {
+  for (const html of [indexHtml, dashHtml]) {
+    const refresh = extractFn(html, 'refreshGcalAccessToken');
+    assert.match(refresh, /prompt:\s*'none'/);
+    assert.equal(refresh.includes("prompt: ''"), false);
+    assert.equal(refresh.includes("prompt: 'consent'"), false);
+    assert.equal(refresh.includes("prompt: 'select_account'"), false);
+    assert.match(refresh, /win === window/);
+    assert.match(refresh, /if \(VIEW_ONLY \|\| !gdriveHasClientId\(\)\) return false;/);
+    const signIn = extractFn(html, 'firebaseSignIn');
+    assert.match(signIn, /if \(VIEW_ONLY \|\| !firebaseSdkReady\(\)\) return;/);
+    assert.match(signIn, /setCustomParameters\(\{ login_hint: GCAL_ACCOUNT_EMAIL \}\)/);
+    assert.equal(signIn.includes("prompt: 'select_account'"), false);
+    assert.match(signIn, /ensureFirebasePersistence\(\)/);
+    assert.match(extractFn(html, 'ensureFirebasePersistence'), /Persistence\.LOCAL/);
+    assert.match(extractFn(html, 'startFirebaseSync'), /ensureFirebasePersistence\(\)/);
+    assert.match(extractFn(html, 'startFirebaseSync'), /if \(VIEW_ONLY\) return Promise\.resolve\(\);/);
+    assert.match(extractFn(html, 'tryGdriveSilentRestore'), /if \(VIEW_ONLY\) return;/);
+    assert.match(html, /const ENABLE_DRIVE_SYNC = false;/);
+  }
+});
+
+test('an expired Calendar token is dropped and a live one is reused', () => {
+  const src = extractFn(indexHtml, 'takeStoredGcalToken');
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(
+    'const GDRIVE_TOKEN_SESSION_KEY = "dash-hub-gdrive-token";\n' + src + '\nthis.take = takeStoredGcalToken;\n',
+    context
+  );
+  const key = 'dash-hub-gdrive-token';
+  const mem = {
+    data: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this.data, k) ? this.data[k] : null; },
+    removeItem(k) { delete this.data[k]; }
+  };
+  mem.data[key] = JSON.stringify({ token: 'ya29.fresh', exp: Date.now() + 60000 });
+  assert.equal(context.take(mem), 'ya29.fresh');
+  assert.equal(mem.data[key].includes('ya29.fresh'), true);
+  mem.data[key] = JSON.stringify({ token: 'ya29.stale', exp: Date.now() - 1000 });
+  assert.equal(context.take(mem), '');
+  assert.equal(Object.prototype.hasOwnProperty.call(mem.data, key), false);
+  mem.data[key] = 'ya29.legacy';
+  assert.equal(context.take(mem), 'ya29.legacy');
 });
 
 test('Drive file sync stays off and default filters stay 今天 / 個人活動', () => {
