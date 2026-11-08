@@ -285,15 +285,25 @@
   .level-label .lv-num { color: var(--accent-deep); }
 
   .stage {
-    flex: 1 1 auto; width: 100%; display: flex; align-items: center; justify-content: center;
+    /* Monster size is shared so the score badge can scale beside it. */
+    --monster-size: clamp(48px, min(28vw, 18vh), 160px);
+    container-type: inline-size;
+    flex: 1 1 auto; width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    justify-items: center;
+    column-gap: clamp(4px, 0.7vw, 12px);
     position: relative; min-height: 0;
     margin: 0; padding: 0;
   }
   .monster-wrap {
     position: relative;
+    grid-column: 2;
+    grid-row: 1;
     /* Scale with both viewport axes; 2-col layout allows wider monsters */
-    width: clamp(48px, min(28vw, 18vh), 160px);
-    height: clamp(48px, min(28vw, 18vh), 160px);
+    width: var(--monster-size);
+    height: var(--monster-size);
     display: flex; align-items: center; justify-content: center;
     transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
     transform-origin: center bottom;
@@ -388,7 +398,57 @@
   .slot.empty::after {
     content: ""; width: 7px; height: 7px; border-radius: 50%; background: #c8b8a0; opacity: 0.5;
   }
-  .score-text { font-size: clamp(0.5rem, 1.15vw, 0.78rem); font-weight: 700; color: var(--ink-soft); margin: 0 0 clamp(1px, 0.35vw, 4px); white-space: nowrap; line-height: 1.1; }
+  /* Large cookie count beside the monster: the digit is the hero, the label stays small.
+     Width tracks the free column next to the art so the monster and buttons keep their size. */
+  .score-badge {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: center;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: clamp(2px, 0.45vh, 8px) clamp(6px, 0.9vw, 16px) clamp(3px, 0.55vh, 9px);
+    border-radius: clamp(14px, 1.5vw, 26px);
+    background: linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--accent) 72%, #fff) 100%);
+    border: clamp(2px, 0.32vw, 4px) solid var(--accent-deep);
+    box-shadow:
+      0 clamp(2px, 0.4vh, 5px) 0 color-mix(in srgb, var(--accent-deep) 62%, #3a2418),
+      0 8px 16px rgba(90, 58, 42, 0.1);
+    line-height: 1;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .score-num {
+    font-size: clamp(
+      1.35rem,
+      min(
+        14vh,
+        calc(var(--monster-size) * 0.86),
+        calc((100cqw - var(--monster-size)) * 0.28)
+      ),
+      8.75rem
+    );
+    font-weight: 900;
+    line-height: 0.78;
+    letter-spacing: -0.04em;
+    color: #3a2418;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .score-label {
+    margin-top: 0.12em;
+    font-size: clamp(0.68rem, min(2.2vw, 2vh), 1.2rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    color: color-mix(in srgb, var(--accent-deep) 42%, #3a2418);
+    white-space: nowrap;
+  }
   .actions { display: flex; gap: clamp(2px, 0.5vw, 6px); width: 100%; padding: 0; }
   .btn-plus {
     flex: 1; appearance: none; border: none; min-width: 0;
@@ -594,13 +654,9 @@
       border-width: 3px;
       border-radius: 12px;
     }
-    .monster-wrap {
-      width: clamp(52px, min(26vw, 16vh), 140px);
-      height: clamp(52px, min(26vw, 16vh), 140px);
-    }
+    .stage { --monster-size: clamp(52px, min(26vw, 16vh), 140px); }
     .group-name { font-size: clamp(0.7rem, min(2vw, 2.4vh), 1.15rem); }
     .level-label { font-size: clamp(0.55rem, min(1.4vw, 1.8vh), 0.8rem); }
-    .score-text { font-size: clamp(0.55rem, min(1.4vw, 1.8vh), 0.85rem); margin-bottom: 2px; }
     .slot {
       width: clamp(10px, min(2.2vw, 2.4vh), 18px);
       height: clamp(10px, min(2.2vw, 2.4vh), 18px);
@@ -649,12 +705,11 @@
       box-shadow: 0 2px 0 color-mix(in srgb, var(--accent) 55%, #0000);
       padding: 2px 2px 4px;
     }
-    .monster-wrap {
-      width: clamp(48px, min(30vw, 13vh), 110px);
-      height: clamp(48px, min(30vw, 13vh), 110px);
-    }
+    .stage { --monster-size: clamp(48px, min(30vw, 13vh), 110px); }
     .group-name { font-size: clamp(0.62rem, min(3vw, 2.2vh), 0.9rem); }
-    .level-label, .score-text { font-size: clamp(0.5rem, min(2.4vw, 1.8vh), 0.7rem); }
+    .level-label { font-size: clamp(0.5rem, min(2.4vw, 1.8vh), 0.7rem); }
+    .score-badge { padding: 2px 6px 3px; border-radius: 12px; }
+    .score-label { letter-spacing: 0.06em; }
     .slot { width: clamp(10px, 3.5vw, 14px); height: clamp(10px, 3.5vw, 14px); border-width: 1px; }
     .slot.empty::after { width: 4px; height: 4px; }
     .btn-plus, .btn-minus {
@@ -680,10 +735,7 @@
     .app { padding: 3px 3px 5px; }
     .board { gap: 3px; }
     .card { border-radius: 8px; padding: 1px 1px 3px; }
-    .monster-wrap {
-      width: clamp(42px, min(32vw, 12vh), 96px);
-      height: clamp(42px, min(32vw, 12vh), 96px);
-    }
+    .stage { --monster-size: clamp(42px, min(32vw, 12vh), 96px); }
     .group-name { font-size: 0.62rem; }
     .btn-plus, .btn-minus { min-height: 24px; font-size: 0.52rem; }
     .lottery-footer-btn { min-height: 36px; font-size: 0.88rem; padding: 6px 10px; }
@@ -707,10 +759,7 @@
       font-size: clamp(0.9rem, 2.6vh, 1.15rem);
       box-shadow: 0 3px 0 #c86020, 0 6px 14px rgba(200, 100, 40, 0.28);
     }
-    .monster-wrap {
-      width: clamp(44px, min(24vw, 14vh), 120px);
-      height: clamp(44px, min(24vw, 14vh), 120px);
-    }
+    .stage { --monster-size: clamp(44px, min(24vw, 14vh), 120px); }
     .btn-plus, .btn-minus { min-height: clamp(22px, 4vh, 32px); }
     .hills { height: 14%; }
     .corner-cookie { opacity: 0.35; width: min(120px, 16vw); }
@@ -720,12 +769,10 @@
     .header-left { gap: 2px; }
     .class-row { gap: 4px; }
     .school-name { font-size: clamp(0.85rem, 3vh, 1.15rem); }
-    .monster-wrap {
-      width: clamp(40px, min(22vw, 11vh), 96px);
-      height: clamp(40px, min(22vw, 11vh), 96px);
-    }
+    .stage { --monster-size: clamp(40px, min(22vw, 11vh), 96px); }
     .group-name { font-size: clamp(0.55rem, 2vh, 0.85rem); }
-    .level-label, .score-text { font-size: clamp(0.45rem, 1.6vh, 0.65rem); }
+    .level-label { font-size: clamp(0.45rem, 1.6vh, 0.65rem); }
+    .score-badge { padding: 1px 5px 2px; border-width: 2px; }
     .slot { width: 10px; height: 10px; }
     .progress { gap: 2px; }
     .btn-plus, .btn-minus {
@@ -1091,9 +1138,12 @@
           <div data-crown-host></div>
           <div data-sprite></div>
         </div>
+        <div class="score-badge" data-score-badge role="img">
+          <span class="score-num" data-score-num>0</span>
+          <span class="score-label">餅乾</span>
+        </div>
       </div>
       <div class="progress" data-progress aria-hidden="true"></div>
-      <div class="score-text" data-score-text></div>
       <div class="actions">
         <button type="button" class="btn-plus" data-plus aria-label="加一餅乾">＋1 餅乾</button>
         <button type="button" class="btn-minus" data-minus aria-label="減一餅乾">−1</button>
@@ -1160,7 +1210,9 @@
     const score = state.todayScores[i];
     const lv = levelOf(score);
     card.querySelector("[data-level-label]").innerHTML = `<span class="lv-num">Lv.${lv}</span> ${LEVEL_NAMES[lv]}`;
-    card.querySelector("[data-score-text]").textContent = `餅乾 × ${score}`;
+    const scoreNum = card.querySelector("[data-score-num]");
+    scoreNum.textContent = String(score);
+    card.querySelector("[data-score-badge]").setAttribute("aria-label", `餅乾 ${score}`);
     renderSprite(i);
     renderProgress(i);
     const plusBtn = card.querySelector("[data-plus]");
