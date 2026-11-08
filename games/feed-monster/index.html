@@ -91,7 +91,7 @@
     white-space: nowrap;
     text-shadow: 0 1px 0 rgba(255,255,255,0.7);
   }
-  .class-row { display: flex; align-items: center; gap: 6px; }
+  .class-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .class-label { font-size: 0.88rem; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
   .class-input {
     appearance: none; -webkit-appearance: none;
@@ -138,6 +138,19 @@
   }
   .util-btn.load:active { box-shadow: 0 1px 0 #a87818; }
   .class-row .util-btn.load { flex-shrink: 0; }
+  .util-btn.sync {
+    background: #fff; color: var(--ink-soft);
+    font-size: 0.72rem; padding: 6px 10px;
+  }
+  .util-btn.sync.is-on {
+    background: linear-gradient(180deg, #e7f8ee, #b7e7c8);
+    color: #246038; border-color: #7ec49a; box-shadow: 0 3px 0 #6aaf86;
+  }
+  .util-btn.sync.is-on:active { box-shadow: 0 1px 0 #6aaf86; }
+  .util-btn.sync.is-busy { opacity: 0.8; }
+  .util-btn.sync.is-error {
+    background: #fff0f0; color: #a84848; border-color: #e8a0a0; box-shadow: 0 3px 0 #e0b0b0;
+  }
   .util-btn:hover { filter: brightness(1.04); }
   .util-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #e0c8b0; }
   .util-btn.record:active { box-shadow: 0 1px 0 #3a78a8; }
@@ -789,6 +802,7 @@
             <option value="6E">6E</option>
           </select>
           <button type="button" class="util-btn load" id="btnLoadRecords" aria-label="載入記錄">📂 載入記錄</button>
+          <button type="button" class="util-btn sync" id="btnCloudSync" aria-label="登入同步分數" title="用 Google 登入，喺其他電腦睇到同一分數">登入同步</button>
         </div>
       </div>
       <div class="title-pill" role="heading" aria-level="1">🍪 餵餵小怪獸 🍪</div>
@@ -870,6 +884,9 @@
     </div>
   </div>
 
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js"></script>
 <script>
 (function () {
   "use strict";
@@ -901,7 +918,8 @@
     names: [...DEFAULT_NAMES],
     todayScores: Array(GROUP_COUNT).fill(0),
     soundOn: true,
-    cumulativeByClass: {}
+    cumulativeByClass: {},
+    updatedAt: 0
   };
 
   let audioCtx = null;
@@ -985,23 +1003,23 @@
       if (Array.isArray(data.todayScores)) state.todayScores = normalizeScores(data.todayScores);
       else if (Array.isArray(data.scores)) state.todayScores = normalizeScores(data.scores);
       if (typeof data.soundOn === "boolean") state.soundOn = data.soundOn;
-      if (data.cumulativeByClass && typeof data.cumulativeByClass === "object") {
+      if (data.cumulativeByClass && typeof data.cumulativeByClass === "object" && !Array.isArray(data.cumulativeByClass)) {
         state.cumulativeByClass = data.cumulativeByClass;
       }
+      if (data.updatedAt != null) state.updatedAt = tsMillis(data.updatedAt);
     } catch (e) { /* ignore */ }
   }
 
-  function persist() {
+  function persist(opts) {
+    opts = opts || {};
+    if (!opts.keepTimestamp) state.updatedAt = Date.now();
+    const payload = serializeState();
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        className: state.className,
-        names: state.names,
-        todayScores: state.todayScores,
-        soundOn: state.soundOn,
-        cumulativeByClass: state.cumulativeByClass
-      }));
-      return true;
-    } catch (e) { return false; }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      if (cloudUser && cloudUser.uid) writeUidCache(cloudUser.uid, payload);
+    } catch (e) { /* keep playing if storage is full */ }
+    if (!opts.localOnly) scheduleCloudPush();
+    return true;
   }
 
   function showToast(msg) {
@@ -1576,6 +1594,7 @@
         lotteryResult.textContent = "已經吃飽了";
       }
       lotteryBusy = false;
+      flushDeferredCloud();
       btnSpinLottery.hidden = true;
       btnSpinAgain.hidden = false;
       // re-enable group picks for next round except full
@@ -1677,6 +1696,793 @@
     persist();
   });
 
+  /* Cross-device score sync.
+     Firestore: users/{uid}/games/feed-monster
+     (dashboard sync stays at users/{uid}/dashboard/sync).
+     localStorage remains the offline cache. Signed-out play never touches Firebase.
+     First sign-in on this browser will not replace a real cloud board with an empty local one.
+     Legacy boards (no updatedAt) union cumulative days; after that, newer updatedAt wins. */
+  const FIREBASE_WEB_CONFIG = {
+    apiKey: "AIzaSyBwdjc5On7RXwNpMgyvR5AJPqNwBjfc0YI",
+    authDomain: "pudding-dashboard-5d8c8.firebaseapp.com",
+    projectId: "pudding-dashboard-5d8c8",
+    storageBucket: "pudding-dashboard-5d8c8.firebasestorage.app",
+    messagingSenderId: "1033223249070",
+    appId: "1:1033223249070:web:ee4f9596490c6d4a4e613f",
+    measurementId: "G-5FNPG7D0GH"
+  };
+  const CLOUD_PUSH_MS = 650;
+  const CLOUD_FOCUS_DEBOUNCE_MS = 700;
+  const CLOUD_FOCUS_GAP_MS = 8000;
+  const CLOUD_UID_KEY = STORAGE_KEY + "-cloud-uid";
+
+  let cloudUser = null;
+  let cloudDirty = false;
+  let cloudPushTimer = null;
+  let cloudFocusTimer = null;
+  let cloudInFlight = false;
+  let cloudPushAgain = false;
+  let cloudPullAgain = false;
+  let cloudLastPullAt = 0;
+  let cloudUiMode = "";
+  let cloudSawAuth = false;
+  let cloudMergeUid = "";
+  let cloudOauthQuietUntil = 0;
+  let cloudToastAt = 0;
+  let cloudLifecycleBound = false;
+  let cloudPersistenceReady = Promise.resolve();
+  let applyingCloud = false;
+  let deferredCloudPayload = null;
+
+  /* ==== cloud merge ==== */
+  function tsMillis(v) {
+    if (v == null || v === "") return 0;
+    if (typeof v === "number" && isFinite(v)) return v > 0 ? v : 0;
+    if (typeof v === "string" && isFinite(Number(v))) {
+      const n = Number(v);
+      return n > 0 ? n : 0;
+    }
+    if (typeof v === "object") {
+      if (typeof v.toMillis === "function") {
+        try {
+          const n = v.toMillis();
+          return isFinite(n) && n > 0 ? n : 0;
+        } catch (e) { return 0; }
+      }
+      if (typeof v.seconds === "number") {
+        const n = v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
+        return n > 0 ? n : 0;
+      }
+    }
+    return 0;
+  }
+
+  function normalizeCumulEntry(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const seen = {};
+    const days = [];
+    const daysIn = Array.isArray(raw.days) ? raw.days : [];
+    daysIn.forEach(function (d) {
+      if (!d || typeof d !== "object") return;
+      const date = typeof d.date === "string" ? d.date.trim() : "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || seen[date]) return;
+      seen[date] = true;
+      const day = { date: date, scores: normalizeScores(d.scores) };
+      if (Array.isArray(d.names)) day.names = normalizeNames(d.names);
+      days.push(day);
+    });
+    days.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+    const summed = Array(GROUP_COUNT).fill(0);
+    days.forEach(function (d) {
+      for (let i = 0; i < GROUP_COUNT; i++) summed[i] += d.scores[i];
+    });
+    const given = Array.isArray(raw.totals) ? raw.totals : [];
+    const totals = days.length
+      ? summed
+      : Array.from({ length: GROUP_COUNT }, function (_, i) { return Math.max(0, Number(given[i]) || 0); });
+    if (!days.length && totals.every(function (n) { return n === 0; })) return null;
+    return { totals: totals, days: days };
+  }
+
+  function cumulMapForSave(map) {
+    const out = {};
+    if (!map || typeof map !== "object" || Array.isArray(map)) return out;
+    Object.keys(map).sort().forEach(function (key) {
+      const entry = normalizeCumulEntry(map[key]);
+      if (entry) out[String(key)] = entry;
+    });
+    return out;
+  }
+
+  function normalizePayload(raw) {
+    const data = raw && typeof raw === "object" ? raw : {};
+    return {
+      className: normalizeClassName(data.className || ""),
+      names: normalizeNames(data.names),
+      todayScores: normalizeScores(data.todayScores != null ? data.todayScores : data.scores),
+      soundOn: typeof data.soundOn === "boolean" ? data.soundOn : true,
+      cumulativeByClass: cumulMapForSave(data.cumulativeByClass),
+      updatedAt: tsMillis(data.updatedAt)
+    };
+  }
+
+  function serializeState() {
+    return normalizePayload({
+      className: state.className,
+      names: state.names,
+      todayScores: state.todayScores,
+      soundOn: state.soundOn,
+      cumulativeByClass: state.cumulativeByClass,
+      updatedAt: state.updatedAt
+    });
+  }
+
+  function clonePayload(p) {
+    return JSON.parse(JSON.stringify(p));
+  }
+
+  function contentKey(p) {
+    const n = normalizePayload(p);
+    return JSON.stringify({
+      className: n.className,
+      names: n.names,
+      todayScores: n.todayScores,
+      soundOn: n.soundOn,
+      cumulativeByClass: n.cumulativeByClass
+    });
+  }
+
+  function sameContent(a, b) {
+    return contentKey(a) === contentKey(b);
+  }
+
+  function cumulRichness(map) {
+    const norm = cumulMapForSave(map);
+    let days = 0;
+    let totals = 0;
+    let classes = 0;
+    Object.keys(norm).forEach(function (key) {
+      const c = norm[key];
+      const dayCount = c.days.length;
+      const total = c.totals.reduce(function (sum, n) { return sum + n; }, 0);
+      if (dayCount || total) {
+        classes += 1;
+        days += dayCount;
+        totals += total;
+      }
+    });
+    return { days: days, totals: totals, classes: classes };
+  }
+
+  function richnessScore(p) {
+    const n = normalizePayload(p);
+    let score = 0;
+    for (let i = 0; i < GROUP_COUNT; i++) score += n.todayScores[i];
+    const rich = cumulRichness(n.cumulativeByClass);
+    score += rich.totals;
+    score += rich.days * 25;
+    score += rich.classes * 5;
+    if (n.className) score += 2;
+    for (let i = 0; i < GROUP_COUNT; i++) {
+      if (n.names[i] !== DEFAULT_NAMES[i]) score += 1;
+    }
+    return score;
+  }
+
+  function sessionScore(p) {
+    const n = normalizePayload(p);
+    let score = 0;
+    for (let i = 0; i < GROUP_COUNT; i++) score += n.todayScores[i] * 10;
+    if (n.className) score += 3;
+    for (let i = 0; i < GROUP_COUNT; i++) {
+      if (n.names[i] !== DEFAULT_NAMES[i]) score += 2;
+    }
+    return score;
+  }
+
+  function isBlankPayload(p) {
+    return richnessScore(p) === 0;
+  }
+
+  function blankPayload() {
+    return normalizePayload({});
+  }
+
+  function mergeCumulMaps(primaryMap, secondaryMap) {
+    const primary = cumulMapForSave(primaryMap);
+    const secondary = cumulMapForSave(secondaryMap);
+    const keys = {};
+    Object.keys(primary).forEach(function (k) { keys[k] = true; });
+    Object.keys(secondary).forEach(function (k) { keys[k] = true; });
+    const out = {};
+    Object.keys(keys).sort().forEach(function (key) {
+      const a = primary[key] || null;
+      const b = secondary[key] || null;
+      if (a && !b) { out[key] = a; return; }
+      if (b && !a) { out[key] = b; return; }
+      if (!a || !b) return;
+      if (!a.days.length || !b.days.length) {
+        if (a.days.length) out[key] = a;
+        else if (b.days.length) out[key] = b;
+        else out[key] = a;
+        return;
+      }
+      const byDate = {};
+      b.days.forEach(function (d) { byDate[d.date] = d; });
+      a.days.forEach(function (d) { byDate[d.date] = d; });
+      const days = Object.keys(byDate).map(function (date) { return byDate[date]; });
+      days.sort(function (x, y) { return x.date < y.date ? 1 : x.date > y.date ? -1 : 0; });
+      const totals = Array(GROUP_COUNT).fill(0);
+      days.forEach(function (d) {
+        for (let i = 0; i < GROUP_COUNT; i++) totals[i] += d.scores[i];
+      });
+      out[key] = { totals: totals, days: days };
+    });
+    return out;
+  }
+
+  function decideLww(local, remote, now) {
+    const localAt = local.updatedAt || 0;
+    const remoteAt = remote.updatedAt || 0;
+    if (localAt > remoteAt) {
+      if (sameContent(local, remote)) {
+        return { apply: false, push: false, payload: local, fromRemote: false };
+      }
+      return { apply: false, push: true, payload: clonePayload(local), fromRemote: false };
+    }
+    if (remoteAt > localAt) {
+      const payload = clonePayload(remote);
+      return {
+        apply: !sameContent(local, remote) || payload.updatedAt !== local.updatedAt,
+        push: false,
+        payload: payload,
+        fromRemote: true
+      };
+    }
+    if (sameContent(local, remote)) {
+      return { apply: false, push: false, payload: local, fromRemote: false };
+    }
+    if (richnessScore(remote) > richnessScore(local)) {
+      return { apply: true, push: false, payload: clonePayload(remote), fromRemote: true };
+    }
+    const payload = clonePayload(local);
+    if (!payload.updatedAt) payload.updatedAt = now;
+    return {
+      apply: payload.updatedAt !== local.updatedAt,
+      push: true,
+      payload: payload,
+      fromRemote: false
+    };
+  }
+
+  function decideLegacyUnion(local, remote, now) {
+    const ls = sessionScore(local);
+    const rs = sessionScore(remote);
+    let sessionFromLocal = true;
+    if (ls !== rs) sessionFromLocal = ls > rs;
+    else if (!!local.updatedAt !== !!remote.updatedAt) sessionFromLocal = !!local.updatedAt;
+    const session = sessionFromLocal ? local : remote;
+    const other = sessionFromLocal ? remote : local;
+    const merged = clonePayload(session);
+    merged.cumulativeByClass = mergeCumulMaps(session.cumulativeByClass, other.cumulativeByClass);
+    if (sameContent(merged, remote) && (remote.updatedAt || 0) >= (local.updatedAt || 0)) {
+      const payload = clonePayload(remote);
+      return {
+        apply: !sameContent(local, remote) || payload.updatedAt !== local.updatedAt,
+        push: false,
+        payload: payload,
+        fromRemote: true
+      };
+    }
+    if (sameContent(merged, local) && (local.updatedAt || 0) > (remote.updatedAt || 0)) {
+      return { apply: false, push: true, payload: clonePayload(local), fromRemote: false };
+    }
+    merged.updatedAt = now;
+    return {
+      apply: !sameContent(merged, local) || merged.updatedAt !== local.updatedAt,
+      push: !sameContent(merged, remote),
+      payload: merged,
+      fromRemote: false
+    };
+  }
+
+  function decideInitialMerge(localIn, remoteIn, opts) {
+    opts = opts || {};
+    const now = opts.now || Date.now();
+    const first = !!opts.firstForUid;
+    const local = normalizePayload(localIn);
+    const remote = remoteIn ? normalizePayload(remoteIn) : null;
+
+    if (!remote) {
+      if (isBlankPayload(local) && !local.updatedAt) {
+        return { apply: false, push: false, payload: local, fromRemote: false };
+      }
+      const payload = clonePayload(local);
+      if (!payload.updatedAt) payload.updatedAt = now;
+      return {
+        apply: payload.updatedAt !== local.updatedAt,
+        push: true,
+        payload: payload,
+        fromRemote: false
+      };
+    }
+
+    if (isBlankPayload(local) && !isBlankPayload(remote)) {
+      return { apply: true, push: false, payload: clonePayload(remote), fromRemote: true };
+    }
+    if (!isBlankPayload(local) && isBlankPayload(remote)) {
+      const payload = clonePayload(local);
+      if (!payload.updatedAt) payload.updatedAt = now;
+      return {
+        apply: payload.updatedAt !== local.updatedAt,
+        push: true,
+        payload: payload,
+        fromRemote: false
+      };
+    }
+    if (isBlankPayload(local) && isBlankPayload(remote)) {
+      if (local.soundOn === remote.soundOn) {
+        if ((remote.updatedAt || 0) > (local.updatedAt || 0)) {
+          const payload = clonePayload(local);
+          payload.updatedAt = remote.updatedAt;
+          return { apply: true, push: false, payload: payload, fromRemote: true };
+        }
+        return { apply: false, push: false, payload: local, fromRemote: false };
+      }
+      return decideLww(local, remote, now);
+    }
+
+    const bothStamped = !!(local.updatedAt && remote.updatedAt);
+    if (!first || bothStamped) return decideLww(local, remote, now);
+    return decideLegacyUnion(local, remote, now);
+  }
+  /* ==== /cloud merge ==== */
+
+  function uidCacheKey(uid) {
+    return STORAGE_KEY + "-uid-" + uid;
+  }
+  function readCloudUid() {
+    try { return localStorage.getItem(CLOUD_UID_KEY) || ""; } catch (e) { return ""; }
+  }
+  function markCloudUid(uid) {
+    try { if (uid) localStorage.setItem(CLOUD_UID_KEY, uid); } catch (e) {}
+  }
+  function readUidCache(uid) {
+    if (!uid) return null;
+    try {
+      const raw = localStorage.getItem(uidCacheKey(uid));
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+      return data;
+    } catch (e) { return null; }
+  }
+  function writeUidCache(uid, payload) {
+    if (!uid) return;
+    try { localStorage.setItem(uidCacheKey(uid), JSON.stringify(payload)); } catch (e) {}
+  }
+
+  function cloudSdkReady() {
+    return !!(window.firebase && firebase.auth && firebase.firestore && typeof firebase.initializeApp === "function");
+  }
+  function cloudCanWrite() {
+    return cloudSdkReady() && !!(cloudUser && cloudUser.uid);
+  }
+  function cloudDocRef() {
+    return firebase.firestore()
+      .collection("users").doc(cloudUser.uid)
+      .collection("games").doc("feed-monster");
+  }
+  function cloudOauthQuiet() {
+    return Date.now() < cloudOauthQuietUntil;
+  }
+  function beginCloudOauth() {
+    cloudOauthQuietUntil = Date.now() + 4000;
+  }
+  function endCloudOauth() {
+    cloudOauthQuietUntil = Math.max(cloudOauthQuietUntil, Date.now() + 1600);
+  }
+  function isPermissionError(err) {
+    const code = err && (err.code || "");
+    return code === "permission-denied" || String(code).indexOf("permission-denied") !== -1;
+  }
+  function noteCloudError(err) {
+    console.warn("feed-monster sync", err);
+    setCloudUi("error");
+    const now = Date.now();
+    if (now - cloudToastAt < 8000) return;
+    cloudToastAt = now;
+    if (isPermissionError(err)) showToast("未有權限同步，請檢查 Firestore 規則");
+    else showToast("同步失敗，分數仍留喺呢部電腦");
+  }
+
+  function setCloudUi(mode, label) {
+    const btn = document.getElementById("btnCloudSync");
+    if (!btn) return;
+    if (mode === "in" && cloudUiMode === "in") return;
+    if (mode === cloudUiMode && mode !== "busy" && mode !== "in") return;
+    cloudUiMode = mode;
+    btn.classList.remove("is-on", "is-busy", "is-error");
+    if (mode === "in") {
+      const email = cloudUser && cloudUser.email ? String(cloudUser.email) : "";
+      btn.classList.add("is-on");
+      btn.textContent = "已登入";
+      btn.title = email
+        ? ("已登入 " + email + " · 分數會同步到其他裝置")
+        : "已登入 · 分數會同步到其他裝置";
+      btn.setAttribute("aria-label", email ? ("已登入 " + email + "，按一下可登出") : "已登入，按一下可登出");
+      return;
+    }
+    if (mode === "busy") {
+      btn.classList.add("is-busy");
+      btn.textContent = label || "同步中";
+      btn.title = "正在同步分數";
+      btn.setAttribute("aria-label", "正在同步分數");
+      return;
+    }
+    if (mode === "error") {
+      btn.classList.add("is-error");
+      btn.textContent = "同步失敗";
+      btn.title = "同步失敗，按一下再試。分數仍留喺呢部電腦";
+      btn.setAttribute("aria-label", "同步失敗，按一下再試");
+      return;
+    }
+    if (mode === "off") {
+      btn.textContent = "未載入";
+      btn.title = "同步元件未載入，分數只留喺呢部電腦";
+      btn.setAttribute("aria-label", "同步元件未載入");
+      return;
+    }
+    btn.textContent = "登入同步";
+    btn.title = "用 Google 登入，喺其他電腦睇到同一分數";
+    btn.setAttribute("aria-label", "用 Google 登入以同步分數");
+  }
+
+  function applyCloudPayload(data, opts) {
+    opts = opts || {};
+    if (lotteryBusy && !opts.force) {
+      deferredCloudPayload = data;
+      return false;
+    }
+    const payload = normalizePayload(data);
+    const incomingAt = payload.updatedAt || 0;
+    const localAt = Number(state.updatedAt) || 0;
+    if (!opts.force && localAt > incomingAt) return false;
+    if (!opts.force && cloudDirty && localAt >= incomingAt) return false;
+    if (!opts.force && sameContent(serializeState(), payload)) {
+      if (incomingAt > localAt) {
+        state.updatedAt = incomingAt;
+        persist({ localOnly: true, keepTimestamp: true });
+      }
+      return true;
+    }
+    applyingCloud = true;
+    try {
+      state.className = payload.className;
+      state.names = payload.names.slice();
+      state.todayScores = payload.todayScores.slice();
+      state.soundOn = payload.soundOn;
+      state.cumulativeByClass = payload.cumulativeByClass;
+      state.updatedAt = payload.updatedAt;
+      cloudDirty = false;
+      if (cloudPushTimer) { clearTimeout(cloudPushTimer); cloudPushTimer = null; }
+      persist({ localOnly: true, keepTimestamp: true });
+      classInput.value = state.className;
+      applyNamesToBoard(state.names);
+      renderAll();
+      updateSoundBtn();
+      if (cumulModal && !cumulModal.hidden) renderCumulPanel();
+      if (lotteryModal && !lotteryModal.hidden && !lotteryBusy) renderLotteryGroups();
+      return true;
+    } finally {
+      applyingCloud = false;
+    }
+  }
+
+  function flushDeferredCloud() {
+    if (!deferredCloudPayload || lotteryBusy) return;
+    const data = deferredCloudPayload;
+    deferredCloudPayload = null;
+    applyCloudPayload(data);
+  }
+
+  function writeCloudPayload(payload) {
+    const ref = cloudDocRef();
+    const clean = normalizePayload(payload);
+    return firebase.firestore().runTransaction(function (tx) {
+      return tx.get(ref).then(function (snap) {
+        const remote = snap && snap.exists ? (snap.data() || null) : null;
+        if (remote && isBlankPayload(clean) && !isBlankPayload(remote)) {
+          return { ok: false, remote: remote, keptRemote: true };
+        }
+        const remoteAt = remote ? tsMillis(remote.updatedAt) : 0;
+        if (remote && remoteAt > (clean.updatedAt || 0)) {
+          return { ok: false, remote: remote, keptRemote: false };
+        }
+        tx.set(ref, clean);
+        return { ok: true };
+      });
+    });
+  }
+
+  function afterCloudWrite(result, sentAt) {
+    if (result && result.ok) {
+      if ((Number(state.updatedAt) || 0) === sentAt) cloudDirty = false;
+      setCloudUi("in");
+      return;
+    }
+    if (result && result.remote) {
+      const localAt = Number(state.updatedAt) || 0;
+      if (result.keptRemote || localAt <= tsMillis(result.remote.updatedAt)) applyCloudPayload(result.remote);
+      setCloudUi("in");
+    }
+  }
+
+  function flushCloudPush() {
+    if (cloudPushTimer) { clearTimeout(cloudPushTimer); cloudPushTimer = null; }
+    if (applyingCloud) { cloudPushAgain = true; return; }
+    if (!cloudCanWrite() || !cloudDirty) return;
+    if (cloudInFlight) { cloudPushAgain = true; return; }
+    cloudInFlight = true;
+    const sentAt = Number(state.updatedAt) || 0;
+    let pushFailed = false;
+    writeCloudPayload(serializeState()).then(function (result) {
+      afterCloudWrite(result, sentAt);
+    }).catch(function (err) {
+      pushFailed = true;
+      noteCloudError(err);
+    }).then(function () {
+      cloudInFlight = false;
+      if (pushFailed) return;
+      if (cloudPushAgain || cloudDirty) {
+        cloudPushAgain = false;
+        if (cloudDirty) scheduleCloudPush();
+        return;
+      }
+      if (cloudPullAgain) {
+        cloudPullAgain = false;
+        pullCloud();
+      }
+    });
+  }
+
+  function scheduleCloudPush() {
+    if (applyingCloud || !cloudCanWrite()) return;
+    cloudDirty = true;
+    if (cloudPushTimer) clearTimeout(cloudPushTimer);
+    cloudPushTimer = setTimeout(function () {
+      cloudPushTimer = null;
+      flushCloudPush();
+    }, CLOUD_PUSH_MS);
+  }
+
+  function pullCloud() {
+    if (!cloudCanWrite() || applyingCloud) return;
+    if (cloudInFlight) { cloudPullAgain = true; return; }
+    if (cloudDirty) { flushCloudPush(); return; }
+    cloudInFlight = true;
+    cloudLastPullAt = Date.now();
+    cloudDocRef().get().then(function (snap) {
+      if (snap.exists) {
+        const remote = snap.data() || {};
+        const remoteAt = tsMillis(remote.updatedAt);
+        const local = serializeState();
+        if ((isBlankPayload(local) && !isBlankPayload(remote)) || remoteAt > (local.updatedAt || 0)) {
+          applyCloudPayload(remote);
+        }
+      }
+      setCloudUi("in");
+    }).catch(noteCloudError).then(function () {
+      cloudInFlight = false;
+      cloudLastPullAt = Date.now();
+      if (cloudPushAgain || cloudDirty) {
+        cloudPushAgain = false;
+        if (cloudDirty) scheduleCloudPush();
+        return;
+      }
+      if (cloudPullAgain) {
+        cloudPullAgain = false;
+        pullCloud();
+      }
+    });
+  }
+
+  function finishCloudFlight() {
+    cloudInFlight = false;
+    cloudLastPullAt = Date.now();
+    // A failed write stays dirty and retries on focus, visibility, or online.
+    if (cloudUiMode === "error") return;
+    if (cloudPushAgain || cloudDirty) {
+      cloudPushAgain = false;
+      if (cloudDirty && cloudCanWrite()) scheduleCloudPush();
+      return;
+    }
+    if (cloudPullAgain) {
+      cloudPullAgain = false;
+      pullCloud();
+    }
+  }
+
+  function runInitialMerge(user) {
+    if (!user || !user.uid || !cloudCanWrite()) return;
+    cloudInFlight = true;
+    setCloudUi("busy", "同步中");
+    const previousUid = readCloudUid();
+    const switchingUser = !!(previousUid && previousUid !== user.uid);
+    if (switchingUser) writeUidCache(previousUid, serializeState());
+    const cachedLocal = switchingUser ? (readUidCache(user.uid) || blankPayload()) : null;
+    const firstForUid = previousUid !== user.uid;
+    cloudDocRef().get().then(function (snap) {
+      if (!cloudUser || cloudUser.uid !== user.uid) return null;
+      const remote = snap.exists ? (snap.data() || null) : null;
+      const localForMerge = switchingUser ? cachedLocal : serializeState();
+      const beforeKey = contentKey(serializeState());
+      const decision = decideInitialMerge(localForMerge, remote, { firstForUid: firstForUid, now: Date.now() });
+      if (switchingUser || decision.apply) applyCloudPayload(decision.payload, { force: switchingUser });
+      const mustPush = !!(decision.push || cloudDirty);
+      const afterKey = contentKey(serializeState());
+      if (beforeKey !== afterKey) {
+        if (switchingUser) {
+          showToast(isBlankPayload(serializeState()) ? "已轉去另一個帳戶" : "已載入呢個帳戶嘅分數");
+        } else if (decision.fromRemote) {
+          showToast("已載入其他裝置嘅分數");
+        } else {
+          showToast("已合併兩邊嘅分數");
+        }
+      }
+      if (!mustPush) {
+        markCloudUid(user.uid);
+        cloudDirty = false;
+        setCloudUi("in");
+        return null;
+      }
+      cloudDirty = true;
+      return writeCloudPayload(serializeState()).then(function (result) {
+        if (!cloudUser || cloudUser.uid !== user.uid) return;
+        if (result.ok) cloudDirty = false;
+        else if (result.remote) applyCloudPayload(result.remote, { force: !!result.keptRemote });
+        markCloudUid(user.uid);
+        setCloudUi("in");
+      });
+    }).catch(function (err) {
+      if (cloudMergeUid === user.uid) cloudMergeUid = "";
+      noteCloudError(err);
+    }).then(finishCloudFlight);
+  }
+
+  function scheduleForegroundSync() {
+    if (cloudOauthQuiet()) return;
+    if (cloudFocusTimer) clearTimeout(cloudFocusTimer);
+    cloudFocusTimer = setTimeout(function () {
+      cloudFocusTimer = null;
+      if (!cloudCanWrite() || cloudOauthQuiet()) return;
+      if (document.visibilityState === "hidden") return;
+      if (cloudDirty) { flushCloudPush(); return; }
+      if (Date.now() - cloudLastPullAt < CLOUD_FOCUS_GAP_MS) return;
+      pullCloud();
+    }, CLOUD_FOCUS_DEBOUNCE_MS);
+  }
+
+  function bindCloudLifecycle() {
+    if (cloudLifecycleBound) return;
+    cloudLifecycleBound = true;
+    window.addEventListener("focus", scheduleForegroundSync);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") {
+        if (cloudDirty) flushCloudPush();
+        return;
+      }
+      scheduleForegroundSync();
+    });
+    window.addEventListener("pageshow", function (event) {
+      if (event && event.persisted) scheduleForegroundSync();
+    });
+    window.addEventListener("online", function () {
+      if (cloudDirty) flushCloudPush();
+      else scheduleForegroundSync();
+    });
+    window.addEventListener("pagehide", function () {
+      if (cloudDirty) flushCloudPush();
+    });
+  }
+
+  function cloudSignIn() {
+    if (!cloudSdkReady() || cloudUser) return;
+    beginCloudOauth();
+    setCloudUi("busy", "登入中");
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    cloudPersistenceReady.then(function () {
+      return firebase.auth().signInWithPopup(provider);
+    }).then(function () {
+      endCloudOauth();
+    }).catch(function (err) {
+      const code = err && err.code;
+      if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
+        firebase.auth().signInWithRedirect(provider).catch(function (err2) {
+          endCloudOauth();
+          setCloudUi(cloudUser ? "in" : "out");
+          noteCloudError(err2);
+        });
+        return;
+      }
+      endCloudOauth();
+      setCloudUi(cloudUser ? "in" : "out");
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+      noteCloudError(err);
+    });
+  }
+
+  function cloudSignOut() {
+    if (!cloudSdkReady()) return;
+    if (cloudUser && cloudUser.uid) writeUidCache(cloudUser.uid, serializeState());
+    firebase.auth().signOut().catch(noteCloudError);
+  }
+
+  function bindCloudUi() {
+    const btn = document.getElementById("btnCloudSync");
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", function () {
+      if (!cloudSdkReady()) {
+        showToast("未能載入同步，分數只留喺呢部電腦");
+        return;
+      }
+      if (cloudUser) {
+        if (cloudUiMode === "error") {
+          if (cloudMergeUid !== cloudUser.uid) {
+            cloudMergeUid = cloudUser.uid;
+            runInitialMerge(cloudUser);
+          } else if (cloudDirty) flushCloudPush();
+          else pullCloud();
+          return;
+        }
+        if (window.confirm("要登出同步嗎？呢部瀏覽器嘅儀表板都會一併登出。課堂分數會留喺呢部電腦。")) cloudSignOut();
+        return;
+      }
+      cloudSignIn();
+    });
+  }
+
+  function startCloudSync() {
+    bindCloudUi();
+    bindCloudLifecycle();
+    if (!cloudSdkReady()) {
+      setCloudUi("off");
+      return;
+    }
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_WEB_CONFIG);
+      try { firebase.firestore().settings({ ignoreUndefinedProperties: true }); } catch (e) {}
+      cloudPersistenceReady = firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function () {});
+      firebase.auth().getRedirectResult().catch(function (err) {
+        endCloudOauth();
+        if (err && err.code && err.code !== "auth/no-auth-event") noteCloudError(err);
+      });
+      firebase.auth().onAuthStateChanged(function (user) {
+        const prev = cloudUser;
+        cloudUser = user || null;
+        if (!user) {
+          if (cloudSawAuth && prev) showToast("已登出，分數留喺呢部電腦");
+          cloudSawAuth = true;
+          cloudMergeUid = "";
+          setCloudUi("out");
+          return;
+        }
+        cloudSawAuth = true;
+        if (cloudMergeUid === user.uid) {
+          setCloudUi("in");
+          return;
+        }
+        cloudMergeUid = user.uid;
+        runInitialMerge(user);
+      });
+    } catch (e) {
+      console.warn("feed-monster sync", e);
+      setCloudUi("off");
+    }
+  }
+
   load();
   classInput.value = state.className;
   if (state.className && !CLASS_OPTIONS.includes(state.className)) {
@@ -1687,6 +2493,7 @@
   renderAll();
   updateSoundBtn();
   document.addEventListener("pointerdown", () => ensureAudio(), { once: true });
+  startCloudSync();
 })();
 </script>
 </body>
