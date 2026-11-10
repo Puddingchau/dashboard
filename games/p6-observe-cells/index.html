@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>六年級 科學科 使用顯微鏡觀察動植物的細胞 (6LF2) - 天水圍官立小學</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -40,17 +40,86 @@
       background: #334155;
       border-radius: 4px;
     }
+
+    /* Mobile: keep eyepiece fixed; scroll only the focus/stage controls */
+    @media (max-width: 1023px) {
+      html, body {
+        height: 100%;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      body {
+        min-height: 100dvh;
+      }
+      header.observe-header {
+        flex-shrink: 0;
+        position: relative;
+        top: auto;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+      }
+      header.observe-header .observe-header-inner {
+        gap: 0.5rem;
+      }
+      header.observe-header .observe-title {
+        font-size: 0.95rem;
+        line-height: 1.25;
+      }
+      main.observe-main {
+        display: flex !important;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        gap: 0.5rem;
+        padding: 0.5rem 0.5rem max(0.5rem, env(safe-area-inset-bottom));
+      }
+      .observe-view-col {
+        flex: 0 0 auto;
+        max-height: none;
+        padding: 0.5rem !important;
+        border-radius: 1rem;
+      }
+      .observe-status-bar {
+        margin-bottom: 0.35rem !important;
+        padding-bottom: 0.35rem !important;
+      }
+      .observe-eyepiece {
+        width: min(240px, 38dvh, 62vw);
+        max-width: min(240px, 38dvh, 62vw);
+        margin-top: 0.15rem;
+        margin-bottom: 0.15rem;
+      }
+      .observe-toolbar,
+      .observe-clarity {
+        margin-top: 0.4rem !important;
+      }
+      .observe-controls-col {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding-bottom: 1rem;
+      }
+      #dragHint {
+        display: none;
+      }
+      #microscopeCanvas {
+        touch-action: none;
+      }
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
 
   <!-- Header Bar styled exactly as specified -->
-  <header class="bg-[#0b132b] border-b border-slate-800/80 px-4 py-3.5 sticky top-0 z-30 shadow-2xl">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+  <header class="observe-header bg-[#0b132b] border-b border-slate-800/80 px-4 py-3.5 sticky top-0 z-30 shadow-2xl">
+    <div class="observe-header-inner max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       
       <!-- Primary Title & Subtitle Area -->
       <div class="flex flex-col gap-0.5">
-        <div class="flex items-center gap-2 text-lg sm:text-2xl font-extrabold tracking-wide" style="color: #FFC107;">
+        <div class="observe-title flex items-center gap-2 text-lg sm:text-2xl font-extrabold tracking-wide" style="color: #FFC107;">
           <span class="text-xl sm:text-2xl">🔬</span>
           <span>六年級 科學科 使用顯微鏡觀察動植物的細胞 (6LF2)</span>
         </div>
@@ -76,13 +145,13 @@
   </header>
 
   <!-- Main Content Layout -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+  <main class="observe-main flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
 
     <!-- LEFT COLUMN: Eyepiece Viewport & Lens Controls -->
-    <section class="lg:col-span-7 flex flex-col items-center bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl relative backdrop-blur-md">
+    <section class="observe-view-col lg:col-span-7 flex flex-col items-center bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl relative backdrop-blur-md">
       
       <!-- Top Status & Specimen Info Bar -->
-      <div class="w-full flex items-center justify-between mb-4 border-b border-slate-800 pb-3 gap-2">
+      <div class="observe-status-bar w-full flex items-center justify-between mb-4 border-b border-slate-800 pb-3 gap-2">
         <div class="flex items-center gap-2">
           <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
           <span class="text-xs sm:text-sm font-semibold text-slate-400">觀察玻片：</span>
@@ -98,7 +167,7 @@
       </div>
 
       <!-- Microscope Eyepiece View (Circular Viewport) -->
-      <div class="relative w-full max-w-[430px] aspect-square my-2 flex items-center justify-center">
+      <div class="observe-eyepiece relative w-full max-w-[430px] aspect-square my-2 flex items-center justify-center">
         <!-- Outer Microscope Body -->
         <div class="absolute inset-0 rounded-full border-[14px] border-slate-950 shadow-[0_0_50px_rgba(0,0,0,0.8)] ring-2 ring-indigo-500/30 bg-slate-950 flex items-center justify-center overflow-hidden">
           
@@ -159,7 +228,7 @@
       </div>
 
       <!-- Viewport Tool Bar -->
-      <div class="w-full max-w-[460px] mt-3 flex items-center justify-between gap-2 bg-slate-950/70 p-2.5 rounded-2xl border border-slate-800">
+      <div class="observe-toolbar w-full max-w-[460px] mt-3 flex items-center justify-between gap-2 bg-slate-950/70 p-2.5 rounded-2xl border border-slate-800">
         <!-- Objective Switcher -->
         <div class="flex items-center gap-1.5">
           <span class="text-xs font-semibold text-slate-400 hidden sm:inline">物鏡:</span>
@@ -188,7 +257,7 @@
       </div>
 
       <!-- Focal Clarity Meter -->
-      <div class="w-full max-w-[460px] mt-3">
+      <div class="observe-clarity w-full max-w-[460px] mt-3">
         <div class="flex justify-between items-center text-xs mb-1">
           <span class="font-semibold text-slate-400">對焦清晰度 (Focal Clarity):</span>
           <span id="clarityText" class="font-bold text-amber-400">較模糊 (45%)</span>
@@ -201,7 +270,7 @@
     </section>
 
     <!-- RIGHT COLUMN: Specimen Selector, Focus Knobs & Stage Navigation -->
-    <section class="lg:col-span-5 flex flex-col gap-4">
+    <section class="observe-controls-col lg:col-span-5 flex flex-col gap-4">
       
       <!-- 1. Specimen Selection Panel -->
       <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
