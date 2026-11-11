@@ -23,6 +23,19 @@
       pointer-events: none;
     }
 
+    /*
+      The eyepiece must own its gesture on every viewport. iOS Safari and
+      Android Chrome cancel or drop touchmove when the page cannot scroll
+      unless the hit target opts out of browser panning.
+    */
+    #microscopeCanvas,
+    .observe-eyepiece {
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
     /* Custom Focus Knob rotation animation */
     .knob-indicator {
       transition: transform 0.08s ease-out;
@@ -41,15 +54,22 @@
       border-radius: 4px;
     }
 
-    /* Mobile: pin a compact eyepiece; always leave room to scroll focus/stage controls */
+    /*
+      Mobile split pane (≤1023px):
+      - Pin the whole upper view (status, full eyepiece circle, objective/light/
+        overlay toolbar, clarity). Do not clip it; the teacher has to operate it.
+      - Scroll only the lower lab controls (specimens, focus, stage pad).
+      min-h-screen is 100vh, which is taller than the visible phone viewport
+      once browser chrome is showing, so override it with the small viewport.
+    */
     @media (max-width: 1023px) {
       html, body {
         height: 100%;
-        height: 100dvh;
+        height: 100svh;
+        max-height: 100svh;
+        min-height: 0 !important;
         overflow: hidden;
-      }
-      body {
-        min-height: 100dvh;
+        overscroll-behavior: none;
       }
       header.observe-header {
         flex-shrink: 0;
@@ -74,41 +94,70 @@
         padding: 0.4rem 0.5rem max(0.5rem, env(safe-area-inset-bottom)) !important;
       }
       .observe-view-col {
-        flex: 0 1 auto;
-        max-height: 48%;
+        /* Do not shrink with the tall controls column. max-height only bites
+           on a short screen, and then this pane scrolls instead of covering
+           the focus and stage controls. */
+        flex: 0 0 auto;
         min-height: 0;
-        overflow: hidden;
-        padding: 0.4rem !important;
-        border-radius: 1rem;
-      }
-      .observe-status-bar {
-        margin-bottom: 0.25rem !important;
-        padding-bottom: 0.25rem !important;
-      }
-      .observe-eyepiece {
-        width: min(168px, 26dvh, 46vw) !important;
-        max-width: min(168px, 26dvh, 46vw) !important;
-        max-height: min(168px, 26dvh, 46vw) !important;
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-      }
-      .observe-toolbar,
-      .observe-clarity {
-        margin-top: 0.3rem !important;
-      }
-      .observe-controls-col {
-        flex: 1 1 auto;
-        min-height: 42% !important;
+        max-height: calc(100% - 6rem);
+        overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
-        padding-bottom: 1.25rem;
+        padding: 0.35rem 0.45rem 0.45rem !important;
+        border-radius: 1rem;
+      }
+      .observe-status-bar {
+        margin-bottom: 0.2rem !important;
+        padding-bottom: 0.2rem !important;
+        gap: 0.35rem !important;
+      }
+      .observe-status-bar #currentSpecimenTitle {
+        font-size: 0.8rem !important;
+        line-height: 1.2 !important;
+      }
+      .observe-eyepiece {
+        /*
+          Cap the circle so status + full circle + toolbar + clarity still
+          leave a scrollable lower pane on a short phone. 100svh tracks the
+          viewport with browser chrome visible.
+        */
+        --eyepiece-size: min(168px, 46vw, max(104px, calc(100svh - 23.5rem)));
+        width: var(--eyepiece-size) !important;
+        height: var(--eyepiece-size) !important;
+        max-width: var(--eyepiece-size) !important;
+        max-height: var(--eyepiece-size) !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        flex-shrink: 0;
+      }
+      .observe-toolbar,
+      .observe-clarity {
+        margin-top: 0.35rem !important;
+        flex-shrink: 0;
+        max-width: 100%;
+      }
+      .observe-toolbar {
+        padding: 0.35rem 0.4rem !important;
+        gap: 0.3rem !important;
+        flex-wrap: nowrap;
+        justify-content: space-between !important;
+      }
+      .observe-controls-col {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
       }
       #dragHint {
         display: none !important;
       }
-      #microscopeCanvas {
-        touch-action: none;
+    }
+    @media (max-width: 380px) {
+      .observe-toolbar input[type="range"] {
+        width: 2.25rem !important;
       }
     }
   </style>
@@ -174,7 +223,7 @@
         <div class="absolute inset-0 rounded-full border-[14px] border-slate-950 shadow-[0_0_50px_rgba(0,0,0,0.8)] ring-2 ring-indigo-500/30 bg-slate-950 flex items-center justify-center overflow-hidden">
           
           <!-- HTML5 Canvas for Optical Rendering -->
-          <canvas id="microscopeCanvas" width="500" height="500" class="w-full h-full cursor-grab active:cursor-grabbing rounded-full"></canvas>
+          <canvas id="microscopeCanvas" width="500" height="500" class="w-full h-full cursor-grab active:cursor-grabbing rounded-full" style="touch-action: none;"></canvas>
 
           <!-- Vignette Overlay -->
           <div class="eyepiece-overlay absolute inset-0 rounded-full"></div>
@@ -733,29 +782,35 @@
     }
 
     function setupInteractiveCanvas() {
-      const getPos = (e) => {
+      let activePointerId = null;
+
+      const pointFromClient = (clientX, clientY) => {
         const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         return {
           x: clientX - rect.left,
           y: clientY - rect.top
         };
       };
 
-      const startDrag = (e) => {
+      const beginDrag = (x, y) => {
         isDragging = true;
-        const pos = getPos(e);
-        dragStartX = pos.x;
-        dragStartY = pos.y;
-        document.getElementById('dragHint').style.opacity = '0';
+        dragStartX = x;
+        dragStartY = y;
+        const hint = document.getElementById('dragHint');
+        if (hint) hint.style.opacity = '0';
       };
 
-      const doDrag = (e) => {
+      const endDrag = () => {
+        isDragging = false;
+        activePointerId = null;
+      };
+
+      const applyDrag = (clientX, clientY) => {
         if (!isDragging) return;
-        const pos = getPos(e);
+        const pos = pointFromClient(clientX, clientY);
         const dx = pos.x - dragStartX;
         const dy = pos.y - dragStartY;
+        if (dx === 0 && dy === 0) return;
 
         const scaleFactor = (magnification / 10);
         stageX -= (dx * 0.8) / scaleFactor;
@@ -772,15 +827,78 @@
         renderEyepiece();
       };
 
-      const stopDrag = () => { isDragging = false; };
+      /*
+        Mouse and pen use pointer events with capture, so the drag continues
+        if the cursor leaves the circle. Touch is handled separately below:
+        a finger also synthesizes pointer events, and applying both would pan
+        twice as fast.
+      */
+      const onPointerDown = (e) => {
+        if (e.pointerType === 'touch') return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (activePointerId !== null) return;
+        if (e.cancelable) e.preventDefault();
+        activePointerId = e.pointerId;
+        try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* already released */ }
+        const pos = pointFromClient(e.clientX, e.clientY);
+        beginDrag(pos.x, pos.y);
+      };
 
-      canvas.addEventListener('mousedown', startDrag);
-      window.addEventListener('mousemove', doDrag);
-      window.addEventListener('mouseup', stopDrag);
+      const onPointerMove = (e) => {
+        if (e.pointerType === 'touch') return;
+        if (!isDragging || e.pointerId !== activePointerId) return;
+        if (e.cancelable) e.preventDefault();
+        applyDrag(e.clientX, e.clientY);
+      };
 
-      canvas.addEventListener('touchstart', startDrag, {passive: true});
-      window.addEventListener('touchmove', doDrag, {passive: true});
-      window.addEventListener('touchend', stopDrag);
+      const onPointerUp = (e) => {
+        if (e.pointerType === 'touch') return;
+        if (e.pointerId !== activePointerId) return;
+        endDrag();
+      };
+
+      canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+      canvas.addEventListener('pointermove', onPointerMove, { passive: false });
+      canvas.addEventListener('pointerup', onPointerUp);
+      canvas.addEventListener('pointercancel', onPointerUp);
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointercancel', onPointerUp);
+
+      /*
+        Finger pan listens on the canvas itself, non-passive. Listeners on
+        window are not reliable here: with html/body overflow hidden, iOS
+        Safari often never fires touchmove on window, and Android Chrome
+        cancels the gesture unless preventDefault runs on the touch target.
+      */
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (isDragging && activePointerId !== null) return;
+        const t = e.touches && e.touches[0];
+        if (!t) return;
+        const pos = pointFromClient(t.clientX, t.clientY);
+        beginDrag(pos.x, pos.y);
+      }, { passive: false });
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (activePointerId !== null) return;
+        const t = e.touches && e.touches[0];
+        if (!t) return;
+        if (!isDragging) {
+          const pos = pointFromClient(t.clientX, t.clientY);
+          beginDrag(pos.x, pos.y);
+        }
+        applyDrag(t.clientX, t.clientY);
+      }, { passive: false });
+
+      const endTouch = (e) => {
+        if (activePointerId !== null) return;
+        if (e && e.touches && e.touches.length > 0) return;
+        endDrag();
+      };
+
+      canvas.addEventListener('touchend', endTouch);
+      canvas.addEventListener('touchcancel', () => endDrag());
     }
 
     function setupKeyboardNavigation() {
