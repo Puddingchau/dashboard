@@ -48,12 +48,21 @@
         <span class="home-kicker" data-i18n="subtitle">Quiet Habitat</span>
         <h1 data-i18n="appName">害羞動物園</h1>
         <p class="sub" data-i18n="subtitle">Quiet Habitat</p>
-        <p class="tagline" data-i18n="tagline">嚇…這些動物很害羞！太吵就會跑走；保持安靜，他們就會走出來留下。</p>
+        <p class="tagline" data-i18n="tagline">噓…這些動物很害羞！太吵就會跑走；保持安靜，他們就會走出來留下。</p>
       </div>
 
       <div class="theme-grid" id="theme-grid" role="listbox" aria-label="Theme"></div>
 
       <div class="home-cta">
+        <div class="duration-picker home-duration" id="home-duration">
+          <h3 data-i18n="sessionDuration">課堂時間</h3>
+          <div class="chips duration-chips" id="home-duration-chips"></div>
+          <label class="number-field duration-custom-field" id="home-custom-duration-field" hidden>
+            <span data-i18n="customDurationMinutes">自訂分鐘</span>
+            <input type="number" id="home-custom-minutes" min="1" max="180" step="1" value="15" />
+            <span data-i18n="minutesUnit">分鐘</span>
+          </label>
+        </div>
         <button type="button" class="start-btn" id="btn-start" data-i18n="start">開始</button>
         <p class="privacy-note" data-i18n="privacy"></p>
         <p class="hint-line" data-i18n="previewPaceHint"></p>
@@ -63,6 +72,11 @@
     <!-- Session chrome -->
     <div id="session-ui">
       <div id="hud">
+        <div class="hud-top">
+        <div class="timer-pill" id="timer-pill" hidden>
+          <div class="timer-label" data-i18n="timeLeft">剩餘時間</div>
+          <div class="timer-digits" id="timer-digits">15:00</div>
+        </div>
         <div class="meter pointer" id="meter" title="">
           <div class="meter-label" data-i18n="noiseMeter">音量</div>
           <div class="meter-track" id="meter-track">
@@ -73,6 +87,7 @@
             <span class="dot" aria-hidden="true"></span>
             <span class="status-text" id="status-text"></span>
           </div>
+        </div>
         </div>
         <div class="hud-goals pointer" id="hud-goals">
           <button type="button" class="chip" data-goal="silent" aria-pressed="false"><span data-i18n="presetSilent">安靜</span></button>
@@ -110,6 +125,7 @@
           <button type="button" data-open="collection" data-i18n="collection">圖鑑</button>
           <button type="button" data-open="how" data-i18n="howItWorks">點樣用</button>
           <button type="button" id="menu-fs" data-i18n="enterFullscreen">進入全畫面</button>
+          <button type="button" id="menu-add5" data-i18n="addFiveMinutes">再開多 5 分鐘</button>
           <button type="button" id="menu-end" data-i18n="endSession">結束這回</button>
         </div>
       </div>
@@ -174,6 +190,16 @@
           </label>
         </div>
 
+        <div class="setting-block" id="settings-duration-block">
+          <h3 data-i18n="sessionDuration">課堂時間</h3>
+          <div class="chips duration-chips" id="settings-duration-chips"></div>
+          <label class="number-field duration-custom-field" id="settings-custom-duration-field" hidden>
+            <span data-i18n="customDurationMinutes">自訂分鐘</span>
+            <input type="number" id="settings-custom-minutes" min="1" max="180" step="1" value="15" />
+            <span data-i18n="minutesUnit">分鐘</span>
+          </label>
+        </div>
+
         <div class="setting-block">
           <h3 data-i18n="loudBehavior">太吵時點算</h3>
           <button type="button" class="choice" data-behavior="flee" aria-pressed="true">
@@ -206,6 +232,7 @@
           <li data-n="5" data-i18n="how5"></li>
           <li data-n="6" data-i18n="how6"></li>
           <li data-n="7" data-i18n="how7"></li>
+          <li data-n="8" data-i18n="how8"></li>
         </ol>
         <h3 style="margin-bottom:8px;font-weight:800" data-i18n="howPrivacyTitle">私隱</h3>
         <p class="lead" data-i18n="howPrivacy"></p>
@@ -251,6 +278,18 @@
         <div class="btn-row">
           <button type="button" class="secondary-btn" id="btn-demo" data-i18n="demoMode">示範模式</button>
           <button type="button" class="primary-btn" id="btn-mic-retry" data-i18n="micDeniedRetry">再試一次</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time's up -->
+    <div class="backdrop" id="timesup-backdrop" hidden>
+      <div class="panel timesup-panel" role="dialog" aria-modal="true" aria-labelledby="timesup-title">
+        <h2 id="timesup-title" data-i18n="timesUp">時間到！</h2>
+        <p class="timesup-count" id="timesup-count"></p>
+        <div class="btn-row timesup-actions">
+          <button type="button" class="primary-btn" id="btn-add5" data-i18n="addFiveMinutes">再開多 5 分鐘</button>
+          <button type="button" class="secondary-btn" id="btn-timesup-end" data-i18n="endSession">結束這回</button>
         </div>
       </div>
     </div>

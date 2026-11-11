@@ -20,6 +20,8 @@
       goalPreset: "independent",
       pace: "normal",
       customMinutes: 4,
+      durationMode: "15",
+      customSessionMinutes: 15,
       loudBehavior: "flee",
       calibration: null,
       collection: defaultCollection(),
@@ -29,6 +31,10 @@
     next.collection = Object.assign(defaultCollection(), saved.collection || {});
     if (!QH.THEMES[next.theme]) next.theme = "savanna";
     if (!["zh-HK", "en"].includes(next.lang)) next.lang = "zh-HK";
+    const durOk = ["5", "10", "15", "20", "30", "custom", "unlimited"].includes(next.durationMode);
+    if (!durOk) next.durationMode = "15";
+    const cm = Number(next.customSessionMinutes);
+    next.customSessionMinutes = isFinite(cm) && cm >= 1 ? Math.min(180, Math.round(cm)) : 15;
     return next;
   }
 
@@ -70,6 +76,9 @@
     renderThemeGrid();
     if (document.getElementById("collection-backdrop").classList.contains("is-open")) renderCollection();
     syncSettingsUI();
+    syncDurationUI();
+    const tu = document.getElementById("timesup-count");
+    if (tu && QH.engine.session.timedOut) tu.textContent = QH.t("timesUpBody", { n: QH.engine.session.spawned });
     const fsOn = !!document.fullscreenElement;
     const fsLabel = QH.t(fsOn ? "exitFullscreen" : "enterFullscreen");
     document.getElementById("menu-fs").textContent = fsLabel;
@@ -124,7 +133,7 @@
 
   /* ---------- Modals ---------- */
   function openModal(name) {
-    closeAllModals();
+    closeAllModals({ keepTimesup: name !== "timesup" && QH.engine.session.timedOut });
     const el = document.getElementById(name + "-backdrop");
     if (!el) return;
     el.hidden = false;
@@ -133,6 +142,7 @@
     if (name === "settings") syncSettingsUI();
     if (name === "calibrate") resetCalUI();
     QH.engine.session.pausedForModal = name === "calibrate";
+    QH.engine.session.timerPaused = name !== "timesup";
   }
 
   function closeModal(name) {
@@ -141,14 +151,19 @@
     el.classList.remove("is-open");
     el.hidden = true;
     if (name === "calibrate") QH.engine.session.pausedForModal = false;
+    const teacherOpen = !!document.querySelector(".backdrop.is-open:not(#timesup-backdrop)");
+    QH.engine.session.timerPaused = teacherOpen;
   }
 
-  function closeAllModals() {
+  function closeAllModals(opts) {
+    const keepTimesup = opts && opts.keepTimesup;
     document.querySelectorAll(".backdrop").forEach((el) => {
+      if (keepTimesup && el.id === "timesup-backdrop") return;
       el.classList.remove("is-open");
       el.hidden = true;
     });
     QH.engine.session.pausedForModal = false;
+    QH.engine.session.timerPaused = false;
   }
 
   /* ---------- Settings ---------- */
@@ -165,6 +180,7 @@
     document.querySelectorAll("[data-behavior]").forEach((btn) => {
       btn.setAttribute("aria-pressed", String(btn.getAttribute("data-behavior") === st.loudBehavior));
     });
+    syncDurationUI();
     const tick = document.getElementById("meter-tick");
     tick.style.left = st.volumeGoal + "%";
     tick.setAttribute("aria-valuenow", String(Math.round(st.volumeGoal)));
@@ -187,6 +203,81 @@
   }
 
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+  const DURATION_OPTIONS = ["5", "10", "15", "20", "30", "custom", "unlimited"];
+
+  function renderDurationChips() {
+    ["home-duration-chips", "settings-duration-chips"].forEach((id) => {
+      const root = document.getElementById(id);
+      if (!root || root.dataset.ready === "1") return;
+      root.innerHTML = "";
+      DURATION_OPTIONS.forEach((mode) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip";
+        btn.setAttribute("data-duration", mode);
+        const key = mode === "unlimited" ? "durationUnlimited" : mode === "custom" ? "durationCustom" : "duration" + mode;
+        btn.innerHTML = "<span data-i18n=\"" + key + "\">" + QH.t(key) + "</span>";
+        btn.addEventListener("click", () => setDurationMode(mode));
+        root.appendChild(btn);
+      });
+      root.dataset.ready = "1";
+    });
+  }
+
+  function syncDurationUI() {
+    renderDurationChips();
+    const st = QH.state;
+    document.querySelectorAll("[data-duration]").forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.getAttribute("data-duration") === st.durationMode));
+    });
+    document.querySelectorAll("[data-i18n^='duration']").forEach((el) => {
+      el.textContent = QH.t(el.getAttribute("data-i18n"));
+    });
+    const custom = st.durationMode === "custom";
+    const homeField = document.getElementById("home-custom-duration-field");
+    const setField = document.getElementById("settings-custom-duration-field");
+    if (homeField) homeField.hidden = !custom;
+    if (setField) setField.hidden = !custom;
+    const homeInput = document.getElementById("home-custom-minutes");
+    const setInput = document.getElementById("settings-custom-minutes");
+    if (homeInput) homeInput.value = st.customSessionMinutes;
+    if (setInput) setInput.value = st.customSessionMinutes;
+    const addBtn = document.getElementById("menu-add5");
+    if (addBtn) {
+      const timed = QH.engine.session.active && QH.engine.session.durationMs > 0;
+      addBtn.hidden = !timed;
+    }
+  }
+
+  function setDurationMode(mode) {
+    if (!DURATION_OPTIONS.includes(mode)) return;
+    QH.state.durationMode = mode;
+    saveState();
+    syncDurationUI();
+  }
+
+  function setCustomSessionMinutes(value) {
+    const n = Math.max(1, Math.min(180, Math.round(Number(value) || 15)));
+    QH.state.customSessionMinutes = n;
+    QH.state.durationMode = "custom";
+    saveState();
+    syncDurationUI();
+  }
+
+  function showTimesUp(count) {
+    const p = document.getElementById("timesup-count");
+    if (p) p.textContent = QH.t("timesUpBody", { n: count });
+    openModal("timesup");
+  }
+
+  function addFiveMinutes() {
+    QH.engine.addMinutes(5);
+    closeModal("timesup");
+    QH.engine.session.timerPaused = false;
+  }
+
+  QH.onTimesUp = showTimesUp;
 
   /* ---------- Collection ---------- */
   let collectionTheme = null;
@@ -448,7 +539,12 @@
     document.getElementById("gear-btn").addEventListener("click", () => openModal("menu"));
     document.getElementById("fs-btn").addEventListener("click", toggleFullscreen);
     document.getElementById("menu-fs").addEventListener("click", () => { closeModal("menu"); toggleFullscreen(); });
+    document.getElementById("menu-add5").addEventListener("click", () => { closeModal("menu"); addFiveMinutes(); });
     document.getElementById("menu-end").addEventListener("click", endSession);
+    document.getElementById("btn-add5").addEventListener("click", addFiveMinutes);
+    document.getElementById("btn-timesup-end").addEventListener("click", endSession);
+    document.getElementById("home-custom-minutes").addEventListener("change", (ev) => setCustomSessionMinutes(ev.target.value));
+    document.getElementById("settings-custom-minutes").addEventListener("change", (ev) => setCustomSessionMinutes(ev.target.value));
 
     document.querySelectorAll("[data-close]").forEach((btn) => {
       btn.addEventListener("click", () => closeModal(btn.getAttribute("data-close")));
@@ -457,7 +553,11 @@
       btn.addEventListener("click", () => openModal(btn.getAttribute("data-open")));
     });
     document.querySelectorAll(".backdrop").forEach((bd) => {
-      bd.addEventListener("click", (ev) => { if (ev.target === bd) closeAllModals(); });
+      bd.addEventListener("click", (ev) => {
+        if (ev.target !== bd) return;
+        if (bd.id === "timesup-backdrop") return;
+        closeAllModals({ keepTimesup: QH.engine.session.timedOut });
+      });
     });
 
     document.querySelectorAll("#settings-lang .chip").forEach((btn) => {
@@ -525,7 +625,11 @@
 
     document.addEventListener("keydown", (ev) => {
       if (ev.key === "Escape") {
-        if (document.querySelector(".backdrop.is-open")) { closeAllModals(); ev.preventDefault(); return; }
+        if (document.querySelector(".backdrop.is-open")) {
+          closeAllModals({ keepTimesup: QH.engine.session.timedOut });
+          ev.preventDefault();
+          return;
+        }
         if (isFs()) { document.exitFullscreen().catch(() => {}); ev.preventDefault(); }
         return;
       }
@@ -544,6 +648,7 @@
   /* ---------- Boot ---------- */
   function boot() {
     bind();
+    renderDurationChips();
     applyI18n();
     QH.paintTheme(QH.state.theme);
     QH.engine.ensureLoop();
