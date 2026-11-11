@@ -154,6 +154,14 @@
       #dragHint {
         display: none !important;
       }
+      /*
+        The live vector badge used to sit on the circle (absolute top-right).
+        On a phone that covers the specimen. Stage vs image direction stays
+        in #lastStageDir / #lastViewDir beside the stage pad.
+      */
+      #vectorFeedback {
+        display: none !important;
+      }
     }
     @media (max-width: 380px) {
       .observe-toolbar input[type="range"] {
@@ -262,19 +270,24 @@
           </div>
         </div>
 
-        <!-- Real-time Movement Vectors Badge -->
-        <div id="vectorFeedback" class="absolute top-3 right-3 bg-slate-900/95 border border-indigo-500/50 rounded-xl p-2.5 text-xs flex flex-col gap-1 shadow-2xl pointer-events-none hidden backdrop-blur">
-          <div class="text-indigo-300 font-bold text-[11px] border-b border-slate-800 pb-1 flex items-center gap-1">
-            <i class="fa-solid fa-arrows-up-down-left-right text-amber-400"></i>實時移動向量:
-          </div>
-          <div class="flex items-center justify-between gap-3 text-slate-300 text-[11px]">
-            <span>載物台（玻片）:</span>
-            <span id="stageMoveVector" class="font-bold text-amber-400">⬅️ 向左</span>
-          </div>
-          <div class="flex items-center justify-between gap-3 text-slate-300 text-[11px]">
-            <span>視野內影像:</span>
-            <span id="viewMoveVector" class="font-bold text-emerald-400">➡️ 向右</span>
-          </div>
+      </div>
+
+      <!--
+        Real-time movement vectors sit under the circle, in normal flow, so
+        the badge cannot cover the specimen. Hidden on phones (see the
+        ≤1023px rule); the same pair is shown beside the stage pad.
+      -->
+      <div id="vectorFeedback" class="w-full max-w-[460px] mt-2 bg-slate-900/95 border border-indigo-500/50 rounded-xl px-3 py-2 text-xs shadow-lg pointer-events-none hidden backdrop-blur flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div class="text-indigo-300 font-bold text-[11px] flex items-center gap-1">
+          <i class="fa-solid fa-arrows-up-down-left-right text-amber-400"></i>實時移動向量:
+        </div>
+        <div class="flex items-center gap-2 text-slate-300 text-[11px]">
+          <span>載物台（玻片）:</span>
+          <span id="stageMoveVector" class="font-bold text-amber-400">⬅️ 向左</span>
+        </div>
+        <div class="flex items-center gap-2 text-slate-300 text-[11px]">
+          <span>視野內影像:</span>
+          <span id="viewMoveVector" class="font-bold text-emerald-400">➡️ 向右</span>
         </div>
       </div>
 
