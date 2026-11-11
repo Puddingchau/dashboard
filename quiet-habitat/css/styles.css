@@ -25,7 +25,10 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
+  width: 100%;
   height: 100%;
+  height: 100vh;
+  height: 100dvh;
   background: #1c2118;
   color: var(--ink);
   font-family: var(--font);
@@ -36,7 +39,9 @@ html, body {
   -webkit-user-select: none;
   user-select: none;
   overscroll-behavior: none;
-  -webkit-tap-highlight-color: rgba(224, 138, 74, 0.28);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: rgba(224, 138, 74, 0.12);
 }
 
 button, input, select {
@@ -62,8 +67,10 @@ img, svg { display: block; max-width: 100%; }
 
 #app {
   position: relative;
-  width: 100vw;
+  width: 100%;
+  height: 100%;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -332,8 +339,14 @@ img, svg { display: block; max-width: 100%; }
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 18px 28px 28px;
+  padding:
+    max(18px, env(safe-area-inset-top, 0px))
+    max(28px, env(safe-area-inset-right, 0px))
+    max(28px, env(safe-area-inset-bottom, 0px))
+    max(28px, env(safe-area-inset-left, 0px));
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: transparent;
 }
 
@@ -593,7 +606,7 @@ img, svg { display: block; max-width: 100%; }
 /* ========== HUD ========== */
 #hud {
   position: absolute;
-  top: 14px;
+  top: max(14px, env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 70;
@@ -602,6 +615,8 @@ img, svg { display: block; max-width: 100%; }
   align-items: center;
   gap: 10px;
   pointer-events: none;
+  max-width: calc(100% - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
 }
 
 #session-ui.is-on #hud { display: flex; }
@@ -611,7 +626,10 @@ img, svg { display: block; max-width: 100%; }
   align-items: center;
   justify-content: center;
   gap: 14px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+@media (max-width: 999px) {
+  .hud-top { flex-wrap: wrap; }
 }
 
 .timer-pill {
@@ -817,8 +835,14 @@ img, svg { display: block; max-width: 100%; }
 #session-ui.is-on #gear-btn,
 #session-ui.is-on #fs-btn { display: flex; }
 
-#gear-btn { right: 20px; bottom: 20px; }
-#fs-btn { right: 20px; bottom: 96px; }
+#gear-btn {
+  right: max(20px, env(safe-area-inset-right, 0px));
+  bottom: max(20px, env(safe-area-inset-bottom, 0px));
+}
+#fs-btn {
+  right: max(20px, env(safe-area-inset-right, 0px));
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
 @media (hover: hover) {
   #gear-btn:hover, #fs-btn:hover { background: #fff; }
 }
@@ -826,8 +850,8 @@ img, svg { display: block; max-width: 100%; }
 
 #demo-bar {
   position: absolute;
-  left: 16px;
-  bottom: 16px;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
   z-index: 72;
   display: none;
   align-items: center;
@@ -838,6 +862,8 @@ img, svg { display: block; max-width: 100%; }
   box-shadow: var(--shadow);
   font-size: 13px;
   font-weight: 700;
+  max-width: calc(100% - 120px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  flex-wrap: wrap;
 }
 #demo-bar.is-on { display: flex; }
 #demo-bar .demo-btns { display: flex; gap: 6px; }
@@ -863,7 +889,11 @@ img, svg { display: block; max-width: 100%; }
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding:
+    max(24px, env(safe-area-inset-top, 0px))
+    max(24px, env(safe-area-inset-right, 0px))
+    max(24px, env(safe-area-inset-bottom, 0px))
+    max(24px, env(safe-area-inset-left, 0px));
   backdrop-filter: blur(4px);
 }
 .backdrop.is-open { display: flex; }
@@ -875,7 +905,10 @@ img, svg { display: block; max-width: 100%; }
   box-shadow: var(--shadow);
   width: min(640px, 100%);
   max-height: min(90vh, 820px);
+  max-height: min(90dvh, 820px);
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 22px 26px 20px;
   position: relative;
 }
@@ -1241,9 +1274,17 @@ img, svg { display: block; max-width: 100%; }
 
 /* Keep touch targets large on classroom 16:9 boards (1280×720 / 1920×1080).
    Only tighten layout on phones. */
-/* Fit the home screen (theme grid + duration + Start) on 16:9 boards at 1280×720. */
-@media (max-height: 820px) {
-  #home { padding: 10px 22px 14px; }
+
+/* Fit the home screen (theme grid + duration + Start) on 16:9 boards at 1280×720.
+   Scoped to wider viewports so phone portrait uses its own layout. */
+@media (max-height: 820px) and (min-width: 701px) {
+  #home {
+    padding:
+      max(10px, env(safe-area-inset-top, 0px))
+      max(22px, env(safe-area-inset-right, 0px))
+      max(14px, env(safe-area-inset-bottom, 0px))
+      max(22px, env(safe-area-inset-left, 0px));
+  }
   .home-hero { margin: 0 0 8px; }
   .home-kicker { margin-bottom: 2px; padding: 3px 10px; }
   .home-hero h1 { font-size: clamp(2.1rem, 5.2vw, 3.4rem); }
@@ -1260,21 +1301,365 @@ img, svg { display: block; max-width: 100%; }
   .hint-line { font-size: 11px; }
 }
 
+/* Mid-size / tablet widths (not a 1280 board). */
 @media (max-width: 1100px) {
-  .theme-grid { grid-template-columns: repeat(2, 1fr); }
-  .home-hero h1 { font-size: 2.4rem; }
+  .theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-hero h1 { font-size: clamp(2rem, 5vw, 2.4rem); }
   .hud-goals .chip span { font-size: 15px; }
+  .meter { min-width: 0; }
+  .hud-top { max-width: 100%; }
+  .meter-track { flex: 1 1 180px; width: auto; }
 }
 
-@media (max-width: 720px) {
-  .theme-grid { grid-template-columns: 1fr 1fr; }
-  .theme-card { min-height: 76px; padding: 12px 14px; }
-  .timer-digits { font-size: 48px; }
-  .timer-pill { min-width: 0; padding: 6px 18px 8px; }
-  .hud-top { width: calc(100vw - 16px); }
-  .meter { min-width: 0; width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center; border-radius: 22px; }
-  .meter-track { flex: 1 1 160px; width: auto; }
-  .start-btn { padding: 14px 36px; width: 100%; }
-  #demo-bar { flex-wrap: wrap; max-width: calc(100vw - 80px); border-radius: 22px; }
-  .hud-goals { width: calc(100vw - 24px); }
+/* Phone portrait and other narrow widths */
+@media (max-width: 700px) {
+  #home {
+    padding:
+      max(12px, env(safe-area-inset-top, 0px))
+      max(14px, env(safe-area-inset-right, 0px))
+      max(10px, env(safe-area-inset-bottom, 0px))
+      max(14px, env(safe-area-inset-left, 0px));
+    justify-content: flex-start;
+  }
+
+  .home-bar {
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .home-bar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .ghost-btn {
+    width: 100%;
+    padding: 8px 6px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+  .lang-toggle button {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .home-kicker { display: none; }
+  .home-hero { margin: 4px 0 8px; }
+  .home-hero h1 { font-size: clamp(1.85rem, 9vw, 2.35rem); }
+  .home-hero .sub {
+    font-size: 0.82rem;
+    letter-spacing: 0.1em;
+    margin: 2px 0 8px;
+  }
+  .home-hero .tagline {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    line-height: 1.45;
+  }
+
+  .theme-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 auto 10px;
+  }
+  .theme-card {
+    min-height: 68px;
+    padding: 8px 10px;
+    gap: 8px;
+    border-radius: 16px;
+  }
+  .theme-icon,
+  .theme-icon svg { width: 42px; height: 42px; }
+  .theme-icon { flex: 0 0 42px; }
+  .theme-card h3 { font-size: 15px; }
+  .theme-card p { font-size: 12px; }
+
+  .home-duration {
+    padding: 10px 12px 12px;
+    width: 100%;
+    max-width: none;
+  }
+  .duration-chips { width: 100%; }
+  .duration-chips .chip {
+    flex: 1 1 calc(25% - 8px);
+    min-width: 4em;
+    min-height: 44px;
+    font-size: 14px;
+    padding: 8px 8px;
+    white-space: nowrap;
+  }
+  .home-cta { max-width: none; gap: 8px; }
+  .start-btn {
+    width: 100%;
+    min-height: 56px;
+    padding: 14px 24px;
+    font-size: 1.3rem;
+    box-shadow: 0 8px 0 #9a4e20, 0 12px 22px rgba(90, 40, 10, 0.28);
+  }
+  .privacy-note { font-size: 11px; line-height: 1.35; }
+  .hint-line { font-size: 10px; line-height: 1.3; }
+
+  #hud {
+    top: max(8px, env(safe-area-inset-top, 0px));
+    width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    gap: 6px;
+  }
+  .timer-digits { font-size: clamp(36px, 11vw, 44px); }
+  .timer-pill { min-width: 0; padding: 4px 16px 6px; border-radius: 20px; }
+  .timer-label { font-size: 11px; }
+  .meter {
+    min-width: 0;
+    width: 100%;
+    border-radius: 20px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .meter-track { flex: 1 1 120px; width: auto; min-width: 100px; }
+  .meter-label { font-size: 11px; }
+  .meter-status { font-size: 14px; }
+  .hud-goals { width: 100%; gap: 6px; }
+  .hud-goals .chip {
+    min-height: 44px;
+    font-size: 14px;
+    padding: 8px 12px;
+    flex: 1 1 auto;
+  }
+
+  #gear-btn, #fs-btn { width: 44px; height: 44px; }
+  #gear-btn svg, #fs-btn svg { width: 18px; height: 18px; }
+  #gear-btn {
+    right: max(10px, env(safe-area-inset-right, 0px));
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  }
+  #fs-btn {
+    right: max(10px, env(safe-area-inset-right, 0px));
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #demo-bar {
+    left: max(8px, env(safe-area-inset-left, 0px));
+    right: calc(58px + env(safe-area-inset-right, 0px));
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    max-width: none;
+    width: auto;
+    flex-wrap: wrap;
+    border-radius: 18px;
+    padding: 6px 8px;
+    gap: 6px;
+    font-size: 12px;
+  }
+  #demo-bar button {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .backdrop {
+    padding:
+      max(10px, env(safe-area-inset-top, 0px))
+      max(10px, env(safe-area-inset-right, 0px))
+      max(10px, env(safe-area-inset-bottom, 0px))
+      max(10px, env(safe-area-inset-left, 0px));
+    align-items: flex-end;
+  }
+  .panel {
+    width: 100%;
+    max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    padding: 18px 16px 16px;
+    border-radius: 22px;
+    overflow: auto;
+  }
+  .panel h2 { padding-right: 52px; font-size: 1.25rem; }
+  .panel-close { width: 44px; height: 44px; top: 10px; right: 10px; }
+  .menu-list button,
+  .setting-row { min-height: 52px; font-size: 16px; padding: 12px 14px; }
+  .chip { min-height: 44px; }
+  .choice { min-height: 48px; }
+  .btn-row { width: 100%; }
+  .primary-btn, .secondary-btn {
+    min-height: 48px;
+    flex: 1 1 auto;
+  }
+  .timesup-panel { padding: 28px 18px 22px; }
+  .timesup-actions { flex-direction: column; }
+  .timesup-actions .primary-btn,
+  .timesup-actions .secondary-btn {
+    min-height: 52px;
+    width: 100%;
+    font-size: 17px;
+    padding: 12px 20px;
+  }
+  .collection-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+}
+
+/* Shorter phone portraits (e.g. iPhone SE 375×667): keep a compact, scrollable home. */
+@media (max-width: 700px) and (max-height: 760px) {
+  .home-hero { margin: 2px 0 6px; }
+  .home-hero h1 { font-size: clamp(1.55rem, 7.5vw, 1.95rem); }
+  .home-hero .sub { margin: 0 0 4px; font-size: 0.75rem; }
+  .home-hero .tagline { font-size: 0.82rem; padding: 6px 10px; line-height: 1.4; }
+  .theme-grid { gap: 6px; margin: 0 auto 8px; }
+  .theme-card { min-height: 60px; padding: 7px 8px; gap: 6px; }
+  .theme-icon,
+  .theme-icon svg { width: 36px; height: 36px; }
+  .theme-icon { flex: 0 0 36px; }
+  .theme-card h3 { font-size: 14px; }
+  .theme-card p {
+    font-size: 11px;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .home-duration { padding: 8px 10px; }
+  .privacy-note { font-size: 11px; }
+}
+
+/* Stack the session HUD in tall phone portrait so the meter never overflows. */
+@media (max-width: 700px) and (min-height: 501px) {
+  .hud-top {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 6px;
+  }
+  .timer-pill { width: 100%; }
+  .meter { width: 100%; }
+  .meter-track { flex: 1 1 100%; width: 100%; }
+}
+
+/* Phone landscape / very short height: keep habitat visible, tighter chrome. */
+@media (max-height: 500px) {
+  #home {
+    padding:
+      max(8px, env(safe-area-inset-top, 0px))
+      max(12px, env(safe-area-inset-right, 0px))
+      max(10px, env(safe-area-inset-bottom, 0px))
+      max(12px, env(safe-area-inset-left, 0px));
+  }
+  .home-bar { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .home-bar-actions {
+    width: auto;
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: flex-end;
+    grid-template-columns: none;
+  }
+  .ghost-btn { width: auto; min-height: 44px; padding: 8px 14px; font-size: 14px; }
+  .home-hero { margin: 0 0 4px; }
+  .home-kicker { display: none; }
+  .home-hero h1 { font-size: clamp(1.3rem, 5vh, 1.7rem); }
+  .home-hero .sub { margin: 0 0 2px; font-size: 0.72rem; }
+  .home-hero .tagline { padding: 4px 12px; font-size: 0.8rem; line-height: 1.3; }
+  .privacy-note, .hint-line { display: none; }
+  .theme-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 auto 8px;
+  }
+  .theme-card {
+    min-height: 52px;
+    padding: 5px 8px;
+    gap: 6px;
+  }
+  .theme-icon,
+  .theme-icon svg { width: 32px; height: 32px; }
+  .theme-icon { flex: 0 0 32px; }
+  .theme-card h3 { font-size: 13px; }
+  .theme-card p {
+    font-size: 11px;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .home-duration { padding: 6px 10px 8px; gap: 4px; }
+  .duration-chips .chip { min-height: 40px; padding: 6px 10px; font-size: 14px; }
+  .home-cta { gap: 6px; }
+  .start-btn { min-height: 48px; padding: 8px 28px; font-size: 1.1rem; }
+  .privacy-note, .hint-line { font-size: 11px; line-height: 1.3; }
+
+  #hud {
+    top: max(6px, env(safe-area-inset-top, 0px));
+    gap: 4px;
+    width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  }
+  .hud-top { flex-wrap: nowrap; gap: 8px; width: 100%; }
+  .timer-pill { padding: 2px 14px 4px; min-width: 0; }
+  .timer-digits { font-size: clamp(32px, 8vh, 40px); }
+  .timer-label { font-size: 10px; }
+  .meter { min-width: 0; flex: 1 1 auto; width: auto; padding: 6px 12px; gap: 8px; }
+  .meter-track { flex: 1 1 100px; width: auto; min-width: 80px; }
+  .hud-goals .chip { min-height: 40px; padding: 6px 12px; font-size: 13px; }
+
+  #gear-btn, #fs-btn { width: 44px; height: 44px; }
+  #gear-btn {
+    right: max(8px, env(safe-area-inset-right, 0px));
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+  #fs-btn {
+    right: max(8px, env(safe-area-inset-right, 0px));
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+  #demo-bar {
+    left: max(8px, env(safe-area-inset-left, 0px));
+    right: auto;
+    bottom: max(6px, env(safe-area-inset-bottom, 0px));
+    max-width: calc(100% - 64px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    flex-wrap: wrap;
+    padding: 4px 8px;
+  }
+  #demo-bar button { min-height: 40px; padding: 6px 12px; font-size: 13px; }
+
+  .backdrop {
+    padding:
+      max(8px, env(safe-area-inset-top, 0px))
+      max(8px, env(safe-area-inset-right, 0px))
+      max(8px, env(safe-area-inset-bottom, 0px))
+      max(8px, env(safe-area-inset-left, 0px));
+    align-items: center;
+  }
+  .panel {
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow: auto;
+    padding: 14px 16px 12px;
+  }
+  .timesup-panel { padding: 16px 16px 14px; }
+  .timesup-panel h2 { font-size: 1.6rem; margin-bottom: 6px; }
+  .timesup-actions .primary-btn,
+  .timesup-actions .secondary-btn { min-height: 44px; font-size: 16px; }
+}
+
+/* Very short + narrow (e.g. iPhone SE landscape 667×375): keep Start reachable. */
+@media (max-width: 700px) and (max-height: 500px) {
+  .home-hero .sub,
+  .home-hero .tagline { display: none; }
+  .home-hero { margin: 0 0 2px; }
+  .home-hero h1 { font-size: 1.25rem; }
+  .theme-grid { margin: 0 auto 6px; gap: 5px; }
+  .theme-card { min-height: 48px; padding: 4px 6px; }
+  .theme-card p { -webkit-line-clamp: 1; }
+  .home-duration { padding: 4px 8px 6px; }
+  .duration-chips { flex-wrap: nowrap; gap: 4px; width: 100%; }
+  .duration-chips .chip {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 36px;
+    padding: 4px 4px;
+    font-size: 12px;
+  }
+  .start-btn { min-height: 44px; padding: 6px 20px; font-size: 1.05rem; }
+}
+
+/* Larger drag hit on coarse pointers when the viewport is wide (board).
+   Phones are also coarse, so size everyday targets by viewport, not pointer type alone. */
+@media (pointer: coarse) and (min-width: 701px) {
+  .meter-tick::after { inset: -20px -28px; }
+  .duration-chips .chip,
+  .hud-goals .chip { min-height: 52px; }
+  .start-btn { min-height: 64px; }
 }

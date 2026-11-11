@@ -115,6 +115,7 @@
     how6: "老師可以撳右下角齒輪，或者撳音量條，打開設定、圖鑑、校正同轉主題。",
     how7: "學校用 SMART Board：喺接住白板嗰部電腦用瀏覽器打開呢個網頁，按全畫面，允許嗰部電腦使用咪高峰，並將咪對住班房。用手指揀主題、按開始，同撳音量目標。同學唔使開自己的裝置。",
     how8: "開始前可以設定課堂時間（預設 15 分鐘），同學可以喺畫面睇到倒數。時間到之後動物會留喺場景，老師可以再開多 5 分鐘，或者結束這回。揀「不限時」就唔會倒數。",
+    how9: "同一個連結都可以喺電話打開：允許電話使用咪高峰就可以用。亦可以加到電話主畫面，方便下次開啟。",
     howPrivacyTitle: "私隱",
     howPrivacy:
       "咪高峰只在這隻電腦即時量度音量，不會錄音，也不會把聲音傳去其他地方。",
@@ -407,6 +408,7 @@
     how6: "Teachers can open the corner gear, or tap the meter, for settings, the collection, calibration and a theme change.",
     how7: "On a school SMART Board, open this page in the browser on the computer connected to the board, go fullscreen, allow that computer’s microphone, and point the mic toward the class. Tap to pick a theme, start, and set the volume goal. Students do not need their own devices.",
     how8: "Before you start, set a lesson timer (15 minutes by default) so the class can see how much time is left. When it reaches 0:00 the animals stay on screen; you can add 5 more minutes or end the session. Choose “No limit” if you do not want a countdown.",
+    how9: "The same link also works on a phone: allow the phone’s microphone when asked. You can add it to the home screen for quicker access next time.",
     howPrivacyTitle: "Privacy",
     howPrivacy:
       "The microphone is used only on this computer to measure volume in real time. Nothing is recorded or sent anywhere.",
