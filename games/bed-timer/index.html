@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#C7B0EA" />
+<meta name="description" content="課堂用彈床倒數。時間到就彈起床。" />
+<title>彈床倒數</title>
+<style>
+  :root {
+    --ink: #3a2616;
+    --plum: #6d468f;
+    --cream: #fff6e8;
+    --paper: #fffdf8;
+    --go: #2f9d55;
+    --go-shade: #1d6e38;
+    --pause: #f0a020;
+    --pause-shade: #b87410;
+    --danger: #e23b4a;
+    --dock-h: 108px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #fff6e8;
+    color: var(--ink);
+    font-family: "PingFang HK", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "WenQuanYi Micro Hei", "Noto Sans", "Liberation Sans", sans-serif;
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  button, input { font-family: inherit; }
+  button { cursor: pointer; }
+  h1, p { margin: 0; }
+
+  .app {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    background:
+      linear-gradient(#7eb6ef, #b7b4ee) 0 0 / 100% 64% no-repeat,
+      linear-gradient(#5d4d9a, #5d4d9a) 0 64% / 100% 4% no-repeat,
+      linear-gradient(#e8b56a, #d99a4e) 0 100% / 100% 36% no-repeat;
+    overflow: hidden;
+  }
+  .scene {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .clock-wrap {
+    position: absolute;
+    top: 2.4%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    max-width: 96vw;
+  }
+  .clock-face {
+    background: var(--paper);
+    border: 6px solid var(--ink);
+    border-radius: 28px;
+    box-shadow: 0 8px 0 rgba(58, 38, 22, 0.28);
+    padding: 0.04em 0.2em 0.08em;
+    transform-origin: center top;
+  }
+  .clock-num {
+    display: block;
+    font-family: "Noto Sans", "Liberation Sans", "Arial Rounded MT Bold", "PingFang HK", sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: clamp(3.4rem, 15vmin, 10.4rem);
+    line-height: 0.92;
+    letter-spacing: 0.03em;
+    color: #241833;
+  }
+  .flag {
+    display: none;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    border: 5px solid var(--ink);
+    border-radius: 999px;
+    padding: 0.12em 0.7em 0.18em;
+    line-height: 1.1;
+    font-size: clamp(1.35rem, 3.6vmin, 2.5rem);
+    box-shadow: 0 5px 0 rgba(58, 38, 22, 0.28);
+  }
+  .app.tense .flag-soon,
+  .app.paused .flag-paused { display: inline-block; }
+  .flag-soon { background: var(--danger); color: #fff; }
+  .flag-paused { background: var(--pause); color: #3a2616; }
+
+  .app.tense .clock-face {
+    border-color: var(--danger);
+    animation: clock-bump var(--tense-dur, 0.48s) ease-in-out infinite;
+  }
+  .app.tense .clock-num { color: var(--danger); }
+  .app.done .clock-face {
+    background: #ffe08a;
+    border-color: #c45e12;
+  }
+  @keyframes clock-bump {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.045); }
+  }
+
+  .progress-wrap {
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    bottom: 16px;
+    z-index: 6;
+    height: 8px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.38);
+    overflow: hidden;
+    pointer-events: none;
+    box-shadow: 0 1px 0 rgba(58, 38, 22, 0.18);
+  }
+  .app:not(.chrome-hidden) .progress-wrap { bottom: calc(var(--dock-h) + 10px); }
+  .bar-fill {
+    height: 100%;
+    width: 100%;
+    transform-origin: left center;
+    transform: scaleX(1);
+    background: linear-gradient(90deg, #ffe08a, #67c45a);
+    border-radius: inherit;
+  }
+  .app.tense .bar-fill { background: linear-gradient(90deg, #ffb020, #e23b4a); }
+  .app.done .bar-fill { background: #e23b4a; }
+
+  .banner {
+    position: absolute;
+    left: 64%;
+    top: 40%;
+    transform: translate(-50%, -50%) scale(1);
+    z-index: 5;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .banner-card {
+    background: var(--paper);
+    border: 8px solid var(--ink);
+    border-radius: 32px;
+    box-shadow: 0 10px 0 #e07b28;
+    padding: 10px 28px 14px;
+    text-align: center;
+    min-width: min(70vw, 520px);
+  }
+  .banner-title {
+    font-size: clamp(3rem, 8.6vmin, 7rem);
+    font-weight: 900;
+    color: var(--danger);
+    line-height: 1;
+    letter-spacing: 0.04em;
+  }
+  .banner-sub {
+    margin-top: 4px;
+    font-size: clamp(1.15rem, 3vmin, 2.15rem);
+    font-weight: 800;
+    color: var(--plum);
+  }
+  .app.done .banner {
+    opacity: 1;
+    visibility: visible;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .app.done .banner {
+      animation: pop 0.55s cubic-bezier(0.2, 1.45, 0.35, 1) 0.34s both;
+    }
+  }
+  @keyframes pop {
+    0% { opacity: 0; transform: translate(-50%, -42%) scale(0.45); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+
+  .confetti { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+  .confetti i {
+    position: absolute;
+    top: -8%;
+    border-radius: 4px;
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .app.done .confetti i {
+      animation-name: fall;
+      animation-duration: 1.8s;
+      animation-timing-function: ease-in;
+      animation-fill-mode: forwards;
+    }
+  }
+  @keyframes fall {
+    0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+    100% { opacity: 0.15; transform: translateY(80vh) rotate(280deg); }
+  }
+
+  .dock {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 8px;
+    z-index: 8;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: rgba(255, 250, 244, 0.9);
+    border: 2px solid rgba(58, 38, 22, 0.28);
+    border-radius: 16px;
+    backdrop-filter: blur(6px);
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+  .app.chrome-hidden .dock {
+    transform: translateY(130%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .title-block { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+  h1 {
+    font-size: clamp(1rem, 1.6vw, 1.25rem);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .hint {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #7a624c;
+    white-space: nowrap;
+  }
+  .presets, .actions, .custom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .actions { margin-left: auto; }
+
+  button.tap, .stepper {
+    min-height: 46px;
+    border-radius: 12px;
+    border: 3px solid var(--ink);
+    background: #fff;
+    color: var(--ink);
+    font-size: 1.05rem;
+    font-weight: 800;
+    padding: 0 12px;
+    box-shadow: 0 3px 0 #d7c2a4;
+  }
+  button.tap:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #d7c2a4; }
+  button.tap:disabled { opacity: 0.42; cursor: not-allowed; }
+  button.tap:focus-visible, .stepper button:focus-visible, .num:focus-visible {
+    outline: 4px solid #2f6fe0;
+    outline-offset: 2px;
+  }
+  .preset[aria-pressed="true"] {
+    background: var(--plum);
+    color: #fff;
+    box-shadow: 0 4px 0 #4c2d68;
+  }
+  .go {
+    background: var(--go);
+    color: #fff;
+    box-shadow: 0 4px 0 var(--go-shade);
+    min-width: 7.2rem;
+    font-size: 1.45rem;
+  }
+  .go:active:not(:disabled) { box-shadow: 0 1px 0 var(--go-shade); }
+  .go.is-pause { background: var(--pause); color: #3a2616; box-shadow: 0 4px 0 var(--pause-shade); }
+  .go.is-pause:active:not(:disabled) { box-shadow: 0 1px 0 var(--pause-shade); }
+  .sound[aria-pressed="false"] { background: #f8d0d4; }
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px 0 4px;
+    background: #fff;
+  }
+  .stepper button {
+    width: 52px;
+    height: 52px;
+    border: 0;
+    border-radius: 12px;
+    background: #f3e7d4;
+    color: var(--ink);
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .stepper button:active { transform: translateY(2px); }
+  .num-wrap { display: flex; align-items: baseline; gap: 4px; padding: 0 6px; }
+  .num {
+    width: 2.4ch;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 1.7rem;
+    font-weight: 800;
+    text-align: center;
+    padding: 0;
+    user-select: text;
+    font-variant-numeric: tabular-nums;
+  }
+  .num-wrap span { font-size: 1.15rem; font-weight: 800; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Scene motion */
+  #spring-mover {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    transform: scaleY(0.08);
+  }
+  #mascot-mover, #mattress-mover, #pillow-mover, #blanket-mover {
+    transform-box: fill-box;
+    transform-origin: center center;
+  }
+  #mattress-mover { transform-origin: 88% 78%; }
+  #sleeper { transform-box: fill-box; transform-origin: 50% 80%; }
+  #mascot-mover {
+    transform-origin: 50% 70%;
+    animation: breathe 3.3s ease-in-out infinite;
+  }
+  #tail-bolt {
+    transform-box: fill-box;
+    transform-origin: 0% 100%;
+    transform: rotate(42deg);
+  }
+  .cheek-glow, .spark, .spark-hot { opacity: 0; }
+  .flicker, .zap {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .flicker {
+    z-index: 2;
+    background: radial-gradient(ellipse at 48% 58%, rgba(255, 214, 80, 0.0) 0%, rgba(255, 186, 50, 0.0) 55%, rgba(255, 160, 40, 0.0) 100%);
+    opacity: 0;
+  }
+  .zap {
+    z-index: 5;
+    opacity: 1;
+  }
+  .zap::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 46% 42%, rgba(255, 252, 220, 0.95) 0%, rgba(255, 220, 70, 0.5) 16%, rgba(255, 190, 40, 0) 42%);
+    opacity: 0;
+  }
+  .zap svg {
+    position: absolute;
+    left: 28%;
+    top: 8%;
+    width: min(46vw, 560px);
+    height: auto;
+    opacity: 0;
+    transform-origin: 42% 55%;
+  }
+  #cloud { animation: drift 16s ease-in-out infinite; }
+  #lamp-glow { transform-box: fill-box; transform-origin: center; animation: glow 3.2s ease-in-out infinite; }
+  .snore { font-weight: 700; fill: #5c268e; opacity: 0; }
+  .snore.s1 { font-size: 28px; animation: zzz 2.8s ease-in infinite; }
+  .snore.s2 { font-size: 36px; animation: zzz 2.8s ease-in 0.7s infinite; }
+  .snore.s3 { font-size: 24px; animation: zzz 2.8s ease-in 1.4s infinite; }
+
+  .app.tense #sleeper { animation: bed-charge var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense #mascot-mover { animation: mascot-charge var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense #spring-mover { animation: spring-tease var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense #mattress-mover { animation: mattress-tease var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense .cheek-glow { animation: cheek-glow var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense #tail-bolt { animation: tail-up var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense .spark { animation: spark 0.22s linear infinite; }
+  .app.tense .spark.d1 { animation-delay: 0.05s; }
+  .app.tense .spark.d2 { animation-delay: 0.11s; }
+  .app.tense .spark.d3 { animation-delay: 0.16s; }
+  .app.surge .spark-hot { animation: spark 0.14s linear infinite; }
+  .app.surge .flicker { animation: room-flicker 0.18s steps(2, end) infinite; }
+  .app.tense .flicker { animation: room-flicker var(--tense-dur, 0.42s) steps(2, end) infinite; }
+  .app.tense #mini-clock {
+    transform-box: fill-box;
+    transform-origin: 50% 80%;
+    animation: ring calc(var(--tense-dur, 0.42s) * 0.55) linear infinite;
+  }
+  .app.tense .snores, .app.done .snores, .app.paused .snores { display: none; }
+  .app.done #mascot-mover,
+  .app.done #tail-bolt,
+  .app.done #sleeper,
+  .app.done #spring-mover,
+  .app.done #mattress-mover,
+  .app.done #mini-clock,
+  .app.done #cloud,
+  .app.done #lamp-glow,
+  .app.done .flicker { animation: none; }
+  .app.done #tail-bolt { transform: rotate(-18deg); }
+  .app.done .zap::before { animation: zap-flash 0.55s ease-out forwards; }
+  .app.done .zap svg { animation: zap-bolts 0.65s ease-out forwards; }
+  .app.done .cheek-glow { opacity: 1; }
+
+  #arm-l, #arm-r { transform-box: fill-box; transform-origin: 50% 18%; }
+  .app.awake #arm-l { transform: rotate(62deg); }
+  .app.awake #arm-r { transform: rotate(-66deg); }
+  #face-wake { opacity: 0; }
+  .app.awake #face-sleep { opacity: 0; }
+  .app.awake #face-wake { opacity: 1; }
+  @media (prefers-reduced-motion: no-preference) {
+    #arm-l, #arm-r { transition: transform 0.22s cubic-bezier(0.2, 1.4, 0.4, 1); }
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1, 1); }
+    50% { transform: scale(1.035, 0.955); }
+  }
+  @keyframes bed-charge {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(11px); }
+    72% { transform: translateY(-9px); }
+  }
+  @keyframes mascot-charge {
+    0%, 100% { transform: scale(1, 1); }
+    40% { transform: scale(1.06, 0.92); }
+    72% { transform: scale(0.97, 1.08); }
+  }
+  @keyframes cheek-glow {
+    0%, 100% { opacity: 0.72; }
+    50% { opacity: 1; }
+  }
+  @keyframes spark {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+  @keyframes room-flicker {
+    0%, 100% { opacity: 0.2; }
+    45% { opacity: 0.5; }
+    70% { opacity: 0.28; }
+  }
+  @keyframes zap-flash {
+    0% { opacity: 0; }
+    20% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes zap-bolts {
+    0% { opacity: 0; transform: scale(0.45) rotate(-8deg); }
+    28% { opacity: 1; transform: scale(1.05) rotate(3deg); }
+    100% { opacity: 1; transform: scale(1.12) rotate(6deg); }
+  }
+  @keyframes spring-tease {
+    0%, 100% { transform: scaleY(0.08); }
+    45% { transform: scaleY(0.5); }
+  }
+  @keyframes mattress-tease {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(10px); }
+    72% { transform: translateY(-22px); }
+  }
+  @keyframes ring {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(14deg); }
+    50% { transform: rotate(-12deg); }
+    75% { transform: rotate(8deg); }
+  }
+  @keyframes glow {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 0.95; }
+  }
+  @keyframes drift {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(18px); }
+  }
+  @keyframes zzz {
+    0% { transform: translate(0, 8px); opacity: 0; }
+    18% { opacity: 1; }
+    100% { transform: translate(16px, -40px); opacity: 0; }
+  }
+
+  .app { display: block; height: 100dvh; }
+  .stage { position: absolute; inset: 0; }
+
+  @media (max-width: 820px), (max-height: 560px) {
+    button.tap, .stepper { min-height: 56px; font-size: 1.08rem; padding: 0 12px; border-width: 3px; }
+    .go { font-size: 1.2rem; }
+    .stepper button { width: 44px; height: 44px; font-size: 1.5rem; }
+    .num { font-size: 1.35rem; }
+    .hint { display: none; }
+    .clock-face { border-width: 4px; border-radius: 18px; }
+    .banner-card { border-width: 5px; min-width: 0; padding: 8px 16px; }
+    .progress-wrap { height: 18px; border-width: 3px; }
+  }
+  @media (orientation: portrait) {
+    .stage { flex: 0 0 auto; height: auto; }
+    .scene { height: auto; aspect-ratio: 16 / 9; }
+    .progress-wrap { bottom: 8px; }
+    .banner { left: 50%; top: 42%; }
+    .actions { margin-left: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .confetti { display: none; }
+    .snore { display: none !important; }
+    #cloud, #lamp-glow, #mascot-mover, .spark, .flicker, #tail-bolt { animation: none !important; }
+    .app.tense .cheek-glow { opacity: 0.9; }
+    .app.tense .spark { opacity: 0.85; }
+    .app.tense #tail-bolt { transform: rotate(-16deg); }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="stage" id="stage">
+    <svg class="scene" id="scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="圓圓的藍色小傢伙瞓喺床上的房間">
+      <defs>
+        <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#6eacee"/>
+          <stop offset="0.55" stop-color="#9eb4ee"/>
+          <stop offset="1" stop-color="#c9b6f2"/>
+        </linearGradient>
+        <linearGradient id="sky" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stop-color="#f7c99a"/>
+          <stop offset="0.42" stop-color="#f3b0c8"/>
+          <stop offset="1" stop-color="#7ea6e8"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0" stop-color="#ffe7a0" stop-opacity="0.95"/>
+          <stop offset="1" stop-color="#ffe7a0" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <rect width="1600" height="640" fill="url(#wall)"/>
+      <rect y="596" width="1600" height="36" fill="#6d468f"/>
+      <rect y="596" width="1600" height="8" fill="#8d63b0"/>
+
+      <g id="floor">
+        <rect y="632" width="1600" height="268" fill="#e4aa5c"/>
+        <rect y="632" width="1600" height="70" fill="#e8b56a"/>
+        <rect y="702" width="1600" height="78" fill="#e0a45a"/>
+        <rect y="780" width="1600" height="70" fill="#d99a4e"/>
+        <rect y="850" width="1600" height="50" fill="#e0a45a"/>
+        <g stroke="#8a4e22" stroke-width="4" opacity="0.55">
+          <line x1="0" y1="702" x2="1600" y2="702"/>
+          <line x1="0" y1="780" x2="1600" y2="780"/>
+          <line x1="0" y1="850" x2="1600" y2="850"/>
+          <line x1="180" y1="632" x2="180" y2="702"/>
+          <line x1="520" y1="632" x2="520" y2="702"/>
+          <line x1="980" y1="632" x2="980" y2="702"/>
+          <line x1="1340" y1="632" x2="1340" y2="702"/>
+          <line x1="300" y1="702" x2="300" y2="780"/>
+          <line x1="760" y1="702" x2="760" y2="780"/>
+          <line x1="1180" y1="702" x2="1180" y2="780"/>
+          <line x1="140" y1="780" x2="140" y2="850"/>
+          <line x1="640" y1="780" x2="640" y2="850"/>
+          <line x1="1080" y1="780" x2="1080" y2="850"/>
+          <line x1="1460" y1="780" x2="1460" y2="850"/>
+        </g>
+      </g>
+
+      <ellipse cx="790" cy="742" rx="230" ry="34" fill="#f2c1a0" stroke="#3a2616" stroke-width="6"/>
+      <ellipse cx="790" cy="742" rx="160" ry="18" fill="#f8d4b8" stroke="none"/>
+
+      <g stroke="#3a2616" stroke-width="5">
+        <ellipse cx="700" cy="748" rx="32" ry="15" fill="#ffc533"/>
+        <ellipse cx="708" cy="742" rx="15" ry="8" fill="#fff6e4"/>
+        <ellipse cx="790" cy="756" rx="32" ry="15" fill="#ffc533"/>
+        <ellipse cx="798" cy="750" rx="15" ry="8" fill="#fff6e4"/>
+      </g>
+
+      <!-- window -->
+      <g id="window">
+        <rect x="78" y="78" width="330" height="390" rx="26" fill="#c4843c" stroke="#3a2616" stroke-width="8"/>
+        <rect x="98" y="98" width="290" height="330" rx="14" fill="url(#sky)"/>
+        <ellipse cx="250" cy="400" rx="130" ry="36" fill="#8fce78" stroke="#3a2616" stroke-width="5"/>
+        <circle cx="300" cy="168" r="38" fill="#ffe28a" stroke="#3a2616" stroke-width="6"/>
+        <g stroke="#e2a84a" stroke-width="6" stroke-linecap="round">
+          <line x1="300" y1="112" x2="300" y2="124"/>
+          <line x1="300" y1="212" x2="300" y2="224"/>
+          <line x1="244" y1="168" x2="256" y2="168"/>
+          <line x1="344" y1="168" x2="356" y2="168"/>
+        </g>
+        <g id="cloud" fill="#fff" stroke="#3a2616" stroke-width="5">
+          <ellipse cx="168" cy="200" rx="36" ry="22"/>
+          <ellipse cx="198" cy="190" rx="28" ry="20"/>
+          <ellipse cx="150" cy="194" rx="20" ry="14"/>
+        </g>
+        <line x1="243" y1="98" x2="243" y2="428" stroke="#c4843c" stroke-width="10"/>
+        <line x1="98" y1="250" x2="388" y2="250" stroke="#c4843c" stroke-width="10"/>
+        <!-- curtains -->
+        <rect x="112" y="104" width="262" height="16" rx="8" fill="#a86b32" stroke="#3a2616" stroke-width="5"/>
+        <path d="M108,112 C168,128 206,190 188,268 C174,328 214,360 196,408 C180,448 130,452 108,420 L108,112 Z" fill="#f6b27a" stroke="#3a2616" stroke-width="7"/>
+        <path d="M128,140 C160,170 168,240 150,310 C140,360 168,400 158,430" fill="none" stroke="#e8925a" stroke-width="8" stroke-linecap="round"/>
+        <path d="M378,112 C318,128 280,190 298,268 C312,328 272,360 290,408 C306,448 356,452 378,420 L378,112 Z" fill="#f6b27a" stroke="#3a2616" stroke-width="7"/>
+        <path d="M358,140 C326,170 318,240 336,310 C346,360 318,400 328,430" fill="none" stroke="#e8925a" stroke-width="8" stroke-linecap="round"/>
+        <ellipse cx="186" cy="300" rx="20" ry="13" fill="#e87820" stroke="#3a2616" stroke-width="5"/>
+        <ellipse cx="300" cy="300" rx="20" ry="13" fill="#e87820" stroke="#3a2616" stroke-width="5"/>
+        <rect x="68" y="452" width="350" height="26" rx="8" fill="#d4924a" stroke="#3a2616" stroke-width="6"/>
+      </g>
+
+      <!-- nightstand -->
+      <g id="nightstand">
+        <ellipse cx="1310" cy="700" rx="130" ry="16" fill="#000" opacity="0.12"/>
+        <rect x="1188" y="548" width="250" height="150" rx="18" fill="#e0a15c" stroke="#3a2616" stroke-width="7"/>
+        <rect x="1210" y="590" width="206" height="78" rx="12" fill="#f0c48a" stroke="#3a2616" stroke-width="5"/>
+        <circle cx="1313" cy="630" r="10" fill="#e87820" stroke="#3a2616" stroke-width="4"/>
+        <rect x="1176" y="532" width="274" height="24" rx="8" fill="#c9844a" stroke="#3a2616" stroke-width="6"/>
+        <ellipse id="lamp-glow" cx="1310" cy="430" rx="78" ry="70" fill="url(#glow)"/>
+        <rect x="1300" y="470" width="20" height="64" rx="6" fill="#6b3e16" stroke="#3a2616" stroke-width="5"/>
+        <path d="M1248,478 L1372,478 L1344,400 L1276,400 Z" fill="#fff4de" stroke="#3a2616" stroke-width="6"/>
+        <ellipse cx="1310" cy="400" rx="36" ry="10" fill="#ffe7b0" stroke="#3a2616" stroke-width="5"/>
+
+        <g id="mini-clock-pos" transform="translate(1238, 470)">
+          <g id="mini-clock">
+            <circle cx="0" cy="28" r="30" fill="#fffdf8" stroke="#3a2616" stroke-width="6"/>
+            <circle cx="-16" cy="2" r="10" fill="#e87820" stroke="#3a2616" stroke-width="5"/>
+            <circle cx="16" cy="2" r="10" fill="#e87820" stroke="#3a2616" stroke-width="5"/>
+            <rect x="-3" y="8" width="6" height="12" rx="2" fill="#3a2616"/>
+            <line x1="0" y1="28" x2="0" y2="10" stroke="#3a2616" stroke-width="4" stroke-linecap="round"/>
+            <line x1="0" y1="28" x2="14" y2="34" stroke="#e23b4a" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="0" cy="28" r="3.5" fill="#3a2616"/>
+            <rect x="-18" y="54" width="10" height="12" rx="3" fill="#6d468f" stroke="#3a2616" stroke-width="4"/>
+            <rect x="8" y="54" width="10" height="12" rx="3" fill="#6d468f" stroke="#3a2616" stroke-width="4"/>
+          </g>
+        </g>
+      </g>
+
+      <g id="sleeper">
+        <ellipse cx="780" cy="690" rx="340" ry="22" fill="#000" opacity="0.13"/>
+        <!-- legs -->
+        <rect x="520" y="630" width="42" height="58" rx="12" fill="#5c268e" stroke="#3a2616" stroke-width="6"/>
+        <rect x="990" y="630" width="42" height="58" rx="12" fill="#5c268e" stroke="#3a2616" stroke-width="6"/>
+        <!-- headboard -->
+        <path d="M470,650 L470,470 Q470,348 590,348 Q710,348 710,470 L710,650 Z" fill="#8e49c4" stroke="#3a2616" stroke-width="8"/>
+        <path d="M508,630 L508,486 Q508,392 590,392 Q672,392 672,486 L672,630 Z" fill="#b07adf" stroke="#3a2616" stroke-width="5"/>
+        <!-- footboard -->
+        <path d="M960,650 L960,520 Q960,455 1040,455 Q1120,455 1120,520 L1120,650 Z" fill="#8e49c4" stroke="#3a2616" stroke-width="8"/>
+        <path d="M992,640 L992,534 Q992,490 1040,490 Q1088,490 1088,534 L1088,640 Z" fill="#b07adf" stroke="#3a2616" stroke-width="5"/>
+
+        <rect x="545" y="590" width="500" height="52" rx="14" fill="#7a3aaa" stroke="#3a2616" stroke-width="7"/>
+
+        <g id="spring-pos" transform="translate(800, 628)">
+          <g id="spring-mover">
+            <path d="M-64,0 L64,-28 L-64,-56 L64,-84 L-64,-112 L64,-140 L-64,-168" fill="none" stroke="#6a3010" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M-64,0 L64,-28 L-64,-56 L64,-84 L-64,-112 L64,-140 L-64,-168" fill="none" stroke="#ef8a28" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </g>
+
+        <g id="mattress-mover">
+          <rect x="555" y="518" width="480" height="86" rx="24" fill="#fff3dc" stroke="#3a2616" stroke-width="8"/>
+          <rect x="574" y="536" width="442" height="52" rx="16" fill="none" stroke="#e6d0a4" stroke-width="4" stroke-dasharray="10 9"/>
+        </g>
+
+        <g id="pillow-mover">
+          <rect x="575" y="488" width="190" height="112" rx="46" fill="#fffdf8" stroke="#3a2616" stroke-width="8"/>
+          <rect x="608" y="528" width="124" height="22" rx="11" fill="#e4d0fb" stroke="#3a2616" stroke-width="4"/>
+        </g>
+
+        <g id="mascot-pos" transform="translate(690, 518)">
+          <g id="mascot-mover">
+            <ellipse cx="86" cy="36" rx="64" ry="40" fill="#6ec4f2" stroke="#3a2616" stroke-width="7"/>
+            <ellipse cx="90" cy="42" rx="34" ry="20" fill="#fff6ea"/>
+            <ellipse cx="0" cy="4" rx="52" ry="48" fill="#8fd4f8" stroke="#3a2616" stroke-width="7"/>
+            <circle cx="-34" cy="-34" r="16" fill="#5eb0e4" stroke="#3a2616" stroke-width="6"/>
+            <circle cx="32" cy="-36" r="16" fill="#5eb0e4" stroke="#3a2616" stroke-width="6"/>
+            <ellipse cx="-34" cy="-32" rx="7" ry="6" fill="#f7c2c8"/>
+            <ellipse cx="32" cy="-34" rx="7" ry="6" fill="#f7c2c8"/>
+            <ellipse cx="-26" cy="12" rx="10" ry="7" fill="#f6b4bc"/>
+            <ellipse cx="28" cy="12" rx="10" ry="7" fill="#f6b4bc"/>
+
+            <g id="face-sleep">
+              <path d="M-24,2 Q-14,12 -4,2" fill="none" stroke="#3a2616" stroke-width="5" stroke-linecap="round"/>
+              <path d="M6,2 Q16,12 26,2" fill="none" stroke="#3a2616" stroke-width="5" stroke-linecap="round"/>
+              <path d="M-10,24 Q2,34 14,24" fill="none" stroke="#3a2616" stroke-width="5" stroke-linecap="round"/>
+            </g>
+            <g id="face-wake">
+              <ellipse cx="-14" cy="2" rx="11" ry="12" fill="#fff" stroke="#3a2616" stroke-width="4"/>
+              <ellipse cx="16" cy="2" rx="11" ry="12" fill="#fff" stroke="#3a2616" stroke-width="4"/>
+              <ellipse cx="-12" cy="4" rx="5" ry="6" fill="#2b3a4a"/>
+              <ellipse cx="18" cy="4" rx="5" ry="6" fill="#2b3a4a"/>
+              <circle cx="-10" cy="1" r="2" fill="#fff"/>
+              <circle cx="20" cy="1" r="2" fill="#fff"/>
+              <ellipse cx="2" cy="26" rx="9" ry="10" fill="#3a4a5c" stroke="#3a2616" stroke-width="4"/>
+            </g>
+
+            <g id="arm-l">
+              <ellipse cx="-50" cy="36" rx="14" ry="16" fill="#8fd4f8" stroke="#3a2616" stroke-width="6"/>
+            </g>
+            <g id="arm-r">
+              <ellipse cx="52" cy="38" rx="14" ry="16" fill="#8fd4f8" stroke="#3a2616" stroke-width="6"/>
+            </g>
+
+            <g class="snores">
+              <text class="snore s1" x="62" y="-28">呼</text>
+              <text class="snore s2" x="84" y="-58">呼</text>
+              <text class="snore s3" x="70" y="-82">呼</text>
+            </g>
+          </g>
+        </g>
+
+        <g id="blanket-mover">
+          <path d="M730,535
+                   C820,500 980,492 1120,515
+                   C1210,532 1225,575 1175,615
+                   C1080,665 900,655 800,635
+                   C700,615 670,570 730,535 Z" fill="#ffd23a" stroke="#3a2616" stroke-width="8"/>
+          <path d="M770,525 C900,500 1040,500 1160,525" fill="none" stroke="#f0b429" stroke-width="10" stroke-linecap="round"/>
+          <g fill="#fff8dc" stroke="#3a2616" stroke-width="3">
+            <polygon points="0,-12 3.4,-3.6 12,-3.6 5,1.6 7.4,11 0,5.4 -7.4,11 -5,1.6 -12,-3.6 -3.4,-3.6" transform="translate(820,575) scale(1.15)"/>
+            <polygon points="0,-12 3.4,-3.6 12,-3.6 5,1.6 7.4,11 0,5.4 -7.4,11 -5,1.6 -12,-3.6 -3.4,-3.6" transform="translate(930,545) scale(1)"/>
+            <polygon points="0,-12 3.4,-3.6 12,-3.6 5,1.6 7.4,11 0,5.4 -7.4,11 -5,1.6 -12,-3.6 -3.4,-3.6" transform="translate(1040,570) scale(1.05)"/>
+            <polygon points="0,-12 3.4,-3.6 12,-3.6 5,1.6 7.4,11 0,5.4 -7.4,11 -5,1.6 -12,-3.6 -3.4,-3.6" transform="translate(860,630) scale(0.9)"/>
+            <polygon points="0,-12 3.4,-3.6 12,-3.6 5,1.6 7.4,11 0,5.4 -7.4,11 -5,1.6 -12,-3.6 -3.4,-3.6" transform="translate(980,640) scale(0.85)"/>
+            <polygon points="0,-12 3.4,-3.6 12,-3.6 5,1.6 7.4,11 0,5.4 -7.4,11 -5,1.6 -12,-3.6 -3.4,-3.6" transform="translate(1088,620) scale(1)"/>
+          </g>
+        </g>
+
+        <g id="whoosh" opacity="0" stroke="#fffdf8" stroke-width="10" stroke-linecap="round" fill="none">
+          <path d="M520,430 C470,360 500,300 440,250"/>
+          <path d="M620,400 C640,320 600,260 660,200"/>
+          <path d="M430,500 C360,450 340,390 280,360"/>
+          <path d="M980,480 C1080,420 1140,360 1220,300"/>
+          <path d="M760,360 C800,280 760,210 840,160"/>
+          <path d="M360,420 C300,380 280,320 220,300" stroke="#ffe9a0"/>
+        </g>
+      </g>
+    </svg>
+
+    <div class="clock-wrap">
+      <div class="clock-face">
+        <span class="clock-num" id="clock" aria-hidden="true">02:00</span>
+      </div>
+      <div class="flag flag-soon">就快到！</div>
+      <div class="flag flag-paused">已暫停</div>
+    </div>
+
+    <div class="banner" id="banner">
+      <div class="banner-card">
+        <p class="banner-title">時間到！</p>
+        <p class="banner-sub">彈起床啦</p>
+      </div>
+    </div>
+
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
+
+    <div class="progress-wrap">
+      <div class="bar-fill" id="bar"></div>
+    </div>
+  </div>
+
+  <div class="dock" id="dock">
+    <div class="title-block">
+      <h1>彈床倒數</h1>
+      <p class="hint">空白鍵開始或暫停 · R 重設 · F 全畫面</p>
+    </div>
+    <div class="presets" id="presets" role="group" aria-label="預設時間"></div>
+    <div class="custom">
+      <div class="stepper">
+        <button type="button" id="min-dec" aria-label="減少分鐘">−</button>
+        <label class="num-wrap">
+          <input class="num" id="minutes" type="number" inputmode="numeric" min="0" max="99" step="1" value="2" aria-label="分鐘" />
+          <span>分鐘</span>
+        </label>
+        <button type="button" id="min-inc" aria-label="增加分鐘">+</button>
+      </div>
+      <div class="stepper">
+        <button type="button" id="sec-dec" aria-label="減少秒">−</button>
+        <label class="num-wrap">
+          <input class="num" id="seconds" type="number" inputmode="numeric" min="0" max="59" step="1" value="0" aria-label="秒" />
+          <span>秒</span>
+        </label>
+        <button type="button" id="sec-inc" aria-label="增加秒">+</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="tap go" id="go">開始</button>
+      <button type="button" class="tap" id="reset">重設</button>
+      <button type="button" class="tap sound" id="sound" aria-pressed="true">聲音開</button>
+      <button type="button" class="tap" id="full">全畫面</button>
+    </div>
+  </div>
+</div>
+<p id="live" class="sr-only" aria-live="polite"></p>
+<noscript><p style="padding:24px;font-size:1.4rem">請開啟 JavaScript 以使用彈床倒數。</p></noscript>
+<script>
+(function () {
+  var STORAGE_KEY = "pudding-bed-timer-v1";
+  var PRESETS = [
+    { m: 0, s: 30, label: "30秒" },
+    { m: 1, s: 0, label: "1分鐘" },
+    { m: 2, s: 0, label: "2分鐘" },
+    { m: 3, s: 0, label: "3分鐘" },
+    { m: 5, s: 0, label: "5分鐘" },
+    { m: 10, s: 0, label: "10分鐘" }
+  ];
+
+  var app = document.getElementById("app");
+  var scene = document.getElementById("scene");
+  var dock = document.getElementById("dock");
+  var clockEl = document.getElementById("clock");
+  var barEl = document.getElementById("bar");
+  var barWrap = barEl.parentNode;
+  var minutesInput = document.getElementById("minutes");
+  var secondsInput = document.getElementById("seconds");
+  var goBtn = document.getElementById("go");
+  var resetBtn = document.getElementById("reset");
+  var soundBtn = document.getElementById("sound");
+  var fullBtn = document.getElementById("full");
+  var live = document.getElementById("live");
+  var presetsEl = document.getElementById("presets");
+
+  var mattressMover = document.getElementById("mattress-mover");
+  var springMover = document.getElementById("spring-mover");
+  var pillowMover = document.getElementById("pillow-mover");
+  var blanketMover = document.getElementById("blanket-mover");
+  var mascotMover = document.getElementById("mascot-mover");
+  var whoosh = document.getElementById("whoosh");
+  var movers = [mattressMover, springMover, pillowMover, blanketMover, mascotMover, whoosh];
+
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var audioCtx = null;
+  var hum = null;
+  var endTimer = 0;
+  var chromeTimer = 0;
+  var lastSpoken = "";
+  var shown = "";
+  var urgencySec = -1;
+  var humSec = -1;
+
+  var state = {
+    minutes: 2,
+    seconds: 0,
+    muted: false,
+    mode: "idle",
+    totalMs: 120000,
+    remainingMs: 120000,
+    endAt: 0
+  };
+
+  function clampInt(n, lo, hi) {
+    n = Math.round(Number(n));
+    if (!isFinite(n)) return lo;
+    if (n < lo) return lo;
+    if (n > hi) return hi;
+    return n;
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      var m = clampInt(data.minutes, 0, 99);
+      var s = clampInt(data.seconds, 0, 59);
+      if (m === 0 && s === 0) { m = 2; s = 0; }
+      state.minutes = m;
+      state.seconds = s;
+      state.muted = data.muted === true;
+    } catch (e) { /* keep defaults */ }
+    state.totalMs = (state.minutes * 60 + state.seconds) * 1000;
+    state.remainingMs = state.totalMs;
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        minutes: state.minutes,
+        seconds: state.seconds,
+        muted: state.muted
+      }));
+    } catch (e) { /* private mode */ }
+  }
+
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+  function format(ms) {
+    var s = ms <= 0 ? 0 : Math.ceil(ms / 1000);
+    return pad(Math.floor(s / 60)) + ":" + pad(s % 60);
+  }
+
+  function spoken(ms) {
+    var s = ms <= 0 ? 0 : Math.ceil(ms / 1000);
+    var m = Math.floor(s / 60);
+    var r = s % 60;
+    return (m > 0 ? m + "分" : "") + r + "秒";
+  }
+
+  function announce(text) {
+    if (!text || text === lastSpoken) return;
+    lastSpoken = text;
+    live.textContent = text;
+  }
+
+  function unit() {
+    var rect = scene.getBoundingClientRect();
+    var vb = scene.viewBox.baseVal;
+    if (!rect.width || !vb.width) return 1;
+    return Math.min(rect.width / vb.width, rect.height / vb.height);
+  }
+
+  function pose(u, x, y, rot, sx, sy) {
+    var t = "translate(" + (x * u).toFixed(2) + "px," + (y * u).toFixed(2) + "px) rotate(" + rot + "deg)";
+    if (sx) t += " scale(" + sx + "," + (sy || sx) + ")";
+    return t;
+  }
+
+  function measureDock() {
+    var h = dock.getBoundingClientRect().height;
+    app.style.setProperty("--dock-h", h + "px");
+  }
+
+  function buildPresets() {
+    PRESETS.forEach(function (p) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tap preset";
+      btn.textContent = p.label;
+      btn.setAttribute("aria-pressed", "false");
+      btn.addEventListener("click", function () { setDuration(p.m, p.s); });
+      presetsEl.appendChild(btn);
+    });
+  }
+
+  function buildConfetti() {
+    var host = document.getElementById("confetti");
+    var colors = ["#ffd84a", "#e87820", "#8e49c4", "#7bc96a", "#f6b27a", "#fffdf8", "#5aa0e0"];
+    for (var i = 0; i < 26; i++) {
+      var bit = document.createElement("i");
+      bit.style.left = (3 + (i * 37) % 94) + "%";
+      bit.style.background = colors[i % colors.length];
+      bit.style.animationDelay = ((i % 7) * 0.06) + "s";
+      bit.style.width = (10 + (i % 4) * 4) + "px";
+      bit.style.height = (16 + (i % 3) * 7) + "px";
+      bit.style.borderRadius = i % 3 === 0 ? "50%" : "4px";
+      host.appendChild(bit);
+    }
+  }
+
+  function syncInputs() {
+    if (document.activeElement !== minutesInput) minutesInput.value = String(state.minutes);
+    if (document.activeElement !== secondsInput) secondsInput.value = String(state.seconds);
+  }
+
+  function renderControls() {
+    var running = state.mode === "running";
+    var paused = state.mode === "paused";
+    goBtn.textContent = running ? "暫停" : (paused ? "繼續" : "開始");
+    goBtn.classList.toggle("is-pause", running);
+    goBtn.disabled = !running && state.totalMs <= 0;
+    soundBtn.textContent = state.muted ? "靜音" : "聲音開";
+    soundBtn.setAttribute("aria-pressed", state.muted ? "false" : "true");
+    soundBtn.setAttribute("aria-label", state.muted ? "聲音已關閉" : "聲音已開啟");
+    var fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    fullBtn.textContent = fs ? "退出全畫面" : "全畫面";
+    fullBtn.setAttribute("aria-pressed", fs ? "true" : "false");
+    var buttons = presetsEl.querySelectorAll("button");
+    for (var i = 0; i < PRESETS.length; i++) {
+      var on = state.minutes === PRESETS[i].m && state.seconds === PRESETS[i].s;
+      buttons[i].setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    syncInputs();
+    app.classList.toggle("running", running);
+    app.classList.toggle("paused", paused);
+    app.classList.toggle("done", state.mode === "done");
+  }
+
+  function paintTime() {
+    var ms = state.mode === "running" ? Math.max(0, state.endAt - Date.now()) : state.remainingMs;
+    var text = format(ms);
+    if (text !== shown) {
+      shown = text;
+      clockEl.textContent = text;
+      var sec = ms <= 0 ? 0 : Math.ceil(ms / 1000);
+      if (state.mode === "running" && sec <= 10 && sec > 0) announce("剩餘" + sec + "秒");
+      if (sec !== urgencySec) {
+        urgencySec = sec;
+        var dur = sec > 10 ? 0.48 : Math.max(0.16, (sec / 10) * 0.48);
+        app.style.setProperty("--tense-dur", dur.toFixed(3) + "s");
+      }
+    }
+    var ratio = state.totalMs <= 0 ? 0 : Math.max(0, Math.min(1, ms / state.totalMs));
+    barEl.style.transform = "scaleX(" + ratio + ")";
+    barWrap.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
+    var tense = state.mode === "running" && ms > 0 && ms <= 10000;
+    app.classList.toggle("tense", tense);
+  }
+
+  function setDuration(m, s) {
+    state.minutes = clampInt(m, 0, 99);
+    state.seconds = clampInt(s, 0, 59);
+    state.totalMs = (state.minutes * 60 + state.seconds) * 1000;
+    if (state.mode === "running" || state.mode === "paused" || state.mode === "done") {
+      clearTimeout(endTimer);
+      clearMotion();
+      app.classList.remove("awake");
+      state.mode = "idle";
+    }
+    state.remainingMs = state.totalMs;
+    save();
+    shown = "";
+    renderControls();
+    paintTime();
+  }
+
+  function ensureAudio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function stopHum() {
+    if (!hum) return;
+    var node = hum;
+    hum = null;
+    try {
+      var t = node.ctx.currentTime;
+      node.master.gain.cancelScheduledValues(t);
+      node.master.gain.linearRampToValueAtTime(0.0001, t + 0.06);
+      node.src.stop(t + 0.08);
+      node.tone.stop(t + 0.08);
+    } catch (e) { /* already stopped */ }
+  }
+
+  function ensureHum() {
+    if (hum || state.muted) return;
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var len = Math.floor(ctx.sampleRate * 0.35);
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() < 0.018 ? (Math.random() * 2 - 1) : 0;
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    var filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 1600;
+    filter.Q.value = 0.6;
+    var tone = ctx.createOscillator();
+    tone.type = "triangle";
+    tone.frequency.value = 62;
+    var toneGain = ctx.createGain();
+    toneGain.gain.value = 0.4;
+    var master = ctx.createGain();
+    master.gain.value = 0.0001;
+    src.connect(filter);
+    filter.connect(master);
+    tone.connect(toneGain);
+    toneGain.connect(master);
+    master.connect(ctx.destination);
+    src.start();
+    tone.start();
+    hum = { ctx: ctx, src: src, tone: tone, master: master };
+  }
+
+  function setHum(ms) {
+    if (!hum) return;
+    var left = Math.max(0, Math.min(1, (10000 - ms) / 10000));
+    var target = 0.012 + left * 0.045;
+    var t = hum.ctx.currentTime;
+    hum.master.gain.cancelScheduledValues(t);
+    hum.master.gain.linearRampToValueAtTime(target, t + 0.08);
+  }
+
+  function chime() {
+    if (state.muted) return;
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    var o = ctx.createOscillator();
+    var g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(520, t + 0.13);
+    o.frequency.exponentialRampToValueAtTime(190, t + 0.36);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.2, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start(t);
+    o.stop(t + 0.44);
+    [392, 523, 659, 784].forEach(function (freq, i) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      var st = t + 0.2 + i * 0.11;
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, st);
+      gain.gain.setValueAtTime(0.0001, st);
+      gain.gain.exponentialRampToValueAtTime(0.11, st + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, st + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.42);
+    });
+  }
+
+  function clearMotion() {
+    movers.forEach(function (el) {
+      el.getAnimations().forEach(function (a) { a.cancel(); });
+      el.style.transform = "";
+      el.style.opacity = "";
+    });
+    whoosh.style.opacity = "";
+  }
+
+  function applyEndPose() {
+    var u = unit();
+    mattressMover.style.transform = pose(u, -20, -36, -36);
+    pillowMover.style.transform = pose(u, -340, -250, -46);
+    blanketMover.style.transform = pose(u, 280, -270, 40);
+    mascotMover.style.transform = pose(u, 8, -310, -14);
+    springMover.style.transform = "scaleY(1.45)";
+    whoosh.style.opacity = "0.8";
+  }
+
+  function segment(keys) {
+    return { duration: 1100, fill: "forwards", easing: "linear" };
+  }
+
+  function launch() {
+    app.classList.add("awake");
+    if (reduceMotion) {
+      applyEndPose();
+      return;
+    }
+    var u = unit();
+    var easeIn = "cubic-bezier(.4, 0, .8, .4)";
+    var sproing = "cubic-bezier(.14, 1.35, .28, 1)";
+    mattressMover.animate([
+      { transform: pose(u, 0, 0, 0), easing: easeIn, offset: 0 },
+      { transform: pose(u, 8, 26, 10), easing: sproing, offset: 0.16 },
+      { transform: pose(u, -20, -36, -36), offset: 1 }
+    ], segment());
+    pillowMover.animate([
+      { transform: pose(u, 0, 0, 0), easing: easeIn, offset: 0 },
+      { transform: pose(u, 4, 16, 0, 1.15, 0.8), easing: sproing, offset: 0.16 },
+      { transform: pose(u, -340, -250, -46), offset: 1 }
+    ], segment());
+    blanketMover.animate([
+      { transform: pose(u, 0, 0, 0), easing: easeIn, offset: 0 },
+      { transform: pose(u, 0, 14, -6, 1.12, 0.82), easing: sproing, offset: 0.16 },
+      { transform: pose(u, 280, -270, 40), offset: 1 }
+    ], segment());
+    mascotMover.animate([
+      { transform: pose(u, 0, 0, 0), easing: easeIn, offset: 0 },
+      { transform: pose(u, 0, 22, 6, 1.16, 0.78), easing: sproing, offset: 0.15 },
+      { transform: pose(u, -16, -360, -24, 0.88, 1.24), offset: 0.68 },
+      { transform: pose(u, 8, -310, -14), offset: 1 }
+    ], { duration: 1050, fill: "forwards", easing: "linear" });
+    springMover.animate([
+      { transform: "scaleY(0.12)", offset: 0 },
+      { transform: "scaleY(0.04)", offset: 0.14 },
+      { transform: "scaleY(1.6)", offset: 0.48 },
+      { transform: "scaleY(1.2)", offset: 0.7 },
+      { transform: "scaleY(1.45)", offset: 1 }
+    ], { duration: 900, fill: "forwards", easing: "linear" });
+    whoosh.animate([
+      { opacity: 0, offset: 0 },
+      { opacity: 0, offset: 0.12 },
+      { opacity: 1, offset: 0.4 },
+      { opacity: 0.8, offset: 1 }
+    ], { duration: 1050, fill: "forwards" });
+  }
+
+  function armTimeout() {
+    clearTimeout(endTimer);
+    var left = Math.max(0, state.endAt - Date.now());
+    endTimer = setTimeout(finish, left);
+  }
+
+  function syncChrome() {
+    clearTimeout(chromeTimer);
+    if (state.mode === "running") {
+      chromeTimer = setTimeout(function () {
+        if (state.mode === "running") app.classList.add("chrome-hidden");
+      }, 1300);
+    } else {
+      app.classList.remove("chrome-hidden");
+    }
+  }
+
+  function pokeChrome() {
+    if (state.mode !== "running") return;
+    app.classList.remove("chrome-hidden");
+    clearTimeout(chromeTimer);
+    chromeTimer = setTimeout(function () {
+      if (state.mode === "running") app.classList.add("chrome-hidden");
+    }, 1600);
+  }
+
+  function start() {
+    if (state.mode === "running" || state.totalMs <= 0) return;
+    if (state.mode !== "paused") {
+      clearMotion();
+      app.classList.remove("awake");
+      state.remainingMs = state.totalMs;
+    }
+    ensureAudio();
+    state.mode = "running";
+    state.endAt = Date.now() + state.remainingMs;
+    armTimeout();
+    shown = "";
+    renderControls();
+    paintTime();
+    kick();
+    syncChrome();
+    announce("開始倒數，剩餘" + spoken(state.remainingMs));
+  }
+
+  function pause() {
+    if (state.mode !== "running") return;
+    state.remainingMs = Math.max(0, state.endAt - Date.now());
+    clearTimeout(endTimer);
+    state.mode = "paused";
+    renderControls();
+    paintTime();
+    syncChrome();
+    announce("已暫停，剩餘" + spoken(state.remainingMs));
+  }
+
+  function reset() {
+    clearTimeout(endTimer);
+    clearMotion();
+    app.classList.remove("awake");
+    state.mode = "idle";
+    state.remainingMs = state.totalMs;
+    shown = "";
+    renderControls();
+    paintTime();
+    syncChrome();
+    announce("已重設，" + spoken(state.totalMs));
+  }
+
+  function finish() {
+    if (state.mode !== "running") return;
+    if (Date.now() + 40 < state.endAt) {
+      armTimeout();
+      return;
+    }
+    clearTimeout(endTimer);
+    state.remainingMs = 0;
+    state.mode = "done";
+    shown = "";
+    renderControls();
+    paintTime();
+    syncChrome();
+    launch();
+    chime();
+    announce("時間到！");
+  }
+
+  function toggleRun() {
+    if (state.mode === "running") pause();
+    else start();
+  }
+
+  function toggleSound() {
+    state.muted = !state.muted;
+    save();
+    if (!state.muted) ensureAudio();
+    renderControls();
+    announce(state.muted ? "已靜音" : "聲音已開啟");
+  }
+
+  function toggleFull() {
+    var el = document.documentElement;
+    var active = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!active) {
+      var req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) req.call(el);
+    } else {
+      var exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) exit.call(document);
+    }
+  }
+
+  function bindHold(btn, fn) {
+    var delay = 0;
+    var repeat = 0;
+    function stop() {
+      clearTimeout(delay);
+      clearInterval(repeat);
+    }
+    btn.addEventListener("pointerdown", function (e) {
+      if (e.button != null && e.button !== 0) return;
+      e.preventDefault();
+      fn();
+      delay = setTimeout(function () { repeat = setInterval(fn, 70); }, 340);
+    });
+    btn.addEventListener("pointerup", stop);
+    btn.addEventListener("pointerleave", stop);
+    btn.addEventListener("pointercancel", stop);
+    btn.addEventListener("click", function (e) { e.preventDefault(); });
+  }
+
+  function onNumberInput(input, max, which) {
+    input.addEventListener("input", function () {
+      if (input.value === "" || input.value === "-") return;
+      var n = clampInt(input.value, 0, max);
+      if (String(n) !== input.value && Number(input.value) > max) input.value = String(n);
+      if (which === "m") setDuration(n, state.seconds);
+      else setDuration(state.minutes, n);
+    });
+    input.addEventListener("blur", function () {
+      var n = input.value === "" ? 0 : clampInt(input.value, 0, max);
+      if (which === "m") setDuration(n, state.seconds);
+      else setDuration(state.minutes, n);
+    });
+  }
+
+  buildPresets();
+  buildConfetti();
+  load();
+  renderControls();
+  paintTime();
+  measureDock();
+
+  goBtn.addEventListener("click", toggleRun);
+  resetBtn.addEventListener("click", reset);
+  soundBtn.addEventListener("click", toggleSound);
+  fullBtn.addEventListener("click", toggleFull);
+  bindHold(document.getElementById("min-dec"), function () { setDuration(state.minutes - 1, state.seconds); });
+  bindHold(document.getElementById("min-inc"), function () { setDuration(state.minutes + 1, state.seconds); });
+  bindHold(document.getElementById("sec-dec"), function () { setDuration(state.minutes, state.seconds - 1); });
+  bindHold(document.getElementById("sec-inc"), function () { setDuration(state.minutes, state.seconds + 1); });
+  onNumberInput(minutesInput, 99, "m");
+  onNumberInput(secondsInput, 59, "s");
+
+  document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (e.code === "Space") {
+      if (tag === "BUTTON") return;
+      e.preventDefault();
+      toggleRun();
+    } else if (e.key === "r" || e.key === "R") {
+      e.preventDefault();
+      reset();
+    } else if (e.key === "f" || e.key === "F") {
+      e.preventDefault();
+      toggleFull();
+    }
+  });
+
+  document.addEventListener("fullscreenchange", renderControls);
+  document.addEventListener("webkitfullscreenchange", renderControls);
+  document.addEventListener("visibilitychange", function () {
+    if (state.mode !== "running") return;
+    state.remainingMs = Math.max(0, state.endAt - Date.now());
+    if (state.remainingMs <= 0) finish();
+    else {
+      shown = "";
+      paintTime();
+    }
+  });
+
+  var rafId = 0;
+  function loop() {
+    if (state.mode !== "running") return;
+    state.remainingMs = Math.max(0, state.endAt - Date.now());
+    paintTime();
+    if (state.remainingMs <= 0) finish();
+    else rafId = requestAnimationFrame(loop);
+  }
+  function kick() {
+    cancelAnimationFrame(rafId);
+    if (state.mode === "running") rafId = requestAnimationFrame(loop);
+  }
+
+  window.addEventListener("resize", function () {
+    measureDock();
+    if (state.mode === "done") applyEndPose();
+  });
+
+  setInterval(function () {
+    if (state.mode !== "running") return;
+    state.remainingMs = Math.max(0, state.endAt - Date.now());
+    paintTime();
+    if (state.remainingMs <= 0) finish();
+  }, 200);
+
+  document.addEventListener("pointerdown", function () { ensureAudio(); pokeChrome(); }, { passive: true });
+  document.addEventListener("pointermove", pokeChrome, { passive: true });
+
+  var progress = document.querySelector(".progress-wrap");
+  progress.setAttribute("role", "progressbar");
+  progress.setAttribute("aria-label", "剩餘時間");
+  progress.setAttribute("aria-valuemin", "0");
+  progress.setAttribute("aria-valuemax", "100");
+  progress.setAttribute("aria-valuenow", "100");
+})();
+</script>
+</body>
+</html>
