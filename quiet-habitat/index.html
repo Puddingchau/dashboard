@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="害羞動物園" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#e08a4a" />
+  <title>害羞動物園 · Quiet Habitat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Full-bleed habitat (also used as home preview) -->
+    <div id="scene" data-theme="savanna">
+      <div id="sky"></div>
+      <div id="far" class="layer"></div>
+      <div id="mid" class="layer"></div>
+      <div id="near" class="layer"></div>
+      <div id="decor" class="layer"></div>
+      <div id="particles"></div>
+      <div id="creatures"></div>
+      <div id="fg" class="layer"></div>
+      <div id="loud-overlay" data-kind="haze"></div>
+      <div id="weather-fx"></div>
+    </div>
+
+    <!-- Home -->
+    <section id="home">
+      <div class="home-bar">
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" id="lang-zh" aria-pressed="true">繁體中文</button>
+          <button type="button" id="lang-en" aria-pressed="false">English</button>
+        </div>
+        <div class="home-bar-actions">
+          <button type="button" class="ghost-btn" id="btn-how" data-i18n="howItWorks">點樣用</button>
+          <button type="button" class="ghost-btn" id="btn-collection" data-i18n="collection">圖鑑</button>
+          <button type="button" class="ghost-btn" id="btn-settings" data-i18n="settings">設定</button>
+        </div>
+      </div>
+
+      <div class="home-hero">
+        <span class="home-kicker" data-i18n="subtitle">Quiet Habitat</span>
+        <h1 data-i18n="appName">害羞動物園</h1>
+        <p class="sub" data-i18n="subtitle">Quiet Habitat</p>
+        <p class="tagline" data-i18n="tagline">嚇…這些動物很害羞！太吵就會跑走；保持安靜，他們就會走出來留下。</p>
+      </div>
+
+      <div class="theme-grid" id="theme-grid" role="listbox" aria-label="Theme"></div>
+
+      <div class="home-cta">
+        <button type="button" class="start-btn" id="btn-start" data-i18n="start">開始</button>
+        <p class="privacy-note" data-i18n="privacy"></p>
+        <p class="hint-line" data-i18n="previewPaceHint"></p>
+      </div>
+    </section>
+
+    <!-- Session chrome -->
+    <div id="session-ui">
+      <div id="hud">
+        <div class="meter pointer" id="meter" title="">
+          <div class="meter-label" data-i18n="noiseMeter">音量</div>
+          <div class="meter-track" id="meter-track">
+            <div class="meter-fill" id="meter-fill"></div>
+            <div class="meter-tick" id="meter-tick" role="slider" aria-valuemin="8" aria-valuemax="90" aria-valuenow="38" tabindex="0"></div>
+          </div>
+          <div class="meter-status" id="meter-status">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="status-text" id="status-text"></span>
+          </div>
+        </div>
+        <div class="hud-goals pointer" id="hud-goals">
+          <button type="button" class="chip" data-goal="silent" aria-pressed="false"><span data-i18n="presetSilent">安靜</span></button>
+          <button type="button" class="chip" data-goal="independent" aria-pressed="true"><span data-i18n="presetIndependent">自行工作（輕聲）</span></button>
+          <button type="button" class="chip" data-goal="partner" aria-pressed="false"><span data-i18n="presetPartner">分組討論</span></button>
+        </div>
+      </div>
+
+      <button type="button" id="fs-btn" class="pointer" data-i18n-aria="enterFullscreen" aria-label="進入全畫面">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+      <button type="button" id="gear-btn" class="pointer" data-i18n-aria="menuTitle" aria-label="老師選單">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>
+      </button>
+
+      <div id="demo-bar">
+        <span data-i18n="demoMode">示範模式</span>
+        <div class="demo-btns">
+          <button type="button" data-level="quiet" aria-pressed="true" data-i18n="demoQuiet">安靜</button>
+          <button type="button" data-level="mid" aria-pressed="false" data-i18n="demoBitLoud">有啲聲</button>
+          <button type="button" data-level="loud" aria-pressed="false" data-i18n="demoTooLoud">太吵</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Teacher menu -->
+    <div class="backdrop" id="menu-backdrop" hidden>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="menu-title">
+        <button type="button" class="panel-close" data-close="menu" aria-label="關閉">×</button>
+        <h2 id="menu-title" data-i18n="menuTitle">老師選單</h2>
+        <div class="menu-list">
+          <button type="button" data-open="settings" data-i18n="settings">設定</button>
+          <button type="button" data-open="themes-session" data-i18n="changeTheme">轉主題</button>
+          <button type="button" data-open="calibrate" data-i18n="calibrate">校正咪高峰</button>
+          <button type="button" data-open="collection" data-i18n="collection">圖鑑</button>
+          <button type="button" data-open="how" data-i18n="howItWorks">點樣用</button>
+          <button type="button" id="menu-fs" data-i18n="enterFullscreen">進入全畫面</button>
+          <button type="button" id="menu-end" data-i18n="endSession">結束這回</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="backdrop" id="settings-backdrop" hidden>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <button type="button" class="panel-close" data-close="settings" aria-label="關閉">×</button>
+        <h2 id="settings-title" data-i18n="settingsTitle">設定</h2>
+        <p class="lead" data-i18n="settingsSaved">設定已儲存在這隻電腦。</p>
+
+        <div class="setting-block">
+          <h3 data-i18n="language">語言</h3>
+          <div class="chips" id="settings-lang">
+            <button type="button" class="chip" data-lang="zh-HK" aria-pressed="true">繁體中文</button>
+            <button type="button" class="chip" data-lang="en" aria-pressed="false">English</button>
+          </div>
+        </div>
+
+        <div class="setting-block">
+          <h3 data-i18n="volumeGoal">音量目標</h3>
+          <div class="chips" id="settings-goal">
+            <button type="button" class="chip" data-goal="silent" aria-pressed="false">
+              <span data-i18n="presetSilent">安靜</span>
+            </button>
+            <button type="button" class="chip" data-goal="independent" aria-pressed="true">
+              <span data-i18n="presetIndependent">自行工作（輕聲）</span>
+            </button>
+            <button type="button" class="chip" data-goal="partner" aria-pressed="false">
+              <span data-i18n="presetPartner">分組討論</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="setting-block">
+          <h3 data-i18n="pace">出現節奏</h3>
+          <button type="button" class="choice" data-pace="relaxed" aria-pressed="false">
+            <span data-i18n="paceRelaxed">輕鬆</span>
+            <span class="hint" data-i18n="paceRelaxedHint"></span>
+          </button>
+          <button type="button" class="choice" data-pace="normal" aria-pressed="true">
+            <span data-i18n="paceNormal">一般</span>
+            <span class="hint" data-i18n="paceNormalHint"></span>
+          </button>
+          <button type="button" class="choice" data-pace="lively" aria-pressed="false">
+            <span data-i18n="paceLively">輕快</span>
+            <span class="hint" data-i18n="paceLivelyHint"></span>
+          </button>
+          <button type="button" class="choice" data-pace="preview" aria-pressed="false">
+            <span data-i18n="pacePreview">試玩</span>
+            <span class="hint" data-i18n="pacePreviewHint"></span>
+          </button>
+          <button type="button" class="choice" data-pace="custom" aria-pressed="false">
+            <span data-i18n="paceCustom">自訂</span>
+            <span class="hint" data-i18n="paceCustomHint"></span>
+          </button>
+          <label class="number-field" id="custom-pace-field" hidden>
+            <span data-i18n="customMinutes">每隔多少分鐘</span>
+            <input type="number" id="custom-minutes" min="0.1" max="30" step="0.5" value="4" />
+            <span data-i18n="minutesUnit">分鐘</span>
+          </label>
+        </div>
+
+        <div class="setting-block">
+          <h3 data-i18n="loudBehavior">太吵時點算</h3>
+          <button type="button" class="choice" data-behavior="flee" aria-pressed="true">
+            <span data-i18n="behaviorFlee">動物逃走</span>
+            <span class="hint" data-i18n="behaviorFleeHint"></span>
+          </button>
+          <button type="button" class="choice" data-behavior="pause" aria-pressed="false">
+            <span data-i18n="behaviorPause">暫停場面</span>
+            <span class="hint" data-i18n="behaviorPauseHint"></span>
+          </button>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="secondary-btn" data-open="calibrate" data-i18n="calibrate">校正咪高峰</button>
+          <button type="button" class="primary-btn" data-close="settings" data-i18n="done">完成</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="backdrop" id="how-backdrop" hidden>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="how-title">
+        <button type="button" class="panel-close" data-close="how" aria-label="關閉">×</button>
+        <h2 id="how-title" data-i18n="howTitle">點樣用</h2>
+        <ol class="how-list">
+          <li data-n="1" data-i18n="how1"></li>
+          <li data-n="2" data-i18n="how2"></li>
+          <li data-n="3" data-i18n="how3"></li>
+          <li data-n="4" data-i18n="how4"></li>
+          <li data-n="5" data-i18n="how5"></li>
+          <li data-n="6" data-i18n="how6"></li>
+          <li data-n="7" data-i18n="how7"></li>
+        </ol>
+        <h3 style="margin-bottom:8px;font-weight:800" data-i18n="howPrivacyTitle">私隱</h3>
+        <p class="lead" data-i18n="howPrivacy"></p>
+        <div class="btn-row">
+          <button type="button" class="primary-btn" data-close="how" data-i18n="done">完成</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collection -->
+    <div class="backdrop" id="collection-backdrop" hidden>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="collection-title" style="width:min(820px,100%)">
+        <button type="button" class="panel-close" data-close="collection" aria-label="關閉">×</button>
+        <h2 id="collection-title" data-i18n="collectionTitle">圖鑑</h2>
+        <p class="lead" data-i18n="collectionIntro"></p>
+        <div class="collection-tabs" id="collection-tabs"></div>
+        <p class="collection-meta" id="collection-meta"></p>
+        <div class="collection-grid" id="collection-grid"></div>
+        <button type="button" class="danger-btn" id="btn-reset-collection" data-i18n="resetCollection"></button>
+      </div>
+    </div>
+
+    <!-- Calibration -->
+    <div class="backdrop" id="calibrate-backdrop" hidden>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="cal-title">
+        <button type="button" class="panel-close" data-close="calibrate" aria-label="關閉">×</button>
+        <h2 id="cal-title" data-i18n="calTitle">校正咪高峰</h2>
+        <p class="lead" id="cal-intro" data-i18n="calIntro"></p>
+        <p class="cal-status" id="cal-status" hidden></p>
+        <div class="btn-row" id="cal-actions">
+          <button type="button" class="secondary-btn" data-close="calibrate" data-i18n="calSkip">稍後再說</button>
+          <button type="button" class="primary-btn" id="btn-cal-start" data-i18n="calStart">開始校正</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mic denied -->
+    <div class="backdrop" id="mic-backdrop" hidden>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="mic-title">
+        <button type="button" class="panel-close" data-close="mic" aria-label="關閉">×</button>
+        <h2 id="mic-title" data-i18n="micDeniedTitle">未能使用咪高峰</h2>
+        <p class="lead" data-i18n="micDeniedBody"></p>
+        <div class="btn-row">
+          <button type="button" class="secondary-btn" id="btn-demo" data-i18n="demoMode">示範模式</button>
+          <button type="button" class="primary-btn" id="btn-mic-retry" data-i18n="micDeniedRetry">再試一次</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- In-session theme picker -->
+    <div class="backdrop" id="themes-session-backdrop" hidden>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="themes-session-title">
+        <button type="button" class="panel-close" data-close="themes-session" aria-label="關閉">×</button>
+        <h2 id="themes-session-title" data-i18n="changeTheme">轉主題</h2>
+        <p class="lead" data-i18n="defaultThemeHint"></p>
+        <div class="theme-grid" id="theme-grid-session" style="max-width:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/themes.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
