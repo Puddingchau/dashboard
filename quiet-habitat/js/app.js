@@ -277,6 +277,15 @@
     QH.engine.session.timerPaused = false;
   }
 
+  function resetSessionTime() {
+    if (!QH.engine.resetTime()) return;
+    if (document.getElementById("timesup-backdrop").classList.contains("is-open")) {
+      closeModal("timesup");
+    }
+    const teacherOpen = !!document.querySelector(".backdrop.is-open");
+    QH.engine.session.timerPaused = teacherOpen;
+  }
+
   QH.onTimesUp = showTimesUp;
 
   /* ---------- Collection ---------- */
@@ -541,6 +550,9 @@
     document.getElementById("menu-fs").addEventListener("click", () => { closeModal("menu"); toggleFullscreen(); });
     document.getElementById("menu-add5").addEventListener("click", () => { closeModal("menu"); addFiveMinutes(); });
     document.getElementById("menu-end").addEventListener("click", endSession);
+    document.getElementById("btn-session-home").addEventListener("click", endSession);
+    document.getElementById("btn-reset-time").addEventListener("click", resetSessionTime);
+    document.getElementById("btn-timesup-reset").addEventListener("click", resetSessionTime);
     document.getElementById("btn-add5").addEventListener("click", addFiveMinutes);
     document.getElementById("btn-timesup-end").addEventListener("click", endSession);
     document.getElementById("home-custom-minutes").addEventListener("change", (ev) => setCustomSessionMinutes(ev.target.value));
