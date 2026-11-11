@@ -1,0 +1,16 @@
+{
+  "name": "害羞動物園",
+  "short_name": "害羞動物園",
+  "description": "Quiet Habitat — a quiet-classroom habitat for the SMART Board or a phone.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1c2118",
+  "theme_color": "#e08a4a",
+  "lang": "zh-HK",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
