@@ -3,14 +3,14 @@
   const QH = (global.QH = global.QH || {});
 
   const PACE_MS = {
-    relaxed: 8 * 60 * 1000,
-    normal: 5 * 60 * 1000,
-    lively: 2.5 * 60 * 1000,
-    preview: 12 * 1000,
+    relaxed: 2 * 60 * 1000,
+    normal: 45 * 1000,
+    lively: 20 * 1000,
+    preview: 7 * 1000,
   };
-  const FIRST_MIN = 10 * 1000;
-  const FIRST_MAX = 20 * 1000;
-  const PREVIEW_FIRST = 8 * 1000;
+  const FIRST_MIN = 5 * 1000;
+  const FIRST_MAX = 10 * 1000;
+  const PREVIEW_FIRST = 4 * 1000;
   const GRACE_SLIGHT = 6000;
   const GRACE_LOUD = 1000;
   const CLEAR_MS = 3000;
@@ -32,6 +32,10 @@
     raf: 0,
     creatures: [],
     pausedForModal: false,
+    durationMs: 0,
+    remainingMs: 0,
+    timedOut: false,
+    timerPaused: false,
   };
 
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
@@ -41,7 +45,7 @@
   function intervalMs() {
     const st = QH.state;
     if (st.pace === "custom") return Math.max(0.15, Number(st.customMinutes) || 4) * 60 * 1000;
-    if (st.pace === "preview") return rand(8000, 15000);
+    if (st.pace === "preview") return rand(6000, 8000);
     return PACE_MS[st.pace] || PACE_MS.normal;
   }
 
@@ -66,8 +70,8 @@
       scale = 0.82 + ((y - 58) / 24) * 0.4;
     }
     let x = rand(8, 88);
-    // Keep the top-center HUD reasonably clear.
-    if (y < 18 && x > 30 && x < 70) x = Math.random() < 0.5 ? rand(6, 26) : rand(74, 92);
+    // Keep the top HUD (timer + meter) reasonably clear.
+    if (y < 28 && x > 18 && x < 82) x = Math.random() < 0.5 ? rand(4, 16) : rand(84, 96);
     return { x, y, scale };
   }
 
@@ -100,6 +104,7 @@
   }
 
   function spawnOne() {
+    if (session.timedOut) return false;
     if (session.creatures.filter((c) => !c.leaving).length >= MAX_ON_SCREEN) return false;
     const def = pickNext();
     if (!def) return false;
@@ -241,6 +246,7 @@
   }
 
   function statusFor(level, goal, over, liveCount, canSpawn) {
+    if (session.timedOut) return "statusTimesUp";
     if (session.loud) {
       return QH.state.loudBehavior === "pause" ? "statusPaused" : "statusTooLoud";
     }
@@ -265,6 +271,70 @@
     text.textContent = QH.t(statusKey);
   }
 
+  function durationMsFromState() {
+    const st = QH.state || {};
+    const mode = st.durationMode || "15";
+    if (mode === "unlimited") return 0;
+    if (mode === "custom") {
+      const n = Number(st.customSessionMinutes);
+      return Math.max(1, Math.min(180, isFinite(n) && n > 0 ? n : 15)) * 60 * 1000;
+    }
+    const n = Number(mode);
+    return (isFinite(n) && n > 0 ? n : 15) * 60 * 1000;
+  }
+
+  function formatTime(ms) {
+    const total = Math.max(0, Math.ceil(ms / 1000));
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = (n) => String(n).padStart(2, "0");
+    if (h > 0) return h + ":" + pad(m) + ":" + pad(s);
+    return pad(m) + ":" + pad(s);
+  }
+
+  function syncTimerUI() {
+    const pill = document.getElementById("timer-pill");
+    const digits = document.getElementById("timer-digits");
+    if (!pill || !digits) return;
+    const timed = session.active && session.durationMs > 0;
+    pill.hidden = !timed;
+    pill.classList.toggle("is-on", timed);
+    if (!timed) {
+      pill.classList.remove("is-warn", "is-urgent");
+      return;
+    }
+    digits.textContent = formatTime(session.remainingMs);
+    const sec = session.remainingMs / 1000;
+    pill.classList.toggle("is-urgent", session.timedOut || sec <= 10);
+    pill.classList.toggle("is-warn", !session.timedOut && sec > 10 && sec <= 60);
+    const addBtn = document.getElementById("menu-add5");
+    if (addBtn) addBtn.hidden = !timed;
+  }
+
+  function onTimesUp() {
+    session.timedOut = true;
+    session.remainingMs = 0;
+    syncTimerUI();
+    if (typeof QH.onTimesUp === "function") QH.onTimesUp(session.spawned);
+  }
+
+  function addMinutes(mins) {
+    const extra = Math.max(1, Number(mins) || 5) * 60 * 1000;
+    if (session.durationMs <= 0) {
+      session.durationMs = extra;
+    } else {
+      session.durationMs += extra;
+    }
+    session.remainingMs = (session.remainingMs || 0) + extra;
+    const wasOut = session.timedOut;
+    session.timedOut = false;
+    if (wasOut) {
+      session.nextAt = session.quietMs + Math.min(intervalMs(), 4000);
+    }
+    syncTimerUI();
+  }
+
   function loop(ts) {
     session.raf = requestAnimationFrame(loop);
     if (!session.lastTs) session.lastTs = ts;
@@ -279,8 +349,23 @@
     const much = fast > goal + 22 || fast > goal * 1.7 + 8;
     const over = level > goal + 1.2;
 
+    if (session.active && session.durationMs > 0 && !session.timedOut && !session.timerPaused) {
+      session.remainingMs -= dt;
+      if (session.remainingMs <= 0) onTimesUp();
+      else syncTimerUI();
+    } else if (session.active) {
+      syncTimerUI();
+    }
+
     if (!session.active || session.pausedForModal) {
-      updateHud(level, goal, session.active ? "statusListening" : "statusListening", over ? "warn" : "good");
+      updateHud(level, goal, session.active ? (session.timedOut ? "statusTimesUp" : "statusListening") : "statusListening", over ? "warn" : "good");
+      return;
+    }
+
+    if (session.timedOut) {
+      wander(ts);
+      const live = session.creatures.filter((c) => !c.leaving).length;
+      updateHud(level, goal, "statusTimesUp", session.loud ? "loud" : over ? "warn" : "good");
       return;
     }
 
@@ -335,15 +420,25 @@
     session.clearing = false;
     session.lastTs = 0;
     session.creatures = [];
+    session.durationMs = durationMsFromState();
+    session.remainingMs = session.durationMs;
+    session.timedOut = false;
+    session.timerPaused = false;
     document.getElementById("creatures").innerHTML = "";
     document.getElementById("scene").classList.remove("is-loud", "is-clearing");
     QH.paintTheme(session.themeId);
+    syncTimerUI();
     if (!session.raf) session.raf = requestAnimationFrame(loop);
   }
 
   function stop(stopLoop) {
     session.active = false;
     session.loud = false;
+    session.timedOut = false;
+    session.durationMs = 0;
+    session.remainingMs = 0;
+    session.timerPaused = false;
+    syncTimerUI();
     session.creatures.forEach((c) => {
       if (c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el);
     });
@@ -387,5 +482,9 @@
     updateHud,
     spawnOne,
     PACE_MS,
+    formatTime,
+    syncTimerUI,
+    addMinutes,
+    durationMsFromState,
   };
 })(window);
