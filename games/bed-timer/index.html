@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#C7B0EA" />
-<meta name="description" content="課堂用彈床倒數。時間到，布丁仔會彈起床。" />
+<meta name="description" content="課堂用彈床倒數。時間到，老師會彈起床。" />
 <title>彈床倒數</title>
 <style>
   :root {
@@ -48,7 +48,7 @@
     flex: 1 1 auto;
     min-height: 0;
     background:
-      linear-gradient(#c7b0ea, #c7b0ea) 0 0 / 100% 64% no-repeat,
+      linear-gradient(#d2b4e2, #e7c8b4) 0 0 / 100% 64% no-repeat,
       linear-gradient(#6d468f, #6d468f) 0 64% / 100% 5% no-repeat,
       linear-gradient(#e8b56a, #d99a4e) 0 100% / 100% 36% no-repeat;
     overflow: hidden;
@@ -329,14 +329,50 @@
     transform-origin: center bottom;
     transform: scaleY(0.08);
   }
-  #pudding-mover, #mattress-mover, #pillow-mover, #blanket-mover {
+  #mascot-mover, #tail-mover, #mattress-mover, #pillow-mover, #blanket-mover {
     transform-box: fill-box;
     transform-origin: center center;
   }
   #sleeper { transform-box: fill-box; transform-origin: 50% 80%; }
-  #pudding-mover {
-    transform-origin: 50% 75%;
+  #mascot-mover {
+    transform-origin: 50% 70%;
     animation: breathe 3.3s ease-in-out infinite;
+  }
+  #tail-bolt {
+    transform-box: fill-box;
+    transform-origin: 0% 100%;
+    transform: rotate(42deg);
+  }
+  .cheek-glow, .spark, .spark-hot { opacity: 0; }
+  .flicker, .zap {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .flicker {
+    z-index: 2;
+    background: radial-gradient(ellipse at 48% 58%, rgba(255, 214, 80, 0.0) 0%, rgba(255, 186, 50, 0.0) 55%, rgba(255, 160, 40, 0.0) 100%);
+    opacity: 0;
+  }
+  .zap {
+    z-index: 5;
+    opacity: 1;
+  }
+  .zap::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 46% 42%, rgba(255, 252, 220, 0.95) 0%, rgba(255, 220, 70, 0.5) 16%, rgba(255, 190, 40, 0) 42%);
+    opacity: 0;
+  }
+  .zap svg {
+    position: absolute;
+    left: 28%;
+    top: 8%;
+    width: min(46vw, 560px);
+    height: auto;
+    opacity: 0;
+    transform-origin: 42% 55%;
   }
   #cloud { animation: drift 16s ease-in-out infinite; }
   #lamp-glow { transform-box: fill-box; transform-origin: center; animation: glow 3.2s ease-in-out infinite; }
@@ -346,22 +382,37 @@
   .snore.s3 { font-size: 24px; animation: zzz 2.8s ease-in 1.4s infinite; }
 
   .app.tense #sleeper { animation: bed-charge var(--tense-dur, 0.42s) ease-in-out infinite; }
-  .app.tense #pudding-mover { animation: pudding-charge var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense #mascot-mover { animation: mascot-charge var(--tense-dur, 0.42s) ease-in-out infinite; }
   .app.tense #spring-mover { animation: spring-tease var(--tense-dur, 0.42s) ease-in-out infinite; }
   .app.tense #mattress-mover { animation: mattress-tease var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense .cheek-glow { animation: cheek-glow var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense #tail-bolt { animation: tail-up var(--tense-dur, 0.42s) ease-in-out infinite; }
+  .app.tense .spark { animation: spark 0.22s linear infinite; }
+  .app.tense .spark.d1 { animation-delay: 0.05s; }
+  .app.tense .spark.d2 { animation-delay: 0.11s; }
+  .app.tense .spark.d3 { animation-delay: 0.16s; }
+  .app.surge .spark-hot { animation: spark 0.14s linear infinite; }
+  .app.surge .flicker { animation: room-flicker 0.18s steps(2, end) infinite; }
+  .app.tense .flicker { animation: room-flicker var(--tense-dur, 0.42s) steps(2, end) infinite; }
   .app.tense #mini-clock {
     transform-box: fill-box;
     transform-origin: 50% 80%;
     animation: ring calc(var(--tense-dur, 0.42s) * 0.55) linear infinite;
   }
   .app.tense .snores, .app.done .snores, .app.paused .snores { display: none; }
-  .app.done #pudding-mover,
+  .app.done #mascot-mover,
+  .app.done #tail-bolt,
   .app.done #sleeper,
   .app.done #spring-mover,
   .app.done #mattress-mover,
   .app.done #mini-clock,
   .app.done #cloud,
-  .app.done #lamp-glow { animation: none; }
+  .app.done #lamp-glow,
+  .app.done .flicker { animation: none; }
+  .app.done #tail-bolt { transform: rotate(-18deg); }
+  .app.done .zap::before { animation: zap-flash 0.55s ease-out forwards; }
+  .app.done .zap svg { animation: zap-bolts 0.65s ease-out forwards; }
+  .app.done .cheek-glow { opacity: 1; }
 
   #arm-l, #arm-r { transform-box: fill-box; transform-origin: 50% 18%; }
   .app.awake #arm-l { transform: rotate(62deg); }
@@ -382,10 +433,33 @@
     40% { transform: translateY(11px); }
     72% { transform: translateY(-9px); }
   }
-  @keyframes pudding-charge {
+  @keyframes mascot-charge {
     0%, 100% { transform: scale(1, 1); }
-    40% { transform: scale(1.08, 0.9); }
-    72% { transform: scale(0.96, 1.08); }
+    40% { transform: scale(1.06, 0.92); }
+    72% { transform: scale(0.97, 1.08); }
+  }
+  @keyframes cheek-glow {
+    0%, 100% { opacity: 0.72; }
+    50% { opacity: 1; }
+  }
+  @keyframes spark {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+  @keyframes room-flicker {
+    0%, 100% { opacity: 0.2; }
+    45% { opacity: 0.5; }
+    70% { opacity: 0.28; }
+  }
+  @keyframes zap-flash {
+    0% { opacity: 0; }
+    20% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes zap-bolts {
+    0% { opacity: 0; transform: scale(0.45) rotate(-8deg); }
+    28% { opacity: 1; transform: scale(1.05) rotate(3deg); }
+    100% { opacity: 1; transform: scale(1.12) rotate(6deg); }
   }
   @keyframes spring-tease {
     0%, 100% { transform: scaleY(0.08); }
@@ -449,18 +523,22 @@
   @media (prefers-reduced-motion: reduce) {
     .confetti { display: none; }
     .snore { display: none !important; }
-    #cloud, #lamp-glow, #pudding-mover { animation: none !important; }
+    #cloud, #lamp-glow, #mascot-mover, .spark, .flicker, #tail-bolt { animation: none !important; }
+    .app.tense .cheek-glow { opacity: 0.9; }
+    .app.tense .spark { opacity: 0.85; }
+    .app.tense #tail-bolt { transform: rotate(-16deg); }
   }
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="stage" id="stage">
-    <svg class="scene" id="scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="布丁仔瞓喺紫色床上的房間">
+    <svg class="scene" id="scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="戴眼鏡的老師瞓喺床上的房間">
       <defs>
         <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#b79ae8"/>
-          <stop offset="1" stop-color="#ddcaf8"/>
+          <stop offset="0" stop-color="#c9a8dc"/>
+          <stop offset="0.62" stop-color="#e4c4d4"/>
+          <stop offset="1" stop-color="#f0d0b4"/>
         </linearGradient>
         <linearGradient id="sky" x1="0" y1="1" x2="0" y2="0">
           <stop offset="0" stop-color="#f7c99a"/>
@@ -599,59 +677,76 @@
           <rect x="608" y="528" width="124" height="22" rx="11" fill="#e4d0fb" stroke="#3a2616" stroke-width="4"/>
         </g>
 
-        <g id="pudding-pos" transform="translate(730, 500)">
-          <g id="pudding-mover">
-            <ellipse cx="46" cy="86" rx="22" ry="15" fill="#ffc533" stroke="#3a2616" stroke-width="6"/>
-            <ellipse cx="90" cy="90" rx="22" ry="15" fill="#ffc533" stroke="#3a2616" stroke-width="6"/>
-            <rect x="28" y="80" width="36" height="16" rx="8" fill="#fff6e4" stroke="#3a2616" stroke-width="5"/>
-            <rect x="72" y="84" width="36" height="16" rx="8" fill="#fff6e4" stroke="#3a2616" stroke-width="5"/>
+        <g id="mascot-pos" transform="translate(560, 455)">
+          <g id="mascot-mover">
+            <rect x="78" y="118" width="26" height="46" rx="12" fill="#e8b48a" stroke="#3a2616" stroke-width="6"/>
+            <rect x="116" y="122" width="26" height="46" rx="12" fill="#e8b48a" stroke="#3a2616" stroke-width="6"/>
+            <path d="M62,108 h96 v26 q0 18 -24 18 h-48 q-24 0 -24 -18 z" fill="#1c1c1c" stroke="#3a2616" stroke-width="6"/>
+            <rect x="48" y="58" width="120" height="62" rx="26" fill="#1a1a1a" stroke="#3a2616" stroke-width="7"/>
+            <rect x="86" y="46" width="36" height="24" rx="10" fill="#f0c4a2" stroke="#3a2616" stroke-width="5"/>
 
-            <ellipse cx="2" cy="52" rx="70" ry="56" fill="#ffc533" stroke="#3a2616" stroke-width="8"/>
-            <ellipse cx="2" cy="78" rx="46" ry="18" fill="#f0a820" opacity="0.45"/>
+            <ellipse cx="36" cy="28" rx="12" ry="16" fill="#e8b48a" stroke="#3a2616" stroke-width="5"/>
+            <ellipse cx="176" cy="28" rx="12" ry="16" fill="#e8b48a" stroke="#3a2616" stroke-width="5"/>
+            <ellipse cx="108" cy="18" rx="62" ry="56" fill="#f3c7a6" stroke="#3a2616" stroke-width="7"/>
 
-            <path d="M-62,28 C-64,0 -40,-28 2,-32 C46,-28 68,0 66,28 C46,12 24,20 2,16 C-24,20 -44,12 -62,28 Z" fill="#e87820" stroke="#3a2616" stroke-width="7"/>
-            <path d="M36,10 C50,12 54,32 46,54 C40,68 30,60 28,44 C26,28 30,16 36,10 Z" fill="#e87820" stroke="#3a2616" stroke-width="6"/>
-            <ellipse cx="-24" cy="2" rx="16" ry="8" fill="#ffd7a0"/>
+            <path d="M52,-8 C58,-62 86,-78 112,-76 C148,-74 172,-48 168,2 C150,-28 128,-36 108,-34 C82,-32 62,-22 52,-8 Z" fill="#2b2724" stroke="#3a2616" stroke-width="6"/>
+            <path d="M114,-62 L128,-98 L142,-58 Z" fill="#2b2724" stroke="#3a2616" stroke-width="6" stroke-linejoin="round"/>
+            <path d="M54,-4 C48,16 58,28 70,22" fill="#2b2724" stroke="#3a2616" stroke-width="6" stroke-linecap="round"/>
+            <path d="M164,0 C174,18 162,32 150,24" fill="#2b2724" stroke="#3a2616" stroke-width="6" stroke-linecap="round"/>
 
-            <path d="M-36,-6 C-46,-62 8,-92 58,-48 C74,-30 60,-16 46,-16 C24,-40 -4,-34 -36,-6 Z" fill="#fff6e4" stroke="#3a2616" stroke-width="7"/>
-            <path d="M-30,-2 Q4,-22 48,-6" fill="none" stroke="#f0c27a" stroke-width="7" stroke-linecap="round"/>
-            <circle cx="62" cy="-40" r="14" fill="#e87820" stroke="#3a2616" stroke-width="6"/>
-
-            <g id="arm-l">
-              <ellipse cx="-64" cy="58" rx="18" ry="24" fill="#ffc533" stroke="#3a2616" stroke-width="6"/>
-              <rect x="-80" y="70" width="32" height="16" rx="8" fill="#fff6e4" stroke="#3a2616" stroke-width="5"/>
-            </g>
-            <g id="arm-r">
-              <ellipse cx="70" cy="60" rx="18" ry="24" fill="#ffc533" stroke="#3a2616" stroke-width="6"/>
-              <rect x="54" y="72" width="32" height="16" rx="8" fill="#fff6e4" stroke="#3a2616" stroke-width="5"/>
-            </g>
+            <ellipse class="cheek-glow" cx="70" cy="34" rx="16" ry="11" fill="#fff3a0"/>
+            <ellipse class="cheek-glow" cx="148" cy="34" rx="16" ry="11" fill="#fff3a0"/>
+            <rect class="cheek-glow" x="68" y="10" width="32" height="24" rx="6" fill="#fff6b0"/>
+            <rect class="cheek-glow" x="116" y="10" width="32" height="24" rx="6" fill="#fff6b0"/>
 
             <g id="face-sleep">
-              <path d="M-30,36 Q-18,24 -6,36" fill="none" stroke="#3a2616" stroke-width="6" stroke-linecap="round"/>
-              <path d="M12,36 Q24,24 36,36" fill="none" stroke="#3a2616" stroke-width="6" stroke-linecap="round"/>
-              <ellipse cx="-34" cy="52" rx="9" ry="6" fill="#ff9a86"/>
-              <ellipse cx="40" cy="52" rx="9" ry="6" fill="#ff9a86"/>
-              <path d="M-8,62 Q4,72 16,62" fill="none" stroke="#3a2616" stroke-width="6" stroke-linecap="round"/>
+              <path d="M78,22 Q90,14 102,22" fill="none" stroke="#3a2616" stroke-width="5" stroke-linecap="round"/>
+              <path d="M118,22 Q130,14 142,22" fill="none" stroke="#3a2616" stroke-width="5" stroke-linecap="round"/>
+              <path d="M96,48 Q110,58 124,48" fill="none" stroke="#c45a4a" stroke-width="5" stroke-linecap="round"/>
             </g>
             <g id="face-wake">
-              <ellipse cx="-16" cy="40" rx="14" ry="15" fill="#fff" stroke="#3a2616" stroke-width="6"/>
-              <ellipse cx="22" cy="40" rx="14" ry="15" fill="#fff" stroke="#3a2616" stroke-width="6"/>
-              <ellipse cx="-14" cy="42" rx="6.5" ry="7.5" fill="#3a2616"/>
-              <ellipse cx="24" cy="42" rx="6.5" ry="7.5" fill="#3a2616"/>
-              <circle cx="-11" cy="38" r="3" fill="#fff"/>
-              <circle cx="27" cy="38" r="3" fill="#fff"/>
-              <path d="M-28,22 Q-16,12 -4,22" fill="none" stroke="#3a2616" stroke-width="5" stroke-linecap="round"/>
-              <path d="M10,22 Q22,12 34,22" fill="none" stroke="#3a2616" stroke-width="5" stroke-linecap="round"/>
-              <ellipse cx="-36" cy="56" rx="9" ry="6" fill="#ff9a86"/>
-              <ellipse cx="42" cy="56" rx="9" ry="6" fill="#ff9a86"/>
-              <ellipse cx="4" cy="68" rx="12" ry="10" fill="#5c3318"/>
-              <ellipse cx="4" cy="72" rx="7" ry="5" fill="#ff8aa0"/>
+              <ellipse cx="90" cy="22" rx="11" ry="12" fill="#fff" stroke="#3a2616" stroke-width="4"/>
+              <ellipse cx="130" cy="22" rx="11" ry="12" fill="#fff" stroke="#3a2616" stroke-width="4"/>
+              <ellipse cx="92" cy="24" rx="5" ry="6" fill="#2b241c"/>
+              <ellipse cx="132" cy="24" rx="5" ry="6" fill="#2b241c"/>
+              <circle cx="94" cy="21" r="2" fill="#fff"/>
+              <circle cx="134" cy="21" r="2" fill="#fff"/>
+              <path d="M92,46 Q110,62 128,46" fill="#fff" stroke="#3a2616" stroke-width="4" stroke-linejoin="round"/>
+              <path d="M98,50 Q110,58 122,50" fill="none" stroke="#e07a86" stroke-width="3" stroke-linecap="round"/>
+            </g>
+
+            <g id="glasses" fill="none" stroke="#1a1a1a" stroke-width="6" stroke-linecap="round">
+              <rect class="lens" x="66" y="8" width="36" height="28" rx="8" fill="rgba(255,255,255,0.18)"/>
+              <rect class="lens" x="114" y="8" width="36" height="28" rx="8" fill="rgba(255,255,255,0.18)"/>
+              <path d="M102,20 H114"/>
+              <path d="M66,20 H54"/>
+              <path d="M150,20 H162"/>
+            </g>
+            <g id="arm-l">
+              <path d="M50,70 Q18,88 8,118" fill="none" stroke="#1a1a1a" stroke-width="16" stroke-linecap="round"/>
+              <path d="M50,70 Q22,90 12,116" fill="none" stroke="#e8b48a" stroke-width="10" stroke-linecap="round"/>
+              <ellipse cx="6" cy="124" rx="14" ry="11" fill="#f0c4a2" stroke="#3a2616" stroke-width="5"/>
+            </g>
+            <g id="arm-r">
+              <path d="M164,72 Q198,90 210,118" fill="none" stroke="#1a1a1a" stroke-width="16" stroke-linecap="round"/>
+              <path d="M164,72 Q194,92 206,116" fill="none" stroke="#e8b48a" stroke-width="10" stroke-linecap="round"/>
+              <ellipse cx="214" cy="124" rx="14" ry="11" fill="#f0c4a2" stroke="#3a2616" stroke-width="5"/>
+            </g>
+
+            <g class="sparks" fill="none" stroke="#fff6b0" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+              <path class="spark" d="M58,-6 L34,-34 L48,-34 L22,-64"/>
+              <path class="spark d1" d="M162,-4 L190,-32 L174,-32 L206,-62"/>
+              <path class="spark d2" d="M-10,118 L-36,96 L-18,96 L-42,72"/>
+              <path class="spark d3" d="M230,120 L258,96 L240,96 L270,70"/>
+              <path class="spark-hot d1" d="M96,-36 L112,-64 L100,-64 L124,-90" stroke="#fff" stroke-width="6"/>
+              <path class="spark-hot d2" d="M8,140 L-16,160 L2,160 L-18,184" stroke="#ffe56a"/>
+              <path class="spark-hot d3" d="M214,142 L240,164 L222,164 L252,186" stroke="#fff"/>
             </g>
 
             <g class="snores">
-              <text class="snore s1" x="78" y="-8">呼</text>
-              <text class="snore s2" x="104" y="-40">呼</text>
-              <text class="snore s3" x="86" y="-68">呼</text>
+              <text class="snore s1" x="186" y="-10">呼</text>
+              <text class="snore s2" x="208" y="-42">呼</text>
+              <text class="snore s3" x="190" y="-68">呼</text>
             </g>
           </g>
         </g>
@@ -688,6 +783,19 @@
       </g>
     </svg>
 
+    <div class="flicker" aria-hidden="true"></div>
+    <div class="zap" aria-hidden="true">
+      <svg viewBox="0 0 360 280">
+        <g fill="none" stroke="#fff8c4" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M70,150 L120,110 L100,110 L160,40"/>
+          <path d="M200,40 L240,90 L220,90 L280,160"/>
+          <path d="M40,80 L90,70 L70,70 L120,20"/>
+          <path d="M250,180 L300,150 L280,150 L340,100"/>
+          <path d="M150,200 L170,150 L155,150 L190,90" stroke="#ffe14a"/>
+        </g>
+      </svg>
+    </div>
+
     <div class="clock-wrap">
       <div class="clock-face">
         <span class="clock-num" id="clock" aria-hidden="true">02:00</span>
@@ -699,7 +807,7 @@
     <div class="banner" id="banner">
       <div class="banner-card">
         <p class="banner-title">時間到！</p>
-        <p class="banner-sub">布丁仔彈起床啦</p>
+        <p class="banner-sub">老師彈起床啦</p>
       </div>
     </div>
 
@@ -775,16 +883,18 @@
   var springMover = document.getElementById("spring-mover");
   var pillowMover = document.getElementById("pillow-mover");
   var blanketMover = document.getElementById("blanket-mover");
-  var puddingMover = document.getElementById("pudding-mover");
+  var mascotMover = document.getElementById("mascot-mover");
   var whoosh = document.getElementById("whoosh");
-  var movers = [mattressMover, springMover, pillowMover, blanketMover, puddingMover, whoosh];
+  var movers = [mattressMover, springMover, pillowMover, blanketMover, mascotMover, whoosh];
 
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var audioCtx = null;
+  var hum = null;
   var endTimer = 0;
   var lastSpoken = "";
   var shown = "";
   var urgencySec = -1;
+  var humSec = -1;
 
   var state = {
     minutes: 2,
@@ -940,6 +1050,18 @@
     barWrap.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
     var tense = state.mode === "running" && ms > 0 && ms <= 10000;
     app.classList.toggle("tense", tense);
+    app.classList.toggle("surge", tense && ms <= 4000);
+    var secNow = ms <= 0 ? 0 : Math.ceil(ms / 1000);
+    if (tense && !state.muted) {
+      ensureHum();
+      if (secNow !== humSec) {
+        humSec = secNow;
+        setHum(ms);
+      }
+    } else if (hum) {
+      stopHum();
+      humSec = -1;
+    }
   }
 
   function setDuration(m, s) {
@@ -967,6 +1089,60 @@
     return audioCtx;
   }
 
+  function stopHum() {
+    if (!hum) return;
+    var node = hum;
+    hum = null;
+    try {
+      var t = node.ctx.currentTime;
+      node.master.gain.cancelScheduledValues(t);
+      node.master.gain.linearRampToValueAtTime(0.0001, t + 0.06);
+      node.src.stop(t + 0.08);
+      node.tone.stop(t + 0.08);
+    } catch (e) { /* already stopped */ }
+  }
+
+  function ensureHum() {
+    if (hum || state.muted) return;
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var len = Math.floor(ctx.sampleRate * 0.35);
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() < 0.018 ? (Math.random() * 2 - 1) : 0;
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    var filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 1600;
+    filter.Q.value = 0.6;
+    var tone = ctx.createOscillator();
+    tone.type = "triangle";
+    tone.frequency.value = 62;
+    var toneGain = ctx.createGain();
+    toneGain.gain.value = 0.4;
+    var master = ctx.createGain();
+    master.gain.value = 0.0001;
+    src.connect(filter);
+    filter.connect(master);
+    tone.connect(toneGain);
+    toneGain.connect(master);
+    master.connect(ctx.destination);
+    src.start();
+    tone.start();
+    hum = { ctx: ctx, src: src, tone: tone, master: master };
+  }
+
+  function setHum(ms) {
+    if (!hum) return;
+    var left = Math.max(0, Math.min(1, (10000 - ms) / 10000));
+    var target = 0.012 + left * 0.045;
+    var t = hum.ctx.currentTime;
+    hum.master.gain.cancelScheduledValues(t);
+    hum.master.gain.linearRampToValueAtTime(target, t + 0.08);
+  }
+
   function chime() {
     if (state.muted) return;
     var ctx = ensureAudio();
@@ -985,6 +1161,19 @@
     g.connect(ctx.destination);
     o.start(t);
     o.stop(t + 0.44);
+    var crack = ctx.createBufferSource();
+    var clen = Math.floor(ctx.sampleRate * 0.18);
+    var cbuf = ctx.createBuffer(1, clen, ctx.sampleRate);
+    var cd = cbuf.getChannelData(0);
+    for (var n = 0; n < clen; n++) cd[n] = (Math.random() * 2 - 1) * Math.pow(1 - n / clen, 2);
+    crack.buffer = cbuf;
+    var cg = ctx.createGain();
+    cg.gain.setValueAtTime(0.16, t);
+    cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    crack.connect(cg);
+    cg.connect(ctx.destination);
+    crack.start(t);
+    crack.stop(t + 0.2);
     [392, 523, 659, 784].forEach(function (freq, i) {
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
@@ -1015,7 +1204,7 @@
     mattressMover.style.transform = pose(u, 6, -108, -22);
     pillowMover.style.transform = pose(u, -250, -175, -22);
     blanketMover.style.transform = pose(u, 230, -185, 22);
-    puddingMover.style.transform = pose(u, -36, -268, -8);
+    mascotMover.style.transform = pose(u, -20, -220, -6);
     springMover.style.transform = "scaleY(1)";
     whoosh.style.opacity = "0";
   }
@@ -1048,11 +1237,11 @@
       { transform: pose(u, 0, 16, -4), easing: sproing, offset: 0.18 },
       { transform: pose(u, 230, -185, 22), offset: 1 }
     ], segment());
-    puddingMover.animate([
+    mascotMover.animate([
       { transform: pose(u, 0, 0, 0), easing: easeIn, offset: 0 },
-      { transform: pose(u, 0, 24, -2), easing: sproing, offset: 0.16 },
-      { transform: pose(u, -70, -320, 16), offset: 0.72 },
-      { transform: pose(u, -36, -268, -8), offset: 1 }
+      { transform: pose(u, 0, 20, -2), easing: sproing, offset: 0.16 },
+      { transform: pose(u, -40, -280, 12), offset: 0.72 },
+      { transform: pose(u, -20, -220, -6), offset: 1 }
     ], { duration: 1200, fill: "forwards", easing: "linear" });
     springMover.animate([
       { transform: "scaleY(0.1)", offset: 0 },
@@ -1127,9 +1316,10 @@
     shown = "";
     renderControls();
     paintTime();
+    stopHum();
     launch();
     chime();
-    announce("時間到！布丁仔彈起床啦");
+    announce("時間到！老師彈起床啦");
   }
 
   function toggleRun() {
@@ -1140,7 +1330,8 @@
   function toggleSound() {
     state.muted = !state.muted;
     save();
-    if (!state.muted) ensureAudio();
+    if (state.muted) stopHum();
+    else ensureAudio();
     renderControls();
     announce(state.muted ? "已靜音" : "聲音已開啟");
   }
