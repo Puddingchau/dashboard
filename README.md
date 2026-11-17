@@ -42,26 +42,12 @@
 
 ## 活動附件
 
-個人活動同學校活動可以上載原本的檔案（PDF、圖片、文件等）。檔案放喺 Firebase Storage：
+個人活動同學校活動可以上載原本的檔案（PDF、圖片、文件等）。檔案放喺已連接 Google 帳戶的「我的雲端硬碟」，資料夾名叫「小布丁活動附件」，每個活動一個子資料夾。檔案保持私人，唔會設成「知道連結的任何人」。
 
-`users/{uid}/events/{eventId}/{attachmentId}/{fileName}`
+待辦同活動清單仍然只經 Firebase／Firestore 同步。Firestore 同本機 `dash-hub-v1` 只記檔名、類型、大小、上載時間同 Drive 檔案 id。檔案內容、data URL、base64 同下載網址唔會寫入同步文件。每個檔案上限 10MB，每個活動最多 5 個。
 
-Firestore `users/{uid}/dashboard/sync` 同本機 `dash-hub-v1` 只記檔名、類型、大小同路徑。檔案內容、data URL、base64 同下載網址唔會寫入同步文件。每個檔案上限 10MB，每個活動最多 5 個。
+要登入 Firebase，先可以上載，清單先可以跨裝置同步。未登入唔會把檔案留喺該瀏覽器。上載同開啟另外要按「連接 Drive（附件）」；呢個授權只在按下上載、開啟或連接時先要求 `drive.file`，同 Calendar 的登入分開。第一次使用要自己按一次連接，並揀用於放附件的 Google 帳戶。
 
-要登入 Firebase 先可以上載同開啟。未登入唔會把檔案留喺該瀏覽器。刪除活動會刪除佢的檔案；編輯時可以移除單一附件。Google Calendar 仍然只同步名稱、時間同工作備註。`?view=1` 分享連結同公開 `sync-data.json` 唔帶附件路徑或下載網址。
+刪除活動或移除附件時，如果 Drive 已連接，會把檔案丟進垃圾桶。Google Calendar 仍然只同步名稱、時間同工作備註。`?view=1` 分享連結同公開 `sync-data.json` 最多顯示檔名，唔帶 Drive 檔案 id 或下載網址，亦唔可以從分享頁下載。
 
-`ENABLE_DRIVE_SYNC` 維持關閉。
-
-### 發佈 Storage 規則
-
-`storage.rules` 已經喺這個 repo，但 GitHub Pages 唔會發佈佢。未在 Firebase 發佈之前，上載同開啟會失敗，頁面會話「請確認 Storage 規則已發佈」。
-
-1. 打開 [Storage 規則](https://console.firebase.google.com/project/pudding-dashboard-5d8c8/storage/rules)。如果 Storage 未啟用，先建立 bucket `pudding-dashboard-5d8c8.firebasestorage.app`（同 `FIREBASE_WEB_CONFIG.storageBucket`）。
-2. 用 `storage.rules` 的內容取代規則，然後按發佈。唔好同時改 Firestore 規則。
-3. 或者喺已登入 Firebase CLI 的電腦，於這個 repo 執行：
-
-```bash
-npx firebase-tools deploy --only storage --project pudding-dashboard-5d8c8
-```
-
-`firebase.json` 只指向 Storage，這條命令唔會發佈 `firestore.rules`。
+`ENABLE_DRIVE_SYNC` 維持關閉。清單唔會再經「布丁仔-sync.json」同步。唔使開通 Firebase Storage，亦唔使升級 Blaze。

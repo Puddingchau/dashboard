@@ -2864,6 +2864,24 @@
     }
     .event-attach-row .btn { flex: 0 0 auto; }
     .event-attach-hint { margin: 6px 0 0; }
+    .event-file-name {
+      display: block;
+      max-width: 100%;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+    .event-attach-drive {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .event-attach-who { margin: 0; }
 
     .todo-actions {
       display: flex;
@@ -4047,7 +4065,6 @@
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-storage-compat.js"></script>
 <script>
 /* ===== Embedded TCS course data ===== */
 const TCS_DATA = {
@@ -5291,12 +5308,29 @@ function eventsKindLabel(kind) {
 }
 
 /* EVENT_ATTACHMENTS_START
-   Original files live in Firebase Storage. The event only keeps
-   id, name, mime, size, path, uploadedAt. No bytes, data URLs, or download URLs. */
+   Original files live in the connected Google account's Drive, under
+   「小布丁活動附件」 / eventId. The event only keeps
+   id, name, mime, size, uploadedAt, store:'drive', driveFileId.
+   Older Storage rows may still have path. No bytes, data URLs, or download URLs.
+   drive.file is requested only from 上載 / 開啟 / 連接 Drive（附件）. */
 const EVENT_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 const EVENT_ATTACHMENT_MAX_COUNT = 5;
 const EVENT_ATTACHMENT_DELETE_KEY = 'dash-event-attachment-delete-paths';
 const EVENT_ATTACHMENT_SIGNIN_MSG = '請先登入 Firebase。未登入唔會把檔案留喺這部瀏覽器。';
+const DRIVE_ATTACH_TOKEN_KEY = 'dash-hub-drive-attach-token';
+const DRIVE_ATTACH_ROOT_KEY = 'dash-hub-drive-attach-root';
+const DRIVE_ATTACH_DELETE_KEY = 'dash-hub-drive-attach-delete-ids';
+const DRIVE_ATTACH_FOLDER_NAME = '小布丁活動附件';
+const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
+const DRIVE_MULTIPART_MAX_BYTES = 5 * 1024 * 1024;
+const DRIVE_ATTACH_NEED_MSG = '請先連接 Google Drive。未連接唔會把檔案留喺這部瀏覽器。';
+const DRIVE_ATTACH_MISSING_MSG = '找不到呢個檔案。可能連咗另一個 Google 帳戶，或者檔案已喺 Drive 刪除。';
+var driveAttachAccessToken = '';
+var driveAttachTokenExp = 0;
+var driveAttachEmail = '';
+var driveAttachTokenClient = null;
+var driveAttachAuthPending = null;
+var driveAttachAuthResolve = null;
 
 function attachmentToken(id, max) {
   const s = String(id || '').replace(/[^A-Za-z0-9_-]/g, '');
@@ -5328,24 +5362,61 @@ function attachmentPathOk(path) {
   return /^users\/[^/]+\/events\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/[^/]+$/.test(p);
 }
 
+function driveFileIdOk(id) {
+  const s = String(id || '');
+  if (s.length < 10 || s.length > 128) return false;
+  if (!/^[A-Za-z0-9_-]+$/.test(s)) return false;
+  if (s === 'appDataFolder') return false;
+  return true;
+}
+
+function attachmentNameKey(name) {
+  let h = 0;
+  const s = String(name || '');
+  for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) >>> 0;
+  return 'n_' + h.toString(36);
+}
+
+function attachmentNameOnly(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const name = String(raw.name || '').trim().slice(0, 180);
+  if (!name || /^(https?:|data:|blob:)/i.test(name)) return null;
+  let id = attachmentToken(raw.id, 80);
+  const driveId = String(raw.driveFileId || '');
+  if (driveId && id === driveId) id = '';
+  if (!id) id = attachmentNameKey(name);
+  if (!id || id === driveId) return null;
+  return { id: id, name: name };
+}
+
 function normalizeAttachment(raw) {
   if (!raw || typeof raw !== 'object') return null;
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return attachmentNameOnly(raw);
   const id = attachmentToken(raw.id, 80);
   const name = String(raw.name || '').trim().slice(0, 180);
   const path = String(raw.path || '').trim();
+  const driveFileId = String(raw.driveFileId || '').trim();
   const mime = String(raw.mime || raw.contentType || '').slice(0, 120);
   const size = Number(raw.size);
   const uploadedAt = Number(raw.uploadedAt) || 0;
-  if (!id || !name || !attachmentPathOk(path)) return null;
+  const pathOk = attachmentPathOk(path);
+  const driveOk = driveFileIdOk(driveFileId);
+  if (!id || !name) return null;
+  if (!pathOk && !driveOk) return null;
   if (!Number.isFinite(size) || size <= 0 || size > EVENT_ATTACHMENT_MAX_BYTES) return null;
-  return {
+  const out = {
     id: id,
     name: name,
     mime: mime,
     size: Math.round(size),
-    path: path,
     uploadedAt: uploadedAt
   };
+  if (pathOk) out.path = path;
+  if (driveOk) {
+    out.store = 'drive';
+    out.driveFileId = driveFileId;
+  }
+  return out;
 }
 
 function normalizeAttachments(list) {
@@ -5364,7 +5435,7 @@ function normalizeAttachments(list) {
 
 function attachmentsSig(list) {
   return normalizeAttachments(list).map(function (a) {
-    return [a.id, a.name, a.mime, a.size, a.path, a.uploadedAt].join('\u0001');
+    return [a.id, a.name, a.mime, a.size, a.path || '', a.store || '', a.driveFileId || '', a.uploadedAt].join('\u0001');
   }).join('\u0002');
 }
 
@@ -5379,50 +5450,58 @@ function applyEventAttachments(out, e) {
   return out;
 }
 
-/** Public Pages / share snapshots must not carry storage paths or download URLs. */
+/** Public Pages / share snapshots keep filenames only. No Drive id and no URL. */
 function eventWithoutPublicFiles(ev) {
   const n = Object.assign({}, ev || {});
-  delete n.attachments;
   delete n.downloadURL;
   delete n.downloadUrl;
   delete n.fileUrl;
   delete n.dataUrl;
   delete n.dataURL;
+  delete n.driveFileId;
+  delete n.webViewLink;
+  delete n.webContentLink;
+  const names = [];
+  const seen = {};
+  const src = Array.isArray(ev && ev.attachments) ? ev.attachments : [];
+  for (let i = 0; i < src.length; i++) {
+    const item = attachmentNameOnly(src[i]);
+    if (!item || seen[item.id]) continue;
+    seen[item.id] = true;
+    names.push(item);
+    if (names.length >= EVENT_ATTACHMENT_MAX_COUNT) break;
+  }
+  if (names.length) n.attachments = names;
+  else delete n.attachments;
   return n;
 }
 
 function normalizeEventForSync(ev) {
   const n = normalizeEvent(ev);
-  if (VIEW_ONLY) delete n.attachments;
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) {
+    const pub = eventWithoutPublicFiles(n);
+    if (pub.attachments) n.attachments = pub.attachments;
+    else delete n.attachments;
+    delete n.downloadURL;
+    delete n.downloadUrl;
+    delete n.fileUrl;
+    delete n.dataUrl;
+    delete n.dataURL;
+    delete n.driveFileId;
+    delete n.webViewLink;
+    delete n.webContentLink;
+  }
   return n;
 }
 
-function firebaseStorageReady() {
-  return !!(window.firebase && typeof firebase.storage === 'function' && firebase.apps && firebase.apps.length);
-}
-
-function attachmentsStorageReady() {
-  return firebaseCanWrite() && firebaseStorageReady();
+function driveAttachTokenReady() {
+  return !!(driveAttachAccessToken && Number(driveAttachTokenExp) > Date.now());
 }
 
 function attachmentBlockedMessage() {
-  if (!firebaseCanWrite()) return EVENT_ATTACHMENT_SIGNIN_MSG;
+  if (typeof firebaseCanWrite !== 'function' || !firebaseCanWrite()) return EVENT_ATTACHMENT_SIGNIN_MSG;
+  if (!driveAttachTokenReady()) return DRIVE_ATTACH_NEED_MSG;
   return '附件元件尚未載入，請再試';
-}
-
-function storagePathOwnedByUser(path) {
-  const uid = firebaseAuthUser && firebaseAuthUser.uid ? String(firebaseAuthUser.uid) : '';
-  if (!uid || uid.indexOf('/') !== -1) return false;
-  return String(path || '').indexOf('users/' + uid + '/events/') === 0 && attachmentPathOk(path);
-}
-
-function eventAttachmentStoragePath(eventId, attachmentId, fileName) {
-  const uid = firebaseAuthUser && firebaseAuthUser.uid ? String(firebaseAuthUser.uid) : '';
-  const ev = attachmentToken(eventId, 80);
-  const att = attachmentToken(attachmentId, 80);
-  const safe = attachmentSafeName(fileName);
-  if (!uid || uid.indexOf('/') !== -1 || !ev || !att || !safe) return '';
-  return 'users/' + uid + '/events/' + ev + '/' + att + '/' + safe;
 }
 
 function loadPendingAttachmentPaths() {
@@ -5451,7 +5530,7 @@ function savePendingAttachmentPaths(paths) {
   } catch (e) {}
 }
 
-// Paths queued for Storage delete. This is not a copy of the file.
+// Legacy Storage paths queued so they are not kept as file bytes. Storage is not called.
 function rememberAttachmentPath(path) {
   if (!attachmentPathOk(path)) return;
   const cur = loadPendingAttachmentPaths();
@@ -5459,81 +5538,438 @@ function rememberAttachmentPath(path) {
   savePendingAttachmentPaths(cur);
 }
 
-function forgetAttachmentPath(path) {
-  savePendingAttachmentPaths(loadPendingAttachmentPaths().filter(function (p) { return p !== path; }));
+function loadPendingDriveIds() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DRIVE_ATTACH_DELETE_KEY) || '[]');
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    raw.forEach(function (id) {
+      const s = String(id || '');
+      if (driveFileIdOk(s) && out.indexOf(s) < 0) out.push(s);
+    });
+    return out.slice(-200);
+  } catch (e) {
+    return [];
+  }
 }
 
-async function deleteStoredAttachment(att) {
-  const path = typeof att === 'string' ? att : (att && att.path);
-  if (!attachmentPathOk(path)) return;
-  if (!attachmentsStorageReady() || !storagePathOwnedByUser(path)) {
-    rememberAttachmentPath(path);
+function savePendingDriveIds(ids) {
+  try {
+    const list = [];
+    (ids || []).forEach(function (id) {
+      const s = String(id || '');
+      if (driveFileIdOk(s) && list.indexOf(s) < 0) list.push(s);
+    });
+    localStorage.setItem(DRIVE_ATTACH_DELETE_KEY, JSON.stringify(list.slice(-200)));
+  } catch (e) {}
+}
+
+function rememberDriveFileId(id) {
+  if (!driveFileIdOk(id)) return;
+  const cur = loadPendingDriveIds();
+  if (cur.indexOf(id) < 0) cur.push(id);
+  savePendingDriveIds(cur);
+}
+
+function forgetDriveFileId(id) {
+  savePendingDriveIds(loadPendingDriveIds().filter(function (x) { return x !== id; }));
+}
+
+function cachedDriveRoot() {
+  try {
+    const id = localStorage.getItem(DRIVE_ATTACH_ROOT_KEY) || '';
+    return driveFileIdOk(id) ? id : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function rememberCachedDriveRoot(id) {
+  try {
+    if (driveFileIdOk(id)) localStorage.setItem(DRIVE_ATTACH_ROOT_KEY, id);
+  } catch (e) {}
+}
+
+function forgetCachedDriveRoot() {
+  try { localStorage.removeItem(DRIVE_ATTACH_ROOT_KEY); } catch (e) {}
+}
+
+function storeDriveAttachToken(token, expiresIn, email, absoluteExp) {
+  driveAttachAccessToken = String(token || '');
+  if (absoluteExp) driveAttachTokenExp = Number(absoluteExp) || 0;
+  else {
+    const secs = Number(expiresIn) || 3600;
+    driveAttachTokenExp = Date.now() + Math.max(120, secs - 90) * 1000;
+  }
+  if (email) driveAttachEmail = String(email).slice(0, 180);
+  try {
+    if (typeof sessionStorage !== 'undefined' && sessionStorage && driveAttachAccessToken) {
+      sessionStorage.setItem(DRIVE_ATTACH_TOKEN_KEY, JSON.stringify({
+        token: driveAttachAccessToken,
+        exp: driveAttachTokenExp,
+        email: driveAttachEmail || ''
+      }));
+    }
+  } catch (e) {}
+}
+
+function clearDriveAttachToken() {
+  driveAttachAccessToken = '';
+  driveAttachTokenExp = 0;
+  driveAttachEmail = '';
+  try {
+    if (typeof sessionStorage !== 'undefined' && sessionStorage) sessionStorage.removeItem(DRIVE_ATTACH_TOKEN_KEY);
+  } catch (e) {}
+}
+
+function restoreDriveAttachToken() {
+  try {
+    if (typeof sessionStorage === 'undefined' || !sessionStorage || typeof sessionStorage.getItem !== 'function') return;
+    const raw = sessionStorage.getItem(DRIVE_ATTACH_TOKEN_KEY) || '';
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    const token = saved && saved.token ? String(saved.token) : '';
+    const exp = saved && saved.exp ? Number(saved.exp) : 0;
+    const email = saved && saved.email ? String(saved.email).slice(0, 180) : '';
+    if (!token || !(exp > Date.now())) {
+      sessionStorage.removeItem(DRIVE_ATTACH_TOKEN_KEY);
+      return;
+    }
+    driveAttachAccessToken = token;
+    driveAttachTokenExp = exp;
+    driveAttachEmail = email;
+  } catch (e) {}
+}
+
+async function driveAttachApi(url, opts) {
+  opts = opts || {};
+  if (!driveAttachTokenReady()) {
+    const err = new Error('drive-signed-out');
+    err.code = 'drive-signed-out';
+    err.status = 401;
+    throw err;
+  }
+  const headers = Object.assign({ Authorization: 'Bearer ' + driveAttachAccessToken }, opts.headers || {});
+  const res = await fetch(url, {
+    method: opts.method || 'GET',
+    headers: headers,
+    body: opts.body,
+    credentials: 'omit',
+    cache: 'no-store'
+  });
+  if (res.status === 401) {
+    clearDriveAttachToken();
+    const err = new Error('drive-signed-out');
+    err.code = 'drive-signed-out';
+    err.status = 401;
+    throw err;
+  }
+  if (!res.ok) {
+    const err = new Error('drive-' + res.status);
+    err.status = res.status;
+    err.code = (res.status === 404 || res.status === 403) ? 'missing' : 'drive';
+    throw err;
+  }
+  return res;
+}
+
+function paintDriveAttachStatus() {
+  if (typeof document === 'undefined' || !document || typeof document.getElementById !== 'function') return;
+  const who = document.getElementById('eventAttachDriveWho');
+  const btn = document.getElementById('eventAttachDrive');
+  const ready = driveAttachTokenReady();
+  if (who) {
+    if (ready && driveAttachEmail) who.textContent = 'Drive 已連接：' + driveAttachEmail;
+    else if (ready) who.textContent = 'Drive 已連接';
+    else who.textContent = '';
+  }
+  if (btn) btn.textContent = ready ? '轉換 Drive 帳戶' : '連接 Drive（附件）';
+}
+
+async function refreshDriveAttachEmail() {
+  if (!driveAttachTokenReady()) return '';
+  try {
+    const res = await driveAttachApi('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', { method: 'GET' });
+    const data = await res.json();
+    const email = data && data.user && data.user.emailAddress ? String(data.user.emailAddress) : '';
+    if (email) storeDriveAttachToken(driveAttachAccessToken, 0, email, driveAttachTokenExp);
+  } catch (e) {}
+  paintDriveAttachStatus();
+  return driveAttachEmail || '';
+}
+
+function ensureDriveAttachTokenClient() {
+  if (driveAttachTokenClient) return driveAttachTokenClient;
+  if (typeof gdriveHasClientId === 'function' && !gdriveHasClientId()) return null;
+  if (typeof GDRIVE_OAUTH_CLIENT_ID === 'undefined' || typeof GDRIVE_SCOPE === 'undefined') return null;
+  const gapi = (typeof window !== 'undefined' && window.google) || null;
+  const oauth2 = gapi && gapi.accounts && gapi.accounts.oauth2;
+  if (!oauth2 || typeof oauth2.initTokenClient !== 'function') return null;
+  driveAttachTokenClient = oauth2.initTokenClient({
+    client_id: GDRIVE_OAUTH_CLIENT_ID,
+    scope: GDRIVE_SCOPE,
+    include_granted_scopes: false,
+    enable_granular_consent: false,
+    callback: function (resp) {
+      if (driveAttachTokenClient && driveAttachTokenClient._onToken) driveAttachTokenClient._onToken(resp);
+    },
+    error_callback: function (err) {
+      if (driveAttachTokenClient && driveAttachTokenClient._onTokenError) driveAttachTokenClient._onTokenError(err);
+    }
+  });
+  return driveAttachTokenClient;
+}
+
+function requestDriveAttachToken(force) {
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return Promise.resolve(false);
+  if (!force && driveAttachTokenReady()) return Promise.resolve(true);
+  if (driveAttachAuthPending) return driveAttachAuthPending;
+  const client = ensureDriveAttachTokenClient();
+  if (!client) {
+    try { showShareToast('Google 登入元件尚未載入，請稍後再試'); } catch (e) {}
+    return Promise.resolve('missing-lib');
+  }
+  let settled = false;
+  function finish(ok) {
+    if (settled) return;
+    settled = true;
+    try { if (typeof endOauthUi === 'function') endOauthUi(); } catch (e) {}
+    const resolve = driveAttachAuthResolve;
+    driveAttachAuthResolve = null;
+    driveAttachAuthPending = null;
+    if (resolve) resolve(!!ok);
+  }
+  const pending = new Promise(function (resolve) { driveAttachAuthResolve = resolve; });
+  driveAttachAuthPending = pending;
+  client._onToken = function (resp) {
+    if (resp && resp.access_token) {
+      storeDriveAttachToken(resp.access_token, resp.expires_in, '');
+      finish(true);
+      refreshDriveAttachEmail().then(function () { flushPendingDriveDeletes(); }).catch(function () {});
+      return;
+    }
+    finish(false);
+  };
+  client._onTokenError = function () {
+    finish(false);
+  };
+  client.callback = client._onToken;
+  try { if (typeof beginOauthUi === 'function') beginOauthUi(); } catch (e) {}
+  try {
+    client.requestAccessToken({
+      prompt: 'select_account',
+      scope: GDRIVE_SCOPE,
+      include_granted_scopes: false,
+      enable_granular_consent: false
+    });
+  } catch (e2) {
+    finish(false);
+  }
+  return pending;
+}
+
+async function driveFindFolder(name, parentId) {
+  const safeName = String(name || '').replace(/'/g, "\\'");
+  let q = "name='" + safeName + "' and mimeType='" + DRIVE_FOLDER_MIME + "' and trashed=false";
+  if (parentId === 'root') q += " and 'root' in parents";
+  else {
+    if (!driveFileIdOk(parentId)) {
+      const err = new Error('folder');
+      err.code = 'folder';
+      throw err;
+    }
+    q += " and '" + parentId + "' in parents";
+  }
+  const url = 'https://www.googleapis.com/drive/v3/files?spaces=drive&pageSize=10&fields=files(id,name,mimeType,trashed,parents)&q=' + encodeURIComponent(q);
+  const res = await driveAttachApi(url, { method: 'GET' });
+  const data = await res.json();
+  const files = data && Array.isArray(data.files) ? data.files : [];
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    if (f && driveFileIdOk(f.id) && !f.trashed && f.name === name) return String(f.id);
+  }
+  return '';
+}
+
+async function driveCreateFolder(name, parentId) {
+  const parents = parentId === 'root' ? ['root'] : [parentId];
+  const res = await driveAttachApi('https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType,parents', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: name,
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: parents
+    })
+  });
+  const meta = await res.json();
+  if (!meta || !driveFileIdOk(meta.id)) {
+    const err = new Error('folder');
+    err.code = 'folder';
+    throw err;
+  }
+  return String(meta.id);
+}
+
+async function driveAttachRootFolder() {
+  const cached = cachedDriveRoot();
+  if (cached) {
+    try {
+      const res = await driveAttachApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(cached) + '?fields=id,name,mimeType,trashed,parents', { method: 'GET' });
+      const meta = await res.json();
+      const parents = meta && Array.isArray(meta.parents) ? meta.parents : [];
+      if (meta && driveFileIdOk(meta.id) && !meta.trashed && meta.mimeType === DRIVE_FOLDER_MIME && meta.name === DRIVE_ATTACH_FOLDER_NAME && parents.indexOf('root') !== -1) {
+        return String(meta.id);
+      }
+    } catch (e) {}
+    forgetCachedDriveRoot();
+  }
+  const found = await driveFindFolder(DRIVE_ATTACH_FOLDER_NAME, 'root');
+  if (found) {
+    rememberCachedDriveRoot(found);
+    return found;
+  }
+  const created = await driveCreateFolder(DRIVE_ATTACH_FOLDER_NAME, 'root');
+  rememberCachedDriveRoot(created);
+  return created;
+}
+
+async function driveEventFolder(eventKey) {
+  const rootId = await driveAttachRootFolder();
+  const found = await driveFindFolder(eventKey, rootId);
+  if (found) return found;
+  return driveCreateFolder(eventKey, rootId);
+}
+
+function driveBoundary() {
+  let rnd = String(Date.now());
+  try {
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      const buf = new Uint8Array(16);
+      crypto.getRandomValues(buf);
+      rnd = Array.prototype.map.call(buf, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+  } catch (e) {}
+  return 'puddingattach' + rnd;
+}
+
+async function driveMultipartUpload(parentId, file, contentType, safeName) {
+  const boundary = driveBoundary();
+  const head = '--' + boundary + '\r\n' +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify({ name: safeName, parents: [parentId] }) + '\r\n' +
+    '--' + boundary + '\r\n' +
+    'Content-Type: ' + contentType + '\r\n\r\n';
+  const tail = '\r\n--' + boundary + '--';
+  const contentTypeHeader = 'multipart/related; boundary=' + boundary;
+  const body = new Blob([head, file, tail], { type: contentTypeHeader });
+  const res = await driveAttachApi(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': contentTypeHeader },
+      body: body
+    }
+  );
+  return res.json();
+}
+
+// Multipart is capped at 5MB by Drive. Files up to the 10MB event limit use a resumable session.
+async function driveResumableUpload(parentId, file, contentType, safeName) {
+  const start = await driveAttachApi(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,size',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Upload-Content-Type': contentType,
+        'X-Upload-Content-Length': String(file.size)
+      },
+      body: JSON.stringify({ name: safeName, parents: [parentId] })
+    }
+  );
+  const location = start.headers && start.headers.get ? start.headers.get('Location') : '';
+  if (!location) {
+    const err = new Error('upload-session');
+    err.code = 'upload';
+    throw err;
+  }
+  const put = await driveAttachApi(location, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: file
+  });
+  return put.json();
+}
+
+async function trashDriveFile(driveId) {
+  if (!driveFileIdOk(driveId)) return;
+  if (!driveAttachTokenReady()) {
+    rememberDriveFileId(driveId);
     return;
   }
   try {
-    await firebase.storage().ref(path).delete();
-    forgetAttachmentPath(path);
+    await driveAttachApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(driveId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trashed: true })
+    });
+    forgetDriveFileId(driveId);
   } catch (e) {
-    const code = e && e.code ? String(e.code) : '';
-    if (code === 'storage/object-not-found') {
-      forgetAttachmentPath(path);
-      return;
-    }
-    rememberAttachmentPath(path);
-    console.warn('attachment delete failed', e);
+    if (e && e.status === 404) forgetDriveFileId(driveId);
+    else rememberDriveFileId(driveId);
   }
 }
 
-async function deleteEventStorageTree(eventId) {
-  if (!attachmentsStorageReady()) return;
-  const id = attachmentToken(eventId, 80);
-  if (!id) return;
-  const root = firebase.storage().ref('users/' + firebaseAuthUser.uid + '/events/' + id);
-  try {
-    const listed = await root.listAll();
-    const jobs = [];
-    listed.items.forEach(function (item) {
-      jobs.push(item.delete().catch(function () {}));
-    });
-    for (let i = 0; i < listed.prefixes.length; i++) {
-      const sub = await listed.prefixes[i].listAll();
-      sub.items.forEach(function (item) {
-        jobs.push(item.delete().catch(function () {}));
+async function deleteStoredAttachment(att) {
+  const driveId = att && typeof att === 'object' ? String(att.driveFileId || '') : '';
+  const path = typeof att === 'string' ? att : (att && att.path);
+  if (driveFileIdOk(driveId)) await trashDriveFile(driveId);
+  if (attachmentPathOk(path)) rememberAttachmentPath(path);
+}
+
+async function flushPendingDriveDeletes() {
+  if (!driveAttachTokenReady()) return;
+  const ids = loadPendingDriveIds();
+  const keep = [];
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    try {
+      await driveAttachApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashed: true })
       });
+    } catch (e) {
+      if (!(e && e.status === 404)) keep.push(id);
     }
-    await Promise.all(jobs);
-  } catch (e) {}
+  }
+  savePendingDriveIds(keep);
 }
 
 function queueEventAttachmentDeletes(ev) {
   const atts = normalizeAttachments(ev && ev.attachments);
-  atts.forEach(function (a) { rememberAttachmentPath(a.path); });
-  if (!attachmentsStorageReady()) return;
   atts.forEach(function (a) { deleteStoredAttachment(a); });
-  deleteEventStorageTree(ev && ev.id);
 }
 
 async function flushPendingAttachmentDeletes() {
-  if (!attachmentsStorageReady()) return;
-  const paths = loadPendingAttachmentPaths();
-  const keep = [];
-  for (let i = 0; i < paths.length; i++) {
-    const path = paths[i];
-    if (!storagePathOwnedByUser(path)) continue;
-    try {
-      await firebase.storage().ref(path).delete();
-    } catch (e) {
-      const code = e && e.code ? String(e.code) : '';
-      if (code !== 'storage/object-not-found') keep.push(path);
-    }
-  }
-  savePendingAttachmentPaths(keep);
+  await flushPendingDriveDeletes();
 }
 
 async function uploadEventAttachment(eventId, file) {
-  if (!attachmentsStorageReady()) {
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) {
+    const err = new Error('view-only');
+    err.code = 'signed-out';
+    throw err;
+  }
+  if (typeof firebaseCanWrite !== 'function' || !firebaseCanWrite()) {
     const err = new Error('signed-out');
-    err.code = firebaseCanWrite() ? 'storage-missing' : 'signed-out';
+    err.code = 'signed-out';
+    throw err;
+  }
+  if (!driveAttachTokenReady()) {
+    const err = new Error('drive-signed-out');
+    err.code = 'drive-signed-out';
     throw err;
   }
   if (!file || !file.size) {
@@ -5546,87 +5982,142 @@ async function uploadEventAttachment(eventId, file) {
     err.code = 'too-big';
     throw err;
   }
-  const id = uid('a');
-  const path = eventAttachmentStoragePath(eventId, id, file.name);
-  if (!storagePathOwnedByUser(path)) {
-    const err = new Error('path');
-    err.code = 'path';
+  const eventKey = attachmentToken(eventId, 80);
+  if (!eventKey) {
+    const err = new Error('event');
+    err.code = 'event';
     throw err;
   }
+  const parentId = await driveEventFolder(eventKey);
   const contentType = file.type ? String(file.type).slice(0, 120) : 'application/octet-stream';
-  await firebase.storage().ref(path).put(file, { contentType: contentType });
+  const safeName = attachmentSafeName(file.name);
+  const meta = file.size <= DRIVE_MULTIPART_MAX_BYTES
+    ? await driveMultipartUpload(parentId, file, contentType, safeName)
+    : await driveResumableUpload(parentId, file, contentType, safeName);
+  const driveFileId = meta && driveFileIdOk(meta.id) ? String(meta.id) : '';
+  if (!driveFileId) {
+    const err = new Error('upload');
+    err.code = 'upload';
+    throw err;
+  }
+  const displayName = String(file.name || safeName || 'file').trim().slice(0, 180) || safeName;
   return {
-    id: id,
-    name: String(file.name || 'file').slice(0, 180),
+    id: uid('a'),
+    name: displayName,
     mime: contentType,
-    size: file.size,
-    path: path,
-    uploadedAt: Date.now()
+    size: Math.round(file.size),
+    uploadedAt: Date.now(),
+    store: 'drive',
+    driveFileId: driveFileId
   };
 }
 
+function openDriveBlob(preview, blob, name) {
+  const url = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
+  if (!url) return;
+  if (preview && !preview.closed) {
+    try { preview.location.replace(url); return; } catch (e) {}
+  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  if (name) a.download = String(name);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 120000);
+}
+
 function openEventAttachment(att) {
-  const path = att && att.path ? String(att.path) : '';
-  if (!attachmentsStorageReady()) {
-    showShareToast(attachmentBlockedMessage());
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return;
+  const driveId = att && driveFileIdOk(att.driveFileId) ? String(att.driveFileId) : '';
+  if (!driveId) {
+    if (att && attachmentPathOk(att.path)) showShareToast('呢個附件係之前放喺 Firebase Storage 的檔案，而家未能開啟。請重新上載。');
+    else showShareToast('未能開啟附件');
     return;
   }
-  if (!storagePathOwnedByUser(path)) {
-    showShareToast('未能開啟附件');
-    return;
+  // A ready token can open the tab in this click. If Drive is not connected yet,
+  // the click is spent on the account picker, and the file opens after that.
+  const preview = (driveAttachTokenReady() && typeof window !== 'undefined' && window.open)
+    ? window.open('about:blank', '_blank')
+    : null;
+  function closePreview(tab) {
+    if (tab && !tab.closed) {
+      try { tab.close(); } catch (e) {}
+    }
   }
-  // Open a tab during the click. The URL is never written into state, localStorage,
-  // Firestore, or the public snapshot. Prefer a blob URL so no long-lived token is minted.
-  const preview = window.open('about:blank', '_blank');
-  const ref = firebase.storage().ref(path);
-  const loader = (typeof ref.getBlob === 'function') ? ref.getBlob() : ref.getDownloadURL();
-  Promise.resolve(loader).then(function (result) {
-    if (typeof result === 'string') {
-      if (preview) preview.location.replace(result);
-      else window.open(result, '_blank', 'noopener');
+  function fail(err) {
+    closePreview(preview);
+    if (err && (err.status === 404 || err.status === 403 || err.code === 'missing')) showShareToast(DRIVE_ATTACH_MISSING_MSG);
+    else if (err && (err.code === 'drive-signed-out' || err.status === 401)) showShareToast(DRIVE_ATTACH_NEED_MSG);
+    else showShareToast('未能開啟附件');
+  }
+  function load(tab) {
+    return driveAttachApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(driveId) + '?alt=media', { method: 'GET' })
+      .then(function (res) { return res.blob(); })
+      .then(function (blob) { openDriveBlob(tab, blob, att && att.name); });
+  }
+  function openPrivateView(tab) {
+    const view = 'https://drive.google.com/file/d/' + encodeURIComponent(driveId) + '/view';
+    if (tab && !tab.closed) {
+      try { tab.location.replace(view); return; } catch (e) {}
+    }
+    if (typeof window !== 'undefined' && window.open) window.open(view, '_blank', 'noopener');
+  }
+  requestDriveAttachToken(false).then(function (ok) {
+    if (ok !== true) {
+      closePreview(preview);
+      if (ok !== 'missing-lib' && !driveAttachTokenReady()) showShareToast(DRIVE_ATTACH_NEED_MSG);
       return;
     }
-    const url = (preview && preview.URL && preview.URL.createObjectURL)
-      ? preview.URL.createObjectURL(result)
-      : URL.createObjectURL(result);
-    if (preview) {
-      preview.location.replace(url);
-      return;
-    }
-    const a = document.createElement('a');
-    a.href = url;
-    a.rel = 'noopener';
-    if (att.name) a.download = String(att.name);
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
-  }).catch(function (err) {
-    const code = err && err.code ? String(err.code) : '';
-    if (code === 'storage/unauthorized' || code === 'storage/unauthenticated' || typeof ref.getDownloadURL !== 'function') {
-      console.warn('attachment open failed', err);
-      if (preview) preview.close();
-      if (code === 'storage/unauthorized' || code === 'storage/unauthenticated') {
-        showShareToast('未能開啟。請先登入，並確認 Storage 規則已發佈');
-      } else {
-        showShareToast('未能開啟附件');
+    const tab = preview || ((typeof window !== 'undefined' && window.open) ? window.open('about:blank', '_blank') : null);
+    return load(tab).catch(function (err) {
+      if (err && err.status === 401) {
+        closePreview(tab);
+        return requestDriveAttachToken(true).then(function (again) {
+          if (again !== true) {
+            const denied = new Error('drive-signed-out');
+            denied.code = 'drive-signed-out';
+            denied.status = 401;
+            throw denied;
+          }
+          const retryTab = (typeof window !== 'undefined' && window.open) ? window.open('about:blank', '_blank') : null;
+          return load(retryTab).catch(function (err2) {
+            if (err2 && (err2.status === 404 || err2.status === 403 || err2.code === 'missing')) {
+              closePreview(retryTab);
+              throw err2;
+            }
+            openPrivateView(retryTab);
+          });
+        });
       }
-      return;
-    }
-    // Token URL stays in this tab only. It is not written to sync or localStorage.
-    ref.getDownloadURL().then(function (url) {
-      if (preview) preview.location.replace(url);
-      else window.open(url, '_blank', 'noopener');
-    }).catch(function (err2) {
-      console.warn('attachment open failed', err2);
-      if (preview) preview.close();
-      showShareToast('未能開啟附件');
+      if (err && (err.status === 404 || err.status === 403 || err.code === 'missing')) {
+        closePreview(tab);
+        throw err;
+      }
+      openPrivateView(tab);
     });
-  });
+  }).catch(fail);
 }
 
 function eventAttachmentCardHtml(ev) {
-  if (VIEW_ONLY) return '';
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) {
+    const names = [];
+    const seen = {};
+    const src = Array.isArray(ev && ev.attachments) ? ev.attachments : [];
+    for (let i = 0; i < src.length; i++) {
+      const n = attachmentNameOnly(src[i]);
+      if (!n || seen[n.id]) continue;
+      seen[n.id] = true;
+      names.push(n);
+      if (names.length >= EVENT_ATTACHMENT_MAX_COUNT) break;
+    }
+    if (!names.length) return '';
+    return '<div class="event-files">' + names.map(function (a) {
+      return '<span class="event-file-name">' + escapeHtml(a.name) + '</span>';
+    }).join('') + '</div>';
+  }
   const atts = normalizeAttachments(ev && ev.attachments);
   if (!atts.length) return '';
   return '<div class="event-files">' + atts.map(function (a) {
@@ -5641,7 +6132,11 @@ function eventAttachmentsFieldHtml() {
       '<button type="button" class="btn btn-ghost btn-sm" id="eventAttachPick">上載</button>' +
       '<input type="file" id="eventAttachInput" multiple hidden tabindex="-1" />' +
     '</div>' +
-    '<p class="meta event-attach-hint" id="eventAttachHint">PDF、圖片、文件等。每個檔案最多 10MB，每個活動最多 5 個。要登入 Firebase 先可以上載同開啟。未登入唔會把檔案留喺這部瀏覽器。</p></div>';
+    '<div class="event-attach-drive">' +
+      '<button type="button" class="btn btn-ghost btn-sm" id="eventAttachDrive">連接 Drive（附件）</button>' +
+      '<p class="meta event-attach-who" id="eventAttachDriveWho"></p>' +
+    '</div>' +
+    '<p class="meta event-attach-hint" id="eventAttachHint">PDF、圖片、文件等。每個檔案最多 10MB，每個活動最多 5 個。檔案放喺 Google Drive「小布丁活動附件」，清單仍然經 Firebase 同步。要登入 Firebase 並連接 Drive 先可以上載同開啟。</p></div>';
 }
 
 function eventDeleteConfirmMessage(ev) {
@@ -5656,10 +6151,11 @@ function eventDeleteConfirmMessage(ev) {
 function bindEventAttachments(eventId, initial) {
   const listEl = document.getElementById('eventAttachList');
   const pickBtn = document.getElementById('eventAttachPick');
+  const driveBtn = document.getElementById('eventAttachDrive');
   const input = document.getElementById('eventAttachInput');
   let items = normalizeAttachments(initial);
   const staged = {};
-  const removedPaths = [];
+  const removed = [];
   let uploading = 0;
   let dropped = false;
 
@@ -5670,6 +6166,7 @@ function bindEventAttachments(eventId, initial) {
   }
 
   function paint() {
+    paintDriveAttachStatus();
     if (!listEl) return;
     if (!items.length) {
       listEl.innerHTML = '<p class="meta event-attach-empty">未有附件</p>';
@@ -5693,12 +6190,10 @@ function bindEventAttachments(eventId, initial) {
           const att = items.find(function (a) { return a.id === id; });
           if (!att) return;
           items = items.filter(function (a) { return a.id !== id; });
-          if (staged[att.path]) {
-            delete staged[att.path];
+          if (staged[att.id]) {
+            delete staged[att.id];
             deleteStoredAttachment(att);
-          } else if (removedPaths.indexOf(att.path) < 0) {
-            removedPaths.push(att.path);
-          }
+          } else removed.push(att);
           paint();
         });
       });
@@ -5708,18 +6203,41 @@ function bindEventAttachments(eventId, initial) {
 
   function discardStaged() {
     dropped = true;
-    Object.keys(staged).forEach(function (path) {
-      delete staged[path];
-      deleteStoredAttachment(path);
+    Object.keys(staged).forEach(function (id) {
+      const att = staged[id];
+      delete staged[id];
+      deleteStoredAttachment(att);
     });
   }
 
   modalOnDismiss = discardStaged;
+  if (driveBtn) {
+    driveBtn.addEventListener('click', function () {
+      if (dropped) return;
+      if (typeof firebaseCanWrite !== 'function' || !firebaseCanWrite()) {
+        showShareToast(EVENT_ATTACHMENT_SIGNIN_MSG);
+        return;
+      }
+      requestDriveAttachToken(true).then(function (ok) {
+        paintDriveAttachStatus();
+        if (ok === true) showShareToast(driveAttachEmail ? ('已連接 Drive：' + driveAttachEmail) : '已連接 Drive');
+        else if (ok !== 'missing-lib' && !driveAttachTokenReady()) showShareToast(DRIVE_ATTACH_NEED_MSG);
+      });
+    });
+  }
   if (pickBtn && input) {
     pickBtn.addEventListener('click', function () {
       if (dropped) return;
-      if (!attachmentsStorageReady()) {
-        showShareToast(attachmentBlockedMessage());
+      if (typeof firebaseCanWrite !== 'function' || !firebaseCanWrite()) {
+        showShareToast(EVENT_ATTACHMENT_SIGNIN_MSG);
+        return;
+      }
+      if (!driveAttachTokenReady()) {
+        requestDriveAttachToken(false).then(function (ok) {
+          paintDriveAttachStatus();
+          if (ok === true) showShareToast('已連接 Drive，請再按上載');
+          else if (ok !== 'missing-lib' && !driveAttachTokenReady()) showShareToast(DRIVE_ATTACH_NEED_MSG);
+        });
         return;
       }
       if (items.length >= EVENT_ATTACHMENT_MAX_COUNT) {
@@ -5732,8 +6250,12 @@ function bindEventAttachments(eventId, initial) {
       const files = Array.prototype.slice.call(input.files || []);
       input.value = '';
       if (!files.length || dropped) return;
-      if (!attachmentsStorageReady()) {
-        showShareToast(attachmentBlockedMessage());
+      if (typeof firebaseCanWrite !== 'function' || !firebaseCanWrite()) {
+        showShareToast(EVENT_ATTACHMENT_SIGNIN_MSG);
+        return;
+      }
+      if (!driveAttachTokenReady()) {
+        showShareToast(DRIVE_ATTACH_NEED_MSG);
         return;
       }
       for (let i = 0; i < files.length; i++) {
@@ -5757,17 +6279,17 @@ function bindEventAttachments(eventId, initial) {
           const att = await uploadEventAttachment(eventId, file);
           if (dropped || items.length >= EVENT_ATTACHMENT_MAX_COUNT) deleteStoredAttachment(att);
           else {
-            staged[att.path] = true;
+            staged[att.id] = att;
             items.push(att);
           }
         } catch (err) {
           if (!dropped) {
             const code = err && err.code ? String(err.code) : '';
             if (code === 'signed-out') showShareToast(EVENT_ATTACHMENT_SIGNIN_MSG);
+            else if (code === 'drive-signed-out') showShareToast(DRIVE_ATTACH_NEED_MSG);
             else if (code === 'too-big') showShareToast('檔案太大，每個上限 10MB');
-            else if (code === 'storage/unauthorized' || code === 'storage/unauthenticated') {
-              showShareToast('未能上載。請先登入，並確認 Storage 規則已發佈');
-            } else showShareToast('上載失敗，請再試');
+            else if (code === 'empty') showShareToast('檔案是空的，未能上載');
+            else showShareToast('上載失敗，請再試');
           }
         } finally {
           uploading -= 1;
@@ -5782,10 +6304,11 @@ function bindEventAttachments(eventId, initial) {
     busy: function () { return uploading > 0; },
     finish: function () {
       modalOnDismiss = null;
-      removedPaths.forEach(function (path) { deleteStoredAttachment(path); });
+      removed.forEach(function (att) { deleteStoredAttachment(att); });
     }
   };
 }
+try { restoreDriveAttachToken(); } catch (e) {}
 /* EVENT_ATTACHMENTS_END */
 function normalizeEvent(e) {
   const title = String((e && e.title) || '');
@@ -14992,9 +15515,9 @@ async function pushPagesShareGate(config) {
 }
 
 /**
- * Guest snapshot. Same fields as Drive sync, including personal and school
- * events. Plaintext passwords are never written. Attachment metadata stays
- * on the signed-in Firestore doc only. This public copy drops it.
+ * Guest snapshot. Personal and school events are included. Plaintext passwords
+ * are never written. The signed-in Firestore doc keeps the private Drive file
+ * id. This public copy keeps filenames only: no Drive id and no download link.
  */
 function pagesSyncPayload() {
   const payload = buildSyncPayload();
