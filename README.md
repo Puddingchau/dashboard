@@ -39,3 +39,29 @@
 - [餵餵小怪獸 · 共用計分板](https://puddingchau.github.io/dashboard/games/feed-monster/)
 - [害羞動物園 · Quiet Habitat](https://puddingchau.github.io/dashboard/quiet-habitat/)
 - [彈床倒數](https://puddingchau.github.io/dashboard/games/bed-timer/)
+
+## 活動附件
+
+個人活動同學校活動可以上載原本的檔案（PDF、圖片、文件等）。檔案放喺 Firebase Storage：
+
+`users/{uid}/events/{eventId}/{attachmentId}/{fileName}`
+
+Firestore `users/{uid}/dashboard/sync` 同本機 `dash-hub-v1` 只記檔名、類型、大小同路徑。檔案內容、data URL、base64 同下載網址唔會寫入同步文件。每個檔案上限 10MB，每個活動最多 5 個。
+
+要登入 Firebase 先可以上載同開啟。未登入唔會把檔案留喺該瀏覽器。刪除活動會刪除佢的檔案；編輯時可以移除單一附件。Google Calendar 仍然只同步名稱、時間同工作備註。`?view=1` 分享連結同公開 `sync-data.json` 唔帶附件路徑或下載網址。
+
+`ENABLE_DRIVE_SYNC` 維持關閉。
+
+### 發佈 Storage 規則
+
+`storage.rules` 已經喺這個 repo，但 GitHub Pages 唔會發佈佢。未在 Firebase 發佈之前，上載同開啟會失敗，頁面會話「請確認 Storage 規則已發佈」。
+
+1. 打開 [Storage 規則](https://console.firebase.google.com/project/pudding-dashboard-5d8c8/storage/rules)。如果 Storage 未啟用，先建立 bucket `pudding-dashboard-5d8c8.firebasestorage.app`（同 `FIREBASE_WEB_CONFIG.storageBucket`）。
+2. 用 `storage.rules` 的內容取代規則，然後按發佈。唔好同時改 Firestore 規則。
+3. 或者喺已登入 Firebase CLI 的電腦，於這個 repo 執行：
+
+```bash
+npx firebase-tools deploy --only storage --project pudding-dashboard-5d8c8
+```
+
+`firebase.json` 只指向 Storage，這條命令唔會發佈 `firestore.rules`。

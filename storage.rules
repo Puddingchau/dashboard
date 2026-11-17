@@ -1,0 +1,36 @@
+rules_version = '2';
+// Project: pudding-dashboard-5d8c8
+// Bucket: pudding-dashboard-5d8c8.firebasestorage.app
+//
+// Event originals for 小布丁.
+// Path: users/{uid}/events/{eventId}/{attachmentId}/{fileName}
+// Only that signed-in uid can read or write. Everyone else is denied.
+//
+// GitHub Pages does not publish this file. Publish it in Firebase before
+// uploads will succeed. See README 「活動附件」.
+//
+// Console:
+// https://console.firebase.google.com/project/pudding-dashboard-5d8c8/storage/rules
+//
+// CLI (firebase.json points at Storage only, so Firestore rules stay put):
+// npx firebase-tools deploy --only storage --project pudding-dashboard-5d8c8
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    match /users/{uid}/events/{eventId}/{attachmentId}/{fileName} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.size > 0
+        && request.resource.size <= 10 * 1024 * 1024;
+    }
+
+    // listAll when an event is deleted. Read and delete only, so this
+    // match cannot bypass the 10MB create limit above.
+    match /users/{uid}/events/{eventId}/{allPaths=**} {
+      allow read, delete: if isOwner(uid);
+    }
+  }
+}

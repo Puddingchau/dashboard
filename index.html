@@ -2821,6 +2821,50 @@
     .event-item .todo-body.event-work-expandable {
       cursor: pointer;
     }
+    .event-files {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      margin-top: 4px;
+    }
+    .event-file {
+      appearance: none;
+      -webkit-appearance: none;
+      background: transparent;
+      border: 0;
+      padding: 2px 0;
+      margin: 0;
+      max-width: 100%;
+      min-height: 28px;
+      color: var(--accent-primary);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.35;
+      text-align: left;
+      text-decoration: underline;
+      cursor: pointer;
+      word-break: break-word;
+    }
+    .event-attach-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .event-attach-actions { margin-top: 8px; }
+    .event-attach-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .event-attach-row .event-file {
+      flex: 1;
+      min-width: 0;
+    }
+    .event-attach-row .btn { flex: 0 0 auto; }
+    .event-attach-hint { margin: 6px 0 0; }
+
     .todo-actions {
       display: flex;
       flex-direction: row;
@@ -4003,6 +4047,7 @@
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.0.0/firebase-storage-compat.js"></script>
 <script>
 /* ===== Embedded TCS course data ===== */
 const TCS_DATA = {
@@ -5497,6 +5542,503 @@ function eventsKindLabel(kind) {
   return normalizeEventsKind(kind) === 'personal' ? '個人活動' : '學校活動';
 }
 
+/* EVENT_ATTACHMENTS_START
+   Original files live in Firebase Storage. The event only keeps
+   id, name, mime, size, path, uploadedAt. No bytes, data URLs, or download URLs. */
+const EVENT_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+const EVENT_ATTACHMENT_MAX_COUNT = 5;
+const EVENT_ATTACHMENT_DELETE_KEY = 'dash-event-attachment-delete-paths';
+const EVENT_ATTACHMENT_SIGNIN_MSG = '請先登入 Firebase。未登入唔會把檔案留喺這部瀏覽器。';
+
+function attachmentToken(id, max) {
+  const s = String(id || '').replace(/[^A-Za-z0-9_-]/g, '');
+  if (!s) return '';
+  return s.slice(0, max || 80);
+}
+
+function attachmentSafeName(name) {
+  let base = String(name || '').replace(/\\/g, '/').split('/').pop() || '';
+  base = base.replace(/[\u0000-\u001f\u007f]/g, '');
+  base = base.replace(/[#\[\]*?]/g, '_');
+  base = base.replace(/^\.+/, '');
+  base = base.trim();
+  if (!base) base = 'file';
+  if (base.length > 120) {
+    const dot = base.lastIndexOf('.');
+    const ext = (dot > 0 && base.length - dot <= 12) ? base.slice(dot) : '';
+    base = base.slice(0, 120 - ext.length) + ext;
+  }
+  return base;
+}
+
+function attachmentPathOk(path) {
+  const p = String(path || '');
+  if (!p || p.length > 400) return false;
+  if (p.indexOf('..') !== -1) return false;
+  if (p.indexOf('?') !== -1 || p.indexOf('#') !== -1) return false;
+  if (/^(https?:|data:|blob:)/i.test(p)) return false;
+  return /^users\/[^/]+\/events\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/[^/]+$/.test(p);
+}
+
+function normalizeAttachment(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = attachmentToken(raw.id, 80);
+  const name = String(raw.name || '').trim().slice(0, 180);
+  const path = String(raw.path || '').trim();
+  const mime = String(raw.mime || raw.contentType || '').slice(0, 120);
+  const size = Number(raw.size);
+  const uploadedAt = Number(raw.uploadedAt) || 0;
+  if (!id || !name || !attachmentPathOk(path)) return null;
+  if (!Number.isFinite(size) || size <= 0 || size > EVENT_ATTACHMENT_MAX_BYTES) return null;
+  return {
+    id: id,
+    name: name,
+    mime: mime,
+    size: Math.round(size),
+    path: path,
+    uploadedAt: uploadedAt
+  };
+}
+
+function normalizeAttachments(list) {
+  const out = [];
+  const seen = {};
+  const src = Array.isArray(list) ? list : [];
+  for (let i = 0; i < src.length; i++) {
+    const n = normalizeAttachment(src[i]);
+    if (!n || seen[n.id]) continue;
+    seen[n.id] = true;
+    out.push(n);
+    if (out.length >= EVENT_ATTACHMENT_MAX_COUNT) break;
+  }
+  return out;
+}
+
+function attachmentsSig(list) {
+  return normalizeAttachments(list).map(function (a) {
+    return [a.id, a.name, a.mime, a.size, a.path, a.uploadedAt].join('\u0001');
+  }).join('\u0002');
+}
+
+function mergeAttachmentLists(a, b) {
+  return normalizeAttachments(normalizeAttachments(a).concat(normalizeAttachments(b)));
+}
+
+function applyEventAttachments(out, e) {
+  const attachments = normalizeAttachments(e && e.attachments);
+  if (attachments.length) out.attachments = attachments;
+  else delete out.attachments;
+  return out;
+}
+
+/** Public Pages / share snapshots must not carry storage paths or download URLs. */
+function eventWithoutPublicFiles(ev) {
+  const n = Object.assign({}, ev || {});
+  delete n.attachments;
+  delete n.downloadURL;
+  delete n.downloadUrl;
+  delete n.fileUrl;
+  delete n.dataUrl;
+  delete n.dataURL;
+  return n;
+}
+
+function normalizeEventForSync(ev) {
+  const n = normalizeEvent(ev);
+  if (VIEW_ONLY) delete n.attachments;
+  return n;
+}
+
+function firebaseStorageReady() {
+  return !!(window.firebase && typeof firebase.storage === 'function' && firebase.apps && firebase.apps.length);
+}
+
+function attachmentsStorageReady() {
+  return firebaseCanWrite() && firebaseStorageReady();
+}
+
+function attachmentBlockedMessage() {
+  if (!firebaseCanWrite()) return EVENT_ATTACHMENT_SIGNIN_MSG;
+  return '附件元件尚未載入，請再試';
+}
+
+function storagePathOwnedByUser(path) {
+  const uid = firebaseAuthUser && firebaseAuthUser.uid ? String(firebaseAuthUser.uid) : '';
+  if (!uid || uid.indexOf('/') !== -1) return false;
+  return String(path || '').indexOf('users/' + uid + '/events/') === 0 && attachmentPathOk(path);
+}
+
+function eventAttachmentStoragePath(eventId, attachmentId, fileName) {
+  const uid = firebaseAuthUser && firebaseAuthUser.uid ? String(firebaseAuthUser.uid) : '';
+  const ev = attachmentToken(eventId, 80);
+  const att = attachmentToken(attachmentId, 80);
+  const safe = attachmentSafeName(fileName);
+  if (!uid || uid.indexOf('/') !== -1 || !ev || !att || !safe) return '';
+  return 'users/' + uid + '/events/' + ev + '/' + att + '/' + safe;
+}
+
+function loadPendingAttachmentPaths() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(EVENT_ATTACHMENT_DELETE_KEY) || '[]');
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    raw.forEach(function (p) {
+      const path = String(p || '');
+      if (attachmentPathOk(path) && out.indexOf(path) < 0) out.push(path);
+    });
+    return out.slice(-200);
+  } catch (e) {
+    return [];
+  }
+}
+
+function savePendingAttachmentPaths(paths) {
+  try {
+    const list = [];
+    (paths || []).forEach(function (p) {
+      const path = String(p || '');
+      if (attachmentPathOk(path) && list.indexOf(path) < 0) list.push(path);
+    });
+    localStorage.setItem(EVENT_ATTACHMENT_DELETE_KEY, JSON.stringify(list.slice(-200)));
+  } catch (e) {}
+}
+
+// Paths queued for Storage delete. This is not a copy of the file.
+function rememberAttachmentPath(path) {
+  if (!attachmentPathOk(path)) return;
+  const cur = loadPendingAttachmentPaths();
+  if (cur.indexOf(path) < 0) cur.push(path);
+  savePendingAttachmentPaths(cur);
+}
+
+function forgetAttachmentPath(path) {
+  savePendingAttachmentPaths(loadPendingAttachmentPaths().filter(function (p) { return p !== path; }));
+}
+
+async function deleteStoredAttachment(att) {
+  const path = typeof att === 'string' ? att : (att && att.path);
+  if (!attachmentPathOk(path)) return;
+  if (!attachmentsStorageReady() || !storagePathOwnedByUser(path)) {
+    rememberAttachmentPath(path);
+    return;
+  }
+  try {
+    await firebase.storage().ref(path).delete();
+    forgetAttachmentPath(path);
+  } catch (e) {
+    const code = e && e.code ? String(e.code) : '';
+    if (code === 'storage/object-not-found') {
+      forgetAttachmentPath(path);
+      return;
+    }
+    rememberAttachmentPath(path);
+    console.warn('attachment delete failed', e);
+  }
+}
+
+async function deleteEventStorageTree(eventId) {
+  if (!attachmentsStorageReady()) return;
+  const id = attachmentToken(eventId, 80);
+  if (!id) return;
+  const root = firebase.storage().ref('users/' + firebaseAuthUser.uid + '/events/' + id);
+  try {
+    const listed = await root.listAll();
+    const jobs = [];
+    listed.items.forEach(function (item) {
+      jobs.push(item.delete().catch(function () {}));
+    });
+    for (let i = 0; i < listed.prefixes.length; i++) {
+      const sub = await listed.prefixes[i].listAll();
+      sub.items.forEach(function (item) {
+        jobs.push(item.delete().catch(function () {}));
+      });
+    }
+    await Promise.all(jobs);
+  } catch (e) {}
+}
+
+function queueEventAttachmentDeletes(ev) {
+  const atts = normalizeAttachments(ev && ev.attachments);
+  atts.forEach(function (a) { rememberAttachmentPath(a.path); });
+  if (!attachmentsStorageReady()) return;
+  atts.forEach(function (a) { deleteStoredAttachment(a); });
+  deleteEventStorageTree(ev && ev.id);
+}
+
+async function flushPendingAttachmentDeletes() {
+  if (!attachmentsStorageReady()) return;
+  const paths = loadPendingAttachmentPaths();
+  const keep = [];
+  for (let i = 0; i < paths.length; i++) {
+    const path = paths[i];
+    if (!storagePathOwnedByUser(path)) continue;
+    try {
+      await firebase.storage().ref(path).delete();
+    } catch (e) {
+      const code = e && e.code ? String(e.code) : '';
+      if (code !== 'storage/object-not-found') keep.push(path);
+    }
+  }
+  savePendingAttachmentPaths(keep);
+}
+
+async function uploadEventAttachment(eventId, file) {
+  if (!attachmentsStorageReady()) {
+    const err = new Error('signed-out');
+    err.code = firebaseCanWrite() ? 'storage-missing' : 'signed-out';
+    throw err;
+  }
+  if (!file || !file.size) {
+    const err = new Error('empty');
+    err.code = 'empty';
+    throw err;
+  }
+  if (file.size > EVENT_ATTACHMENT_MAX_BYTES) {
+    const err = new Error('too-big');
+    err.code = 'too-big';
+    throw err;
+  }
+  const id = uid('a');
+  const path = eventAttachmentStoragePath(eventId, id, file.name);
+  if (!storagePathOwnedByUser(path)) {
+    const err = new Error('path');
+    err.code = 'path';
+    throw err;
+  }
+  const contentType = file.type ? String(file.type).slice(0, 120) : 'application/octet-stream';
+  await firebase.storage().ref(path).put(file, { contentType: contentType });
+  return {
+    id: id,
+    name: String(file.name || 'file').slice(0, 180),
+    mime: contentType,
+    size: file.size,
+    path: path,
+    uploadedAt: Date.now()
+  };
+}
+
+function openEventAttachment(att) {
+  const path = att && att.path ? String(att.path) : '';
+  if (!attachmentsStorageReady()) {
+    showShareToast(attachmentBlockedMessage());
+    return;
+  }
+  if (!storagePathOwnedByUser(path)) {
+    showShareToast('未能開啟附件');
+    return;
+  }
+  // Open a tab during the click. The URL is never written into state, localStorage,
+  // Firestore, or the public snapshot. Prefer a blob URL so no long-lived token is minted.
+  const preview = window.open('about:blank', '_blank');
+  const ref = firebase.storage().ref(path);
+  const loader = (typeof ref.getBlob === 'function') ? ref.getBlob() : ref.getDownloadURL();
+  Promise.resolve(loader).then(function (result) {
+    if (typeof result === 'string') {
+      if (preview) preview.location.replace(result);
+      else window.open(result, '_blank', 'noopener');
+      return;
+    }
+    const url = (preview && preview.URL && preview.URL.createObjectURL)
+      ? preview.URL.createObjectURL(result)
+      : URL.createObjectURL(result);
+    if (preview) {
+      preview.location.replace(url);
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    a.rel = 'noopener';
+    if (att.name) a.download = String(att.name);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+  }).catch(function (err) {
+    const code = err && err.code ? String(err.code) : '';
+    if (code === 'storage/unauthorized' || code === 'storage/unauthenticated' || typeof ref.getDownloadURL !== 'function') {
+      console.warn('attachment open failed', err);
+      if (preview) preview.close();
+      if (code === 'storage/unauthorized' || code === 'storage/unauthenticated') {
+        showShareToast('未能開啟。請先登入，並確認 Storage 規則已發佈');
+      } else {
+        showShareToast('未能開啟附件');
+      }
+      return;
+    }
+    // Token URL stays in this tab only. It is not written to sync or localStorage.
+    ref.getDownloadURL().then(function (url) {
+      if (preview) preview.location.replace(url);
+      else window.open(url, '_blank', 'noopener');
+    }).catch(function (err2) {
+      console.warn('attachment open failed', err2);
+      if (preview) preview.close();
+      showShareToast('未能開啟附件');
+    });
+  });
+}
+
+function eventAttachmentCardHtml(ev) {
+  if (VIEW_ONLY) return '';
+  const atts = normalizeAttachments(ev && ev.attachments);
+  if (!atts.length) return '';
+  return '<div class="event-files">' + atts.map(function (a) {
+    return '<button type="button" class="event-file" data-attachment="' + escapeHtml(a.id) + '" aria-label="開啟附件 ' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</button>';
+  }).join('') + '</div>';
+}
+
+function eventAttachmentsFieldHtml() {
+  return '<div><label class="field-label">附件</label>' +
+    '<div class="event-attach-list" id="eventAttachList"></div>' +
+    '<div class="event-attach-actions">' +
+      '<button type="button" class="btn btn-ghost btn-sm" id="eventAttachPick">上載</button>' +
+      '<input type="file" id="eventAttachInput" multiple hidden tabindex="-1" />' +
+    '</div>' +
+    '<p class="meta event-attach-hint" id="eventAttachHint">PDF、圖片、文件等。每個檔案最多 10MB，每個活動最多 5 個。要登入 Firebase 先可以上載同開啟。未登入唔會把檔案留喺這部瀏覽器。</p></div>';
+}
+
+function eventDeleteConfirmMessage(ev) {
+  const personal = !!(ev && eventKindOf(ev) === 'personal');
+  const hasFiles = normalizeAttachments(ev && ev.attachments).length > 0;
+  if (personal && hasFiles) return '確定刪除此活動？會一併從 Google Calendar 移除，附件亦會刪除。';
+  if (personal) return '確定刪除此活動？會一併從 Google Calendar 移除。';
+  if (hasFiles) return '確定刪除此活動？附件會一併刪除。';
+  return '確定刪除此活動？';
+}
+
+function bindEventAttachments(eventId, initial) {
+  const listEl = document.getElementById('eventAttachList');
+  const pickBtn = document.getElementById('eventAttachPick');
+  const input = document.getElementById('eventAttachInput');
+  let items = normalizeAttachments(initial);
+  const staged = {};
+  const removedPaths = [];
+  let uploading = 0;
+  let dropped = false;
+
+  function paintBusy() {
+    if (!pickBtn) return;
+    pickBtn.disabled = uploading > 0;
+    pickBtn.textContent = uploading > 0 ? '上載中…' : '上載';
+  }
+
+  function paint() {
+    if (!listEl) return;
+    if (!items.length) {
+      listEl.innerHTML = '<p class="meta event-attach-empty">未有附件</p>';
+    } else {
+      listEl.innerHTML = items.map(function (a) {
+        return '<div class="event-attach-row">' +
+          '<button type="button" class="event-file" data-open-attachment="' + escapeHtml(a.id) + '" aria-label="開啟附件 ' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-remove-attachment="' + escapeHtml(a.id) + '">移除</button>' +
+        '</div>';
+      }).join('');
+      listEl.querySelectorAll('[data-open-attachment]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const id = btn.getAttribute('data-open-attachment');
+          const att = items.find(function (a) { return a.id === id; });
+          if (att) openEventAttachment(att);
+        });
+      });
+      listEl.querySelectorAll('[data-remove-attachment]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const id = btn.getAttribute('data-remove-attachment');
+          const att = items.find(function (a) { return a.id === id; });
+          if (!att) return;
+          items = items.filter(function (a) { return a.id !== id; });
+          if (staged[att.path]) {
+            delete staged[att.path];
+            deleteStoredAttachment(att);
+          } else if (removedPaths.indexOf(att.path) < 0) {
+            removedPaths.push(att.path);
+          }
+          paint();
+        });
+      });
+    }
+    paintBusy();
+  }
+
+  function discardStaged() {
+    dropped = true;
+    Object.keys(staged).forEach(function (path) {
+      delete staged[path];
+      deleteStoredAttachment(path);
+    });
+  }
+
+  modalOnDismiss = discardStaged;
+  if (pickBtn && input) {
+    pickBtn.addEventListener('click', function () {
+      if (dropped) return;
+      if (!attachmentsStorageReady()) {
+        showShareToast(attachmentBlockedMessage());
+        return;
+      }
+      if (items.length >= EVENT_ATTACHMENT_MAX_COUNT) {
+        showShareToast('每個活動最多 5 個附件');
+        return;
+      }
+      input.click();
+    });
+    input.addEventListener('change', async function () {
+      const files = Array.prototype.slice.call(input.files || []);
+      input.value = '';
+      if (!files.length || dropped) return;
+      if (!attachmentsStorageReady()) {
+        showShareToast(attachmentBlockedMessage());
+        return;
+      }
+      for (let i = 0; i < files.length; i++) {
+        if (dropped) return;
+        if (items.length >= EVENT_ATTACHMENT_MAX_COUNT) {
+          showShareToast('每個活動最多 5 個附件');
+          break;
+        }
+        const file = files[i];
+        if (!file || !file.size) {
+          showShareToast('檔案是空的，未能上載');
+          continue;
+        }
+        if (file.size > EVENT_ATTACHMENT_MAX_BYTES) {
+          showShareToast('檔案太大，每個上限 10MB');
+          continue;
+        }
+        uploading += 1;
+        paintBusy();
+        try {
+          const att = await uploadEventAttachment(eventId, file);
+          if (dropped || items.length >= EVENT_ATTACHMENT_MAX_COUNT) deleteStoredAttachment(att);
+          else {
+            staged[att.path] = true;
+            items.push(att);
+          }
+        } catch (err) {
+          if (!dropped) {
+            const code = err && err.code ? String(err.code) : '';
+            if (code === 'signed-out') showShareToast(EVENT_ATTACHMENT_SIGNIN_MSG);
+            else if (code === 'too-big') showShareToast('檔案太大，每個上限 10MB');
+            else if (code === 'storage/unauthorized' || code === 'storage/unauthenticated') {
+              showShareToast('未能上載。請先登入，並確認 Storage 規則已發佈');
+            } else showShareToast('上載失敗，請再試');
+          }
+        } finally {
+          uploading -= 1;
+          paint();
+        }
+      }
+    });
+  }
+  paint();
+  return {
+    list: function () { return items.map(function (a) { return Object.assign({}, a); }); },
+    busy: function () { return uploading > 0; },
+    finish: function () {
+      modalOnDismiss = null;
+      removedPaths.forEach(function (path) { deleteStoredAttachment(path); });
+    }
+  };
+}
+/* EVENT_ATTACHMENTS_END */
 function normalizeEvent(e) {
   const title = String((e && e.title) || '');
   let date = '';
@@ -5537,6 +6079,7 @@ function normalizeEvent(e) {
     const gms = Number(e.gcalUpdated);
     if (gms) out.gcalUpdated = gms;
   }
+  applyEventAttachments(out, e);
   return out;
 }
 
@@ -6142,7 +6685,7 @@ let longPressTimer = null;
 
 function reorderGestureBlocked(target) {
   if (!target || !target.closest) return true;
-  return !!target.closest('.todo-check, [data-edit], [data-del], .bus-del, .sc-edit-btn');
+  return !!target.closest('.todo-check, [data-edit], [data-del], .bus-del, .sc-edit-btn, .event-file, .event-files');
 }
 
 function beginReorderHold(el, target) {
@@ -6477,6 +7020,13 @@ function dedupeEventsByTitleDate(events) {
     if (!!winner.done !== done) donePatch.done = done;
     if (contentUpdatedAt && Number(winner.contentUpdatedAt) !== contentUpdatedAt) donePatch.contentUpdatedAt = contentUpdatedAt;
     if (Object.keys(donePatch).length) kept[idx] = Object.assign({}, winner, donePatch);
+    const mergedFiles = mergeAttachmentLists(kept[idx].attachments, other.attachments);
+    if (attachmentsSig(kept[idx].attachments) !== attachmentsSig(mergedFiles)) {
+      const withFiles = Object.assign({}, kept[idx]);
+      if (mergedFiles.length) withFiles.attachments = mergedFiles;
+      else delete withFiles.attachments;
+      kept[idx] = withFiles;
+    }
   });
   return kept;
 }
@@ -6967,21 +7517,32 @@ function stopBusRouteSheetRefresh() {
 
 const backdrop = document.getElementById('modalBackdrop');
 const modalPanel = document.getElementById('modalPanel');
+let modalOnDismiss = null;
 
 function openModal(html) {
+  if (modalOnDismiss) {
+    const fn = modalOnDismiss;
+    modalOnDismiss = null;
+    try { fn(); } catch (e) {}
+  }
   stopBusRouteSheetRefresh();
   modalPanel.innerHTML = html;
   backdrop.classList.add('open');
   backdrop.setAttribute('aria-hidden', 'false');
-  const first = modalPanel.querySelector('input, select, button, textarea');
+  const first = modalPanel.querySelector('input:not([hidden]):not([type="hidden"]), select, button, textarea');
   if (first) setTimeout(() => first.focus(), 100);
 }
 
 function closeModal() {
+  const fn = modalOnDismiss;
+  modalOnDismiss = null;
   stopBusRouteSheetRefresh();
   backdrop.classList.remove('open');
   backdrop.setAttribute('aria-hidden', 'true');
   modalPanel.innerHTML = '';
+  if (fn) {
+    try { fn(); } catch (e) {}
+  }
 }
 
 backdrop.addEventListener('click', (e) => {
@@ -8079,7 +8640,10 @@ function removeTodoById(id) {
 
 function removeEventById(id) {
   const ev = (state.events || []).find(function (x) { return x.id === id; });
-  if (ev) rememberEventDeletion(ev);
+  if (ev) {
+    rememberEventDeletion(ev);
+    queueEventAttachmentDeletes(ev);
+  }
   state.events = (state.events || []).filter(function (x) { return x.id !== id; });
   saveState();
   renderEvents();
@@ -8091,6 +8655,7 @@ function removeEventById(id) {
 
 function openEventAddModal() {
   if (VIEW_ONLY) return;
+  const newId = uid('e');
   const dateDefault = defaultDateForEventsFilter(sessionEventsFilter || (state && state.eventsFilter));
   openModal(
     '<h3>新增活動</h3>' +
@@ -8106,6 +8671,7 @@ function openEventAddModal() {
       '</div>' +
       '<div><label class="field-label">工作（選填）</label>' +
         '<textarea name="work" rows="3" maxlength="500" placeholder="工作內容、注意事項…" style="min-height:80px;resize:vertical"></textarea></div>' +
+      eventAttachmentsFieldHtml() +
       '<div class="modal-actions">' +
         '<button type="button" class="btn btn-ghost" id="eventAddCancel">取消</button>' +
         '<button type="submit" class="btn btn-primary">加入</button>' +
@@ -8113,9 +8679,14 @@ function openEventAddModal() {
     '</form>'
   );
   bindEventKindPicker();
+  const attachSession = bindEventAttachments(newId, []);
   document.getElementById('eventAddCancel').onclick = closeModal;
   document.getElementById('eventAddForm').onsubmit = (e) => {
     e.preventDefault();
+    if (attachSession.busy()) {
+      showShareToast('附件上載中，請稍等');
+      return;
+    }
     const fd = new FormData(e.target);
     const title = String(fd.get('title') || '').trim();
     const date = String(fd.get('date') || '');
@@ -8124,7 +8695,21 @@ function openEventAddModal() {
     const kind = readEventKind(fd);
     if (!title || !date) return;
     const now = Date.now();
-    state.events.push(normalizeEvent({ id: uid('e'), title: title, date: date, time: time, work: work, kind: kind, done: false, updatedAt: now, contentUpdatedAt: now, createdAt: now }));
+    const attachments = attachSession.list();
+    attachSession.finish();
+    state.events.push(normalizeEvent({
+      id: newId,
+      title: title,
+      date: date,
+      time: time,
+      work: work,
+      kind: kind,
+      done: false,
+      updatedAt: now,
+      contentUpdatedAt: now,
+      createdAt: now,
+      attachments: attachments
+    }));
     // Keep the date filter and 個人／學校 tab. The new row uses its own kind.
     saveState();
     closeModal();
@@ -8157,6 +8742,7 @@ function openEventEditModal(editId) {
       '</div>' +
       '<div><label class="field-label">工作／備註（選填）</label>' +
         '<textarea name="work" rows="3" maxlength="500" style="min-height:80px;resize:vertical">' + escapeHtml(ev.work || '') + '</textarea></div>' +
+      eventAttachmentsFieldHtml() +
       '<div class="modal-actions">' +
         '<button type="button" class="btn btn-danger" id="evDelete">刪除</button>' +
         '<button type="button" class="btn btn-ghost" id="evCancel">取消</button>' +
@@ -8165,17 +8751,20 @@ function openEventEditModal(editId) {
     '</form>'
   );
   bindEventKindPicker();
+  const attachSession = bindEventAttachments(editId, ev.attachments);
   document.getElementById('evCancel').onclick = closeModal;
   document.getElementById('evDelete').onclick = () => {
-    const msg = eventKindOf(ev) === 'personal'
-      ? '確定刪除此活動？會一併從 Google Calendar 移除。'
-      : '確定刪除此活動？';
+    const msg = eventDeleteConfirmMessage(ev);
     if (!confirm(msg)) return;
     closeModal();
     removeEventById(editId);
   };
   document.getElementById('evEditForm').onsubmit = (e) => {
     e.preventDefault();
+    if (attachSession.busy()) {
+      showShareToast('附件上載中，請稍等');
+      return;
+    }
     const fd = new FormData(e.target);
     const title = String(fd.get('title') || '').trim();
     const date = String(fd.get('date') || '');
@@ -8184,28 +8773,37 @@ function openEventEditModal(editId) {
     const nextKind = readEventKind(fd);
     if (!title || !date) return;
     const idx = state.events.findIndex(x => x.id === editId);
-    let syncGcal = false;
-    if (idx >= 0) {
-      const prev = state.events[idx];
-      const changed = prev.title !== title || prev.date !== date || (prev.time || '') !== (time || '') || (prev.work || '') !== work || eventKindOf(prev) !== nextKind;
-      syncGcal = String(prev.id || '').indexOf('e_seed_') !== 0 && (eventKindOf(prev) === 'personal' || nextKind === 'personal' || !!prev.gcalEventId);
-      if (prev.gcalEventId && nextKind !== 'personal') queueGcalDelete(prev.gcalEventId);
-      const nowTs = Date.now();
-      state.events[idx] = normalizeEvent({
-        id: editId,
-        title: title,
-        date: date,
-        time: time,
-        work: work,
-        kind: nextKind,
-        done: !!prev.done,
-        updatedAt: changed ? nowTs : prev.updatedAt,
-        contentUpdatedAt: changed ? nowTs : (Number(prev.contentUpdatedAt) || Number(prev.updatedAt) || Number(prev.createdAt) || 0),
-        createdAt: prev.createdAt,
-        gcalEventId: nextKind === 'personal' ? prev.gcalEventId : '',
-        gcalUpdated: nextKind === 'personal' ? prev.gcalUpdated : ''
-      });
+    if (idx < 0) {
+      closeModal();
+      return;
     }
+    const attachments = attachSession.list();
+    attachSession.finish();
+    let syncGcal = false;
+    const prev = state.events[idx];
+    const contentChanged = prev.title !== title || prev.date !== date || (prev.time || '') !== (time || '') || (prev.work || '') !== work || eventKindOf(prev) !== nextKind;
+    const attachChanged = attachmentsSig(prev.attachments) !== attachmentsSig(attachments);
+    const changed = contentChanged || attachChanged;
+    syncGcal = String(prev.id || '').indexOf('e_seed_') !== 0 && (eventKindOf(prev) === 'personal' || nextKind === 'personal' || !!prev.gcalEventId);
+    if (prev.gcalEventId && nextKind !== 'personal') queueGcalDelete(prev.gcalEventId);
+    const nowTs = Date.now();
+    state.events[idx] = normalizeEvent({
+      id: editId,
+      title: title,
+      date: date,
+      time: time,
+      work: work,
+      kind: nextKind,
+      done: !!prev.done,
+      updatedAt: changed ? nowTs : prev.updatedAt,
+      contentUpdatedAt: contentChanged ? nowTs : (Number(prev.contentUpdatedAt) || Number(prev.updatedAt) || Number(prev.createdAt) || 0),
+      createdAt: prev.createdAt,
+      sortOrder: prev.sortOrder,
+      orderUpdatedAt: prev.orderUpdatedAt,
+      gcalEventId: nextKind === 'personal' ? prev.gcalEventId : '',
+      gcalUpdated: nextKind === 'personal' ? prev.gcalUpdated : '',
+      attachments: attachments
+    });
     saveState();
     closeModal();
     applySessionViewFilters();
@@ -8462,7 +9060,7 @@ function renderEvents() {
   let dirty = false;
   state.events = state.events.map(ev => {
     const n = normalizeEvent(ev);
-    if (ev.from != null || ev.to != null || ev.kind !== n.kind || ev.date !== n.date || ev.time !== n.time || (ev.work || '') !== n.work || (ev.gcalEventId || '') !== (n.gcalEventId || '')) dirty = true;
+    if (ev.from != null || ev.to != null || ev.kind !== n.kind || ev.date !== n.date || ev.time !== n.time || (ev.work || '') !== n.work || (ev.gcalEventId || '') !== (n.gcalEventId || '') || attachmentsSig(ev.attachments) !== attachmentsSig(n.attachments)) dirty = true;
     return n;
   });
   if (dirty) saveState();
@@ -8485,6 +9083,7 @@ function renderEvents() {
     const workSnippet = ev.work
       ? '<div class="event-work">' + escapeHtml(ev.work) + '</div>'
       : '';
+    const filesSnippet = eventAttachmentCardHtml(ev);
     const titleHtml = VIEW_ONLY
       ? '<div class="todo-title">' + escapeHtml(ev.title) + '</div>'
       : '<button type="button" class="todo-title event-title-toggle" aria-pressed="' + (ev.done ? 'true' : 'false') + '" aria-label="' + escapeHtml(ev.done ? '標為未完成' : '標為完成') + '">' + escapeHtml(ev.title) + '</button>';
@@ -8497,6 +9096,7 @@ function renderEvents() {
             formatEventStatus(ev.date) +
           '</div>' +
           workSnippet +
+          filesSnippet +
         '</div>' +
         '<button type="button" class="btn btn-icon" data-edit aria-label="編輯">✎</button>' +
         '<button type="button" class="btn btn-icon" data-del aria-label="刪除">🗑</button>' +
@@ -8524,15 +9124,24 @@ function renderEvents() {
         openEventEditModal(id);
       });
     }
+    row.querySelectorAll('[data-attachment]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const aid = btn.getAttribute('data-attachment');
+        const found = (state.events || []).find(function (x) { return x.id === id; });
+        const att = normalizeAttachments(found && found.attachments).find(function (a) { return a.id === aid; });
+        if (att) openEventAttachment(att);
+      });
+      btn.addEventListener('keydown', function (e) { e.stopPropagation(); });
+    });
     const delBtn = row.querySelector('[data-del]');
     if (delBtn) {
       delBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (VIEW_ONLY) return;
         const target = state.events.find(x => x.id === id);
-        const msg = target && eventKindOf(target) === 'personal'
-          ? '確定刪除此活動？會一併從 Google Calendar 移除。'
-          : '確定刪除此活動？';
+        const msg = eventDeleteConfirmMessage(target);
         if (!confirm(msg)) return;
         removeEventById(id);
       });
@@ -11434,7 +12043,7 @@ function applyRemoteSyncPayload(remote, opts) {
     if (d.changed) { state.todos = d.arr; changed = true; }
   }
   if (Array.isArray(remote.events)) {
-    const remoteEvents = filterRemoteItemsByDeletions(remote.events.map(normalizeEvent), 'event');
+    const remoteEvents = filterRemoteItemsByDeletions(remote.events.map(normalizeEventForSync), 'event');
     if ((authoritative || unionLists) && !VIEW_ONLY) clearDeletionRecordsForItems(remoteEvents, 'event');
     let next = Array.isArray(state.events) ? state.events : [];
     let upsertChanged = false;
@@ -11523,7 +12132,8 @@ function dashboardVisibleSig() {
       return [t.id, t.title, t.due, t.done ? 1 : 0, t.sortOrder].join('\u0001');
     }),
     rows(state && state.events, function (e) {
-      return [e.id, e.title, e.date, e.time, e.work, e.done ? 1 : 0, e.kind, e.sortOrder].join('\u0001');
+      const files = Array.isArray(e.attachments) ? e.attachments.map(function (a) { return a && a.id ? String(a.id) : ''; }).join(',') : '';
+      return [e.id, e.title, e.date, e.time, e.work, e.done ? 1 : 0, e.kind, e.sortOrder, files].join('\u0001');
     }),
     rows(state && state.shortcuts, function (s) {
       return [s.id, s.title, s.url, s.category].join('\u0001');
@@ -12147,6 +12757,7 @@ function startFirebaseSync() {
           return;
         }
         setFirebaseHint('in');
+        try { flushPendingAttachmentDeletes(); } catch (e) {}
         // Page open and a later sign-in. Token refresh does not change uid, so
         // it does not pull again. The first pull finishes before the boot curtain lifts.
         let pending = Promise.resolve();
@@ -14634,7 +15245,8 @@ async function pushPagesShareGate(config) {
 
 /**
  * Guest snapshot. Same fields as Drive sync, including personal and school
- * events. Plaintext passwords are never written.
+ * events. Plaintext passwords are never written. Attachment metadata stays
+ * on the signed-in Firestore doc only. This public copy drops it.
  */
 function pagesSyncPayload() {
   const payload = buildSyncPayload();
@@ -14642,6 +15254,9 @@ function pagesSyncPayload() {
   delete payload.password;
   delete payload.sharePassword;
   delete payload.sharePlain;
+  payload.events = (payload.events || []).map(function (ev) {
+    return eventWithoutPublicFiles(eventForExport(ev));
+  });
   return payload;
 }
 
