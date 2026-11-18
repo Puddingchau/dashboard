@@ -294,12 +294,18 @@ test('drive delete queue stores file ids only', () => {
   assert.equal(raw.includes('token='), false);
 });
 
-test('event cards use a button for the filename and share view shows text only', () => {
+test('event cards use a compact file icon and share view shows text only', () => {
   context.VIEW_ONLY = false;
   const html = context.eventAttachmentCardHtml({ attachments: [driveGood] });
   assert.match(html, /通告\.pdf/);
+  assert.match(html, /event-attach-chip/);
+  assert.match(html, /has-name/);
+  assert.match(html, /is-file/);
   assert.match(html, /data-attachment="a_9"/);
   assert.match(html, /type="button"/);
+  assert.match(html, /開啟附件/);
+  assert.doesNotMatch(html, /event-thumb/);
+  assert.doesNotMatch(html, /<img/);
   assert.equal(html.includes('href='), false);
   assert.equal(html.includes('http'), false);
   assert.equal(html.includes('data:'), false);
@@ -307,7 +313,10 @@ test('event cards use a button for the filename and share view shows text only',
   context.VIEW_ONLY = true;
   const share = context.eventAttachmentCardHtml({ attachments: [driveGood] });
   assert.match(share, /通告\.pdf/);
-  assert.match(share, /event-file-name/);
+  assert.match(share, /event-attach-name/);
+  assert.match(share, /event-attach-chip/);
+  assert.match(share, /is-file/);
+  assert.doesNotMatch(share, /event-thumb/);
   assert.equal(share.includes('<button'), false);
   assert.equal(share.includes('href='), false);
   assert.equal(share.includes(driveGood.driveFileId), false);
@@ -316,7 +325,7 @@ test('event cards use a button for the filename and share view shows text only',
   context.VIEW_ONLY = false;
 });
 
-test('image attachments render a thumbnail and share view stays non-clickable', () => {
+test('image attachments render a compact icon and share view stays non-clickable', () => {
   context.VIEW_ONLY = false;
   const image = {
     id: 'a_img',
@@ -328,28 +337,69 @@ test('image attachments render a thumbnail and share view stays non-clickable', 
     driveFileId: '1ImgFileIdForThumb99'
   };
   const html = context.eventAttachmentCardHtml({ attachments: [image, driveGood] });
-  assert.match(html, /class="event-thumb"/);
+  assert.match(html, /event-attach-chips/);
+  assert.match(html, /is-icon-only is-image/);
+  assert.match(html, /is-icon-only is-file/);
+  assert.doesNotMatch(html, /has-name/);
   assert.match(html, /data-attachment="a_img"/);
   assert.match(html, /開啟圖片/);
   assert.match(html, /data-attachment="a_9"/);
   assert.match(html, /通告\.pdf/);
+  assert.doesNotMatch(html, /event-thumb/);
+  assert.doesNotMatch(html, /event-thumbs/);
+  assert.doesNotMatch(html, /<img/);
   assert.equal(html.includes('href='), false);
   assert.equal(html.includes('http'), false);
   assert.equal(html.includes(image.driveFileId), false);
   assert.equal(html.includes(driveGood.driveFileId), false);
+  const single = context.eventAttachmentCardHtml({ attachments: [image] });
+  assert.match(single, /has-name is-image/);
+  assert.match(single, /event-attach-name/);
+  assert.match(single, /通告\.jpg/);
+  assert.match(single, /data-attachment="a_img"/);
+  assert.doesNotMatch(single, /event-thumb/);
+  assert.doesNotMatch(single, /<img/);
+  const edit = context.eventAttachmentEditRowHtml(image);
+  assert.match(edit, /event-attach-open/);
+  assert.match(edit, /event-attach-name/);
+  assert.match(edit, /通告\.jpg/);
+  assert.match(edit, /移除/);
+  assert.match(edit, /data-open-attachment="a_img"/);
+  assert.match(edit, /開啟圖片/);
+  assert.doesNotMatch(edit, /event-thumb/);
+  assert.doesNotMatch(edit, /<img/);
+  assert.equal(edit.includes('href='), false);
+  assert.equal(edit.includes(image.driveFileId), false);
   context.VIEW_ONLY = true;
   const share = context.eventAttachmentCardHtml({ attachments: [image] });
-  assert.match(share, /event-thumb-placeholder/);
-  assert.match(share, /event-file-name/);
+  assert.match(share, /event-attach-chip/);
+  assert.match(share, /has-name is-image/);
+  assert.match(share, /event-attach-name/);
   assert.match(share, /通告\.jpg/);
+  assert.doesNotMatch(share, /event-thumb-placeholder/);
+  assert.doesNotMatch(share, /event-thumb/);
   assert.equal(share.includes('<button'), false);
   assert.equal(share.includes('href='), false);
   assert.equal(share.includes(image.driveFileId), false);
   assert.equal(share.includes('http'), false);
+  const shareMany = context.eventAttachmentCardHtml({ attachments: [image, { id: 'a_9', name: '通告.pdf' }] });
+  assert.match(shareMany, /is-icon-only is-image/);
+  assert.match(shareMany, /is-icon-only is-file/);
+  assert.doesNotMatch(shareMany, /has-name/);
+  assert.equal(shareMany.includes('<button'), false);
+  assert.equal(shareMany.includes(image.driveFileId), false);
   context.VIEW_ONLY = false;
   const preview = indexHtml.slice(indexHtml.indexOf('function loadAttachmentPreview'), indexHtml.indexOf('function paintAttachmentThumb'));
   assert.match(preview, /alt=media/);
   assert.doesNotMatch(preview, /requestDriveAttachToken/);
+  for (const page of [indexHtml, dashHtml]) {
+    assert.match(page, /活動卡只顯示小圖示/);
+    assert.doesNotMatch(page, /圖片會顯示縮圖/);
+    assert.match(page, /\.event-attach-chip/);
+    assert.match(page, /class="note-tile-face event-thumb"/);
+    assert.match(page, /const ENABLE_DRIVE_SYNC = false;/);
+    assert.match(page, /const SCHEMA_VERSION = 13;/);
+  }
 });
 
 test('an event keeps at most five attachments', () => {

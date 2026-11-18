@@ -2876,6 +2876,128 @@
       line-height: 1.35;
       word-break: break-word;
     }
+    /* Event cards keep attachments as one short row. Notes still use .event-thumb. */
+    .event-files.event-attach-chips {
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .event-files.event-attach-chips::-webkit-scrollbar { display: none; height: 0; }
+    .event-attach-chip {
+      appearance: none;
+      -webkit-appearance: none;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-sizing: border-box;
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      min-height: 40px;
+      margin: 0;
+      padding: 0;
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      background: var(--accent-light);
+      color: var(--accent-badge-text, var(--accent-primary));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.2;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .event-attach-chip.has-name {
+      width: auto;
+      max-width: 100%;
+      min-width: 0;
+      flex: 1 1 auto;
+      justify-content: flex-start;
+      padding: 0 10px 0 8px;
+      border-radius: 999px;
+    }
+    span.event-attach-chip { cursor: default; }
+    .event-attach-chip:focus-visible,
+    .event-attach-open:focus-visible {
+      outline: 2px solid var(--accent-primary);
+      outline-offset: 2px;
+    }
+    button.event-attach-chip:active,
+    button.event-attach-open:active { transform: scale(0.97); }
+    @media (hover: hover) {
+      button.event-attach-chip:hover,
+      button.event-attach-open:hover {
+        border-color: var(--accent-primary);
+      }
+    }
+    .event-attach-ico {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      display: block;
+    }
+    .event-attach-chip.is-icon-only .event-attach-name {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+    .event-attach-chip.has-name .event-attach-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .event-attach-open {
+      appearance: none;
+      -webkit-appearance: none;
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      margin: 0;
+      padding: 6px 8px;
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      background: var(--accent-light);
+      color: var(--accent-badge-text, var(--accent-primary));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .event-attach-open .event-attach-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-word;
+    }
     .event-attach-drive {
       display: flex;
       flex-wrap: wrap;
@@ -6666,13 +6788,39 @@ function indexAttachmentForThumb(att) {
   if (att && att.id) attachmentThumbIndex[String(att.id)] = att;
 }
 
-function attachmentThumbHtml(att, openAttr) {
+function attachmentKindIcon(isImage) {
+  // Small glass-card glyphs. Image vs document, no thumbnail bitmap.
+  const path = isImage
+    ? 'M19.2 5.1v13.8c0 .72-.58 1.3-1.3 1.3H6.1c-.72 0-1.3-.58-1.3-1.3V5.1c0-.72.58-1.3 1.3-1.3h11.8c.72 0 1.3.58 1.3 1.3zM8.15 13.15l2.2 2.65 2.85-3.55 3.7 4.85H7.15l1-3.95zM9.05 9.35a1.45 1.45 0 1 0 0-2.9 1.45 1.45 0 0 0 0 2.9z'
+    : 'M14.1 3.4H7.15c-.75 0-1.35.6-1.35 1.35v14.5c0 .75.6 1.35 1.35 1.35h9.7c.75 0 1.35-.6 1.35-1.35V8.15L14.1 3.4zm.15 1.85 3.05 3.05h-3.05V5.25zM8.15 12.2h7.7v1.45h-7.7V12.2zm0 3.05h7.7v1.45h-7.7v-1.45z';
+  return '<svg class="event-attach-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="' + path + '"/></svg>';
+}
+
+function attachmentControlHtml(att, openAttr, showName) {
   const id = escapeHtml(att && att.id);
-  const name = escapeHtml((att && att.name) || '圖片');
-  return '<button type="button" class="event-thumb" ' + openAttr + '="' + id + '" aria-label="開啟圖片 ' + name + '">' +
-    '<span class="event-thumb-fallback">圖片</span>' +
-    '<img alt="" class="event-thumb-img" hidden />' +
-    '</button>';
+  const rawName = String((att && att.name) || '附件');
+  const name = escapeHtml(rawName);
+  const image = attachmentLooksLikeImage(att);
+  const cls = 'event-attach-chip ' + (showName ? 'has-name' : 'is-icon-only') + (image ? ' is-image' : ' is-file');
+  const inner = attachmentKindIcon(image) + '<span class="event-attach-name">' + name + '</span>';
+  if (!openAttr) {
+    return '<span class="' + cls + '" title="' + name + '">' + inner + '</span>';
+  }
+  const action = (image ? '開啟圖片 ' : '開啟附件 ') + name;
+  return '<button type="button" class="' + cls + '" ' + openAttr + '="' + id + '" aria-label="' + action + '" title="' + name + '">' + inner + '</button>';
+}
+
+function eventAttachmentEditRowHtml(att) {
+  const image = attachmentLooksLikeImage(att);
+  const name = escapeHtml((att && att.name) || '附件');
+  const action = (image ? '開啟圖片 ' : '開啟附件 ') + name;
+  return '<div class="event-attach-row">' +
+    '<button type="button" class="event-attach-open" data-open-attachment="' + escapeHtml(att && att.id) + '" aria-label="' + action + '" title="' + name + '">' +
+      attachmentKindIcon(image) +
+      '<span class="event-attach-name">' + name + '</span>' +
+    '</button>' +
+    '<button type="button" class="btn btn-ghost btn-sm" data-remove-attachment="' + escapeHtml(att && att.id) + '">移除</button>' +
+  '</div>';
 }
 
 function rememberAttachmentPreview(driveId, url) {
@@ -6743,7 +6891,7 @@ function refreshOpenAttachmentThumbs() {
   }
 }
 
-function eventAttachmentCardHtml(ev) {
+function eventAttachmentCardItems(ev) {
   if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) {
     const names = [];
     const seen = {};
@@ -6752,32 +6900,26 @@ function eventAttachmentCardHtml(ev) {
       const n = attachmentNameOnly(src[i]);
       if (!n || seen[n.id]) continue;
       seen[n.id] = true;
-      names.push({ id: n.id, name: n.name, image: attachmentLooksLikeImage(src[i]) || attachmentLooksLikeImage(n) });
+      const image = attachmentLooksLikeImage(src[i]) || attachmentLooksLikeImage(n);
+      names.push({ id: n.id, name: n.name, mime: image ? 'image/*' : String((src[i] && src[i].mime) || '') });
       if (names.length >= EVENT_ATTACHMENT_MAX_COUNT) break;
     }
-    if (!names.length) return '';
-    return '<div class="event-files">' + names.map(function (a) {
-      const file = '<span class="event-file-name">' + escapeHtml(a.name) + '</span>';
-      if (!a.image) return file;
-      return '<span class="event-thumb-placeholder">圖片</span>' + file;
-    }).join('') + '</div>';
+    return names;
   }
   const atts = normalizeAttachments(ev && ev.attachments);
-  if (!atts.length) return '';
   atts.forEach(indexAttachmentForThumb);
-  const images = [];
-  const files = [];
-  atts.forEach(function (a) { (attachmentLooksLikeImage(a) ? images : files).push(a); });
-  let html = '<div class="event-files">';
-  if (images.length) {
-    html += '<div class="event-thumbs">' + images.map(function (a) {
-      return attachmentThumbHtml(a, 'data-attachment');
-    }).join('') + '</div>';
-  }
-  html += files.map(function (a) {
-    return '<button type="button" class="event-file" data-attachment="' + escapeHtml(a.id) + '" aria-label="開啟附件 ' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</button>';
-  }).join('');
-  return html + '</div>';
+  return atts;
+}
+
+function eventAttachmentCardHtml(ev) {
+  const atts = eventAttachmentCardItems(ev);
+  if (!atts.length) return '';
+  const viewOnly = typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY;
+  const showName = atts.length === 1;
+  const openAttr = viewOnly ? '' : 'data-attachment';
+  return '<div class="event-files event-attach-chips">' + atts.map(function (a) {
+    return attachmentControlHtml(a, openAttr, showName);
+  }).join('') + '</div>';
 }
 
 function eventAttachmentsFieldHtml() {
@@ -6791,7 +6933,7 @@ function eventAttachmentsFieldHtml() {
       '<button type="button" class="btn btn-ghost btn-sm" id="eventAttachDrive">連接 Drive（附件）</button>' +
       '<p class="meta event-attach-who" id="eventAttachDriveWho"></p>' +
     '</div>' +
-    '<p class="meta event-attach-hint" id="eventAttachHint">PDF、圖片、文件等。每個檔案最多 10MB，每個活動最多 5 個。圖片會顯示縮圖，按縮圖或檔名可開啟原本。檔案放喺 Google Drive「小布丁活動附件」，清單仍然經 Firebase 同步。要登入 Firebase 並連接 Drive 先可以上載同開啟。</p></div>';
+    '<p class="meta event-attach-hint" id="eventAttachHint">PDF、圖片、文件等。每個檔案最多 10MB，每個活動最多 5 個。活動卡只顯示小圖示，有需要先按圖示開啟原本。檔案放喺 Google Drive「小布丁活動附件」，清單仍然經 Firebase 同步。要登入 Firebase 並連接 Drive 先可以上載同開啟。</p></div>';
 }
 
 function eventDeleteConfirmMessage(ev) {
@@ -6826,15 +6968,7 @@ function bindEventAttachments(eventId, initial) {
     if (!items.length) {
       listEl.innerHTML = '<p class="meta event-attach-empty">未有附件</p>';
     } else {
-      listEl.innerHTML = items.map(function (a) {
-        const opener = attachmentLooksLikeImage(a)
-          ? attachmentThumbHtml(a, 'data-open-attachment') + '<span class="event-file-name">' + escapeHtml(a.name) + '</span>'
-          : '<button type="button" class="event-file" data-open-attachment="' + escapeHtml(a.id) + '" aria-label="開啟附件 ' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</button>';
-        return '<div class="event-attach-row">' +
-          opener +
-          '<button type="button" class="btn btn-ghost btn-sm" data-remove-attachment="' + escapeHtml(a.id) + '">移除</button>' +
-        '</div>';
-      }).join('');
+      listEl.innerHTML = items.map(eventAttachmentEditRowHtml).join('');
       listEl.querySelectorAll('[data-open-attachment]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           const id = btn.getAttribute('data-open-attachment');
