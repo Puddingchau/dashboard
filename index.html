@@ -2883,6 +2883,174 @@
     }
     .event-attach-who { margin: 0; }
 
+    .event-thumbs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .event-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 72px;
+      height: 72px;
+      min-width: 72px;
+      min-height: 72px;
+      padding: 0;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      background: var(--accent-light);
+      overflow: hidden;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .event-thumb-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .event-thumb-img[hidden] { display: none !important; }
+    .event-thumb-fallback,
+    .event-thumb-placeholder {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-badge-text, var(--accent-primary));
+    }
+    .event-thumb-placeholder {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      background: var(--accent-light);
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .note-locker {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .note-label-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .note-label { width: 100%; min-height: 40px; }
+    .note-label-text { margin: 0; font-weight: 700; word-break: break-word; }
+    .note-file-meta { margin: 0; }
+    @media (max-width: 639px) {
+      .event-thumb,
+      .event-thumb-placeholder {
+        width: 64px;
+        height: 64px;
+        min-width: 64px;
+        min-height: 64px;
+      }
+      .note-locker { grid-template-columns: auto minmax(0, 1fr); }
+      .note-locker > .btn { grid-column: 1 / -1; }
+    }
+
+
+    .note-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .note-item {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      padding: 10px 12px;
+      background: var(--row-bg, #0f172a);
+      border-radius: 14px;
+      border: 1px solid var(--border-soft);
+      min-width: 0;
+    }
+    .note-item-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+    }
+    .note-item-title {
+      margin: 0;
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+    .note-item-actions,
+    .note-upload-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .note-item-actions { flex: 0 1 auto; justify-content: flex-end; }
+    .note-remark {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .notes-hint {
+      display: block;
+      margin: 0 0 8px;
+      line-height: 1.45;
+    }
+    .notes-drive {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+    .note-item.note-locker {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+    @media (max-width: 639px) {
+      .note-item.note-locker { grid-template-columns: auto minmax(0, 1fr); }
+      .note-item.note-locker > .btn { grid-column: 1 / -1; }
+    }
+    .note-files {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .note-file-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .note-file-row .event-file,
+    .note-file-row .event-file-name {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    @media (max-width: 639px) {
+      .note-item-head { flex-direction: column; }
+      .note-item-actions,
+      .note-upload-row { width: 100%; }
+      .note-item-actions .btn,
+      .note-upload-row .btn { flex: 1 1 auto; }
+    }
+
     .todo-actions {
       display: flex;
       flex-direction: row;
@@ -3589,7 +3757,11 @@
     html.view-only .todo-item .btn-icon,
     html.view-only .event-item .btn-icon,
     html.view-only .bus-del,
-    html.view-only .reorder-hint {
+    html.view-only .reorder-hint,
+    html.view-only #btnAddNote,
+    html.view-only #notesDriveConnect,
+    html.view-only #noteFileInput,
+    html.view-only .notes-owner-only {
       display: none !important;
     }
     html.view-only .todo-check {
@@ -3968,8 +4140,35 @@
       </div>
     </section>
 
-    <!-- 4–5. 培訓 + 巴士（左欄堆疊，收合時貼齊） -->
+    <!-- Notes + 培訓 + 巴士（左欄堆疊，收合時貼齊） -->
     <div class="left-stack" id="leftStack">
+    <!-- Notes（可展開），緊貼培訓上面 -->
+    <section class="feature-block accent-lavender is-collapsed" id="notes" data-section="notes">
+      <button type="button" class="block-header" id="hdr-notes" aria-expanded="false" aria-controls="body-notes">
+        <span class="block-title-wrap">
+          <span class="block-label">Notes</span>
+          <span class="block-summary" id="summary-notes"><strong class="summary-num">0</strong></span>
+        </span>
+        <span class="block-chevron" aria-hidden="true">▼</span>
+      </button>
+      <div class="block-body" id="body-notes" hidden>
+        <div class="block-body-inner">
+      <div class="card glass-card">
+        <div class="section-toolbar">
+          <button type="button" class="btn btn-primary btn-sm notes-owner-only" id="btnAddNote">上載</button>
+        </div>
+        <p class="meta notes-hint" id="notesHint">放經常要開的圖片或文件。標籤可留空，會用檔名。按圖或檔名開啟原本。檔案放喺 Google Drive「小布丁活動附件／Notes」，保持私人。</p>
+        <div class="notes-drive notes-owner-only">
+          <button type="button" class="btn btn-ghost btn-sm" id="notesDriveConnect">連接 Drive（附件）</button>
+          <p class="meta event-attach-who" id="notesDriveWho"></p>
+        </div>
+        <input type="file" id="noteFileInput" class="notes-owner-only" multiple hidden tabindex="-1" />
+        <div class="note-list" id="noteList"></div>
+      </div>
+        </div>
+      </div>
+    </section>
+
     <!-- 4. 培訓（可展開） -->
     <section class="feature-block accent-teal is-collapsed" id="training" data-section="training">
       <button type="button" class="block-header" id="hdr-training" aria-expanded="false" aria-controls="body-training">
@@ -5932,10 +6131,10 @@ async function driveAttachApi(url, opts) {
   return res;
 }
 
-function paintDriveAttachStatus() {
+function paintDriveAttachControl(whoId, btnId) {
   if (typeof document === 'undefined' || !document || typeof document.getElementById !== 'function') return;
-  const who = document.getElementById('eventAttachDriveWho');
-  const btn = document.getElementById('eventAttachDrive');
+  const who = document.getElementById(whoId);
+  const btn = document.getElementById(btnId);
   const ready = driveAttachTokenReady();
   if (who) {
     if (ready && driveAttachEmail) who.textContent = 'Drive 已連接：' + driveAttachEmail;
@@ -5943,6 +6142,13 @@ function paintDriveAttachStatus() {
     else who.textContent = '';
   }
   if (btn) btn.textContent = ready ? '轉換 Drive 帳戶' : '連接 Drive（附件）';
+}
+
+function paintDriveAttachStatus() {
+  paintDriveAttachControl('eventAttachDriveWho', 'eventAttachDrive');
+  paintDriveAttachControl('notesDriveWho', 'notesDriveConnect');
+  paintDriveAttachControl('noteAttachDriveWho', 'noteAttachDrive');
+  try { refreshOpenAttachmentThumbs(); } catch (e) {}
 }
 
 async function refreshDriveAttachEmail() {
@@ -6360,6 +6566,98 @@ function openEventAttachment(att) {
   }).catch(fail);
 }
 
+var attachmentThumbIndex = Object.create(null);
+var attachmentPreviewUrls = Object.create(null);
+var attachmentPreviewWaiters = Object.create(null);
+
+function attachmentLooksLikeImage(att) {
+  const mime = String((att && (att.mime || att.contentType)) || '').toLowerCase();
+  if (mime.indexOf('image/') === 0) return true;
+  const name = String((att && att.name) || '').toLowerCase();
+  return /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/.test(name);
+}
+
+function indexAttachmentForThumb(att) {
+  if (att && att.id) attachmentThumbIndex[String(att.id)] = att;
+}
+
+function attachmentThumbHtml(att, openAttr) {
+  const id = escapeHtml(att && att.id);
+  const name = escapeHtml((att && att.name) || '圖片');
+  return '<button type="button" class="event-thumb" ' + openAttr + '="' + id + '" aria-label="開啟圖片 ' + name + '">' +
+    '<span class="event-thumb-fallback">圖片</span>' +
+    '<img alt="" class="event-thumb-img" hidden />' +
+    '</button>';
+}
+
+function rememberAttachmentPreview(driveId, url) {
+  if (!driveFileIdOk(driveId) || !url) return;
+  attachmentPreviewUrls[driveId] = url;
+  const waiters = attachmentPreviewWaiters[driveId] || [];
+  delete attachmentPreviewWaiters[driveId];
+  waiters.forEach(function (fn) { try { fn(url); } catch (e) {} });
+}
+
+function seedAttachmentPreview(att, file) {
+  if (!att || !file || !attachmentLooksLikeImage(att) || !driveFileIdOk(att.driveFileId)) return;
+  if (typeof URL === 'undefined' || !URL.createObjectURL) return;
+  try { rememberAttachmentPreview(String(att.driveFileId), URL.createObjectURL(file)); } catch (e) {}
+}
+
+function loadAttachmentPreview(att) {
+  const driveId = att && driveFileIdOk(att.driveFileId) ? String(att.driveFileId) : '';
+  if (!driveId || !attachmentLooksLikeImage(att)) return Promise.resolve('');
+  if (attachmentPreviewUrls[driveId]) return Promise.resolve(attachmentPreviewUrls[driveId]);
+  // A stored token may already be in this tab. Do not request drive.file here.
+  if (!driveAttachTokenReady()) return Promise.resolve('');
+  if (attachmentPreviewWaiters[driveId]) {
+    return new Promise(function (resolve) { attachmentPreviewWaiters[driveId].push(resolve); });
+  }
+  attachmentPreviewWaiters[driveId] = [];
+  return driveAttachApi('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(driveId) + '?alt=media', { method: 'GET' })
+    .then(function (res) { return res.blob(); })
+    .then(function (blob) {
+      const url = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
+      rememberAttachmentPreview(driveId, url);
+      return url;
+    })
+    .catch(function () {
+      const waiters = attachmentPreviewWaiters[driveId] || [];
+      delete attachmentPreviewWaiters[driveId];
+      waiters.forEach(function (fn) { try { fn(''); } catch (e) {} });
+      return '';
+    });
+}
+
+function paintAttachmentThumb(btn, att) {
+  if (!btn || !att || !attachmentLooksLikeImage(att)) return;
+  const img = btn.querySelector ? btn.querySelector('img') : null;
+  if (!img) return;
+  const cached = att.driveFileId && attachmentPreviewUrls[att.driveFileId];
+  if (cached) {
+    img.src = cached;
+    img.hidden = false;
+    return;
+  }
+  if (!driveAttachTokenReady()) return;
+  loadAttachmentPreview(att).then(function (url) {
+    if (!url || (img.isConnected === false)) return;
+    img.src = url;
+    img.hidden = false;
+  });
+}
+
+function refreshOpenAttachmentThumbs() {
+  if (typeof document === 'undefined' || !document || typeof document.querySelectorAll !== 'function') return;
+  const nodes = document.querySelectorAll('.event-thumb');
+  for (let i = 0; i < nodes.length; i++) {
+    const btn = nodes[i];
+    const id = btn.getAttribute('data-attachment') || btn.getAttribute('data-open-attachment') || btn.getAttribute('data-note-open');
+    const att = id && attachmentThumbIndex[id];
+    if (att) paintAttachmentThumb(btn, att);
+  }
+}
+
 function eventAttachmentCardHtml(ev) {
   if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) {
     const names = [];
@@ -6369,19 +6667,32 @@ function eventAttachmentCardHtml(ev) {
       const n = attachmentNameOnly(src[i]);
       if (!n || seen[n.id]) continue;
       seen[n.id] = true;
-      names.push(n);
+      names.push({ id: n.id, name: n.name, image: attachmentLooksLikeImage(src[i]) || attachmentLooksLikeImage(n) });
       if (names.length >= EVENT_ATTACHMENT_MAX_COUNT) break;
     }
     if (!names.length) return '';
     return '<div class="event-files">' + names.map(function (a) {
-      return '<span class="event-file-name">' + escapeHtml(a.name) + '</span>';
+      const file = '<span class="event-file-name">' + escapeHtml(a.name) + '</span>';
+      if (!a.image) return file;
+      return '<span class="event-thumb-placeholder">圖片</span>' + file;
     }).join('') + '</div>';
   }
   const atts = normalizeAttachments(ev && ev.attachments);
   if (!atts.length) return '';
-  return '<div class="event-files">' + atts.map(function (a) {
+  atts.forEach(indexAttachmentForThumb);
+  const images = [];
+  const files = [];
+  atts.forEach(function (a) { (attachmentLooksLikeImage(a) ? images : files).push(a); });
+  let html = '<div class="event-files">';
+  if (images.length) {
+    html += '<div class="event-thumbs">' + images.map(function (a) {
+      return attachmentThumbHtml(a, 'data-attachment');
+    }).join('') + '</div>';
+  }
+  html += files.map(function (a) {
     return '<button type="button" class="event-file" data-attachment="' + escapeHtml(a.id) + '" aria-label="開啟附件 ' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</button>';
-  }).join('') + '</div>';
+  }).join('');
+  return html + '</div>';
 }
 
 function eventAttachmentsFieldHtml() {
@@ -6395,7 +6706,7 @@ function eventAttachmentsFieldHtml() {
       '<button type="button" class="btn btn-ghost btn-sm" id="eventAttachDrive">連接 Drive（附件）</button>' +
       '<p class="meta event-attach-who" id="eventAttachDriveWho"></p>' +
     '</div>' +
-    '<p class="meta event-attach-hint" id="eventAttachHint">PDF、圖片、文件等。每個檔案最多 10MB，每個活動最多 5 個。檔案放喺 Google Drive「小布丁活動附件」，清單仍然經 Firebase 同步。要登入 Firebase 並連接 Drive 先可以上載同開啟。</p></div>';
+    '<p class="meta event-attach-hint" id="eventAttachHint">PDF、圖片、文件等。每個檔案最多 10MB，每個活動最多 5 個。圖片會顯示縮圖，按縮圖或檔名可開啟原本。檔案放喺 Google Drive「小布丁活動附件」，清單仍然經 Firebase 同步。要登入 Firebase 並連接 Drive 先可以上載同開啟。</p></div>';
 }
 
 function eventDeleteConfirmMessage(ev) {
@@ -6431,8 +6742,11 @@ function bindEventAttachments(eventId, initial) {
       listEl.innerHTML = '<p class="meta event-attach-empty">未有附件</p>';
     } else {
       listEl.innerHTML = items.map(function (a) {
+        const opener = attachmentLooksLikeImage(a)
+          ? attachmentThumbHtml(a, 'data-open-attachment') + '<span class="event-file-name">' + escapeHtml(a.name) + '</span>'
+          : '<button type="button" class="event-file" data-open-attachment="' + escapeHtml(a.id) + '" aria-label="開啟附件 ' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</button>';
         return '<div class="event-attach-row">' +
-          '<button type="button" class="event-file" data-open-attachment="' + escapeHtml(a.id) + '" aria-label="開啟附件 ' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</button>' +
+          opener +
           '<button type="button" class="btn btn-ghost btn-sm" data-remove-attachment="' + escapeHtml(a.id) + '">移除</button>' +
         '</div>';
       }).join('');
@@ -6457,6 +6771,8 @@ function bindEventAttachments(eventId, initial) {
         });
       });
     }
+    items.forEach(indexAttachmentForThumb);
+    try { refreshOpenAttachmentThumbs(); } catch (eThumb) {}
     paintBusy();
   }
 
@@ -6538,6 +6854,7 @@ function bindEventAttachments(eventId, initial) {
           const att = await uploadEventAttachment(eventId, file);
           if (dropped || items.length >= EVENT_ATTACHMENT_MAX_COUNT) deleteStoredAttachment(att);
           else {
+            seedAttachmentPreview(att, file);
             staged[att.id] = att;
             items.push(att);
           }
@@ -6569,6 +6886,591 @@ function bindEventAttachments(eventId, initial) {
 }
 try { restoreDriveAttachToken(); } catch (e) {}
 /* EVENT_ATTACHMENTS_END */
+/* NOTES_START
+   Notes is a locker for images and documents that are opened often.
+   Each item is one private Drive file under 「小布丁活動附件/Notes/<id>」.
+   The list (id, optional label, filename, mime, size, Drive file id, timestamps,
+   sortOrder) syncs on users/{uid}/dashboard/sync with id-union and deletedIds.
+   A label may be blank; the screen then shows the filename. Notes are not
+   calendar events. Share/public copies keep the label and filename only. */
+const DRIVE_NOTES_FOLDER_NAME = 'Notes';
+const DRIVE_NOTES_FOLDER_KEY = 'dash-hub-drive-notes-folder';
+const NOTES_MAX_COUNT = 30;
+const NOTE_LABEL_MAX = 80;
+let noteUploadEpoch = Object.create(null);
+
+function noteDisplayLabel(note) {
+  const label = String(note && note.label || '').trim();
+  if (label) return label;
+  return String(note && note.name || '');
+}
+
+function lockerFileSource(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (raw.name || raw.driveFileId) return raw;
+  if (Array.isArray(raw.attachments) && raw.attachments[0]) return raw.attachments[0];
+  return raw;
+}
+
+function normalizeNote(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = attachmentToken(raw.id, 80);
+  const file = lockerFileSource(raw) || {};
+  const name = String(file.name || raw.name || '').trim().slice(0, 180);
+  if (!id || !name || /^(https?:|data:|blob:)/i.test(name)) return null;
+  const labelSource = raw.label != null ? raw.label : (raw.title || '');
+  const label = String(labelSource).replace(/[ \t\f\v]+/g, ' ').trim().slice(0, NOTE_LABEL_MAX);
+  const createdAt = Number(raw.createdAt) || 0;
+  const updatedAt = Number(raw.updatedAt) || createdAt || 0;
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return { id: id, label: label, name: name };
+  const out = {
+    id: id,
+    label: label,
+    name: name,
+    createdAt: createdAt || updatedAt || 0,
+    updatedAt: updatedAt || createdAt || 0
+  };
+  const sortOrder = Number(raw.sortOrder);
+  if (Number.isFinite(sortOrder)) out.sortOrder = sortOrder;
+  const orderUpdatedAt = Number(raw.orderUpdatedAt) || 0;
+  if (orderUpdatedAt) out.orderUpdatedAt = orderUpdatedAt;
+  const driveFileId = String(file.driveFileId || raw.driveFileId || '').trim();
+  const size = Number(file.size != null ? file.size : raw.size);
+  if (driveFileIdOk(driveFileId) && Number.isFinite(size) && size > 0 && size <= EVENT_ATTACHMENT_MAX_BYTES) {
+    out.mime = String(file.mime || raw.mime || '').slice(0, 120);
+    out.size = Math.round(size);
+    out.uploadedAt = Number(file.uploadedAt || raw.uploadedAt) || 0;
+    out.store = 'drive';
+    out.driveFileId = driveFileId;
+  }
+  return out;
+}
+
+function normalizeNotes(list) {
+  const out = [];
+  const seen = Object.create(null);
+  const src = Array.isArray(list) ? list : [];
+  for (let i = 0; i < src.length; i++) {
+    const note = normalizeNote(src[i]);
+    if (!note || seen[note.id]) continue;
+    seen[note.id] = true;
+    out.push(note);
+    if (out.length >= NOTES_MAX_COUNT) break;
+  }
+  return sortNotes(out);
+}
+
+function noteSortKey(note) {
+  const sortOrder = Number(note && note.sortOrder);
+  if (Number.isFinite(sortOrder)) return sortOrder;
+  return Number(note && note.createdAt) || Number(note && note.updatedAt) || 0;
+}
+
+function sortNotes(list) {
+  return (list || []).slice().sort(function (a, b) {
+    const diff = noteSortKey(a) - noteSortKey(b);
+    if (diff) return diff;
+    return String((a && a.id) || '').localeCompare(String((b && b.id) || ''));
+  });
+}
+
+function nextTopNoteSortOrder(list) {
+  let min = 0;
+  let any = false;
+  (list || []).forEach(function (note) {
+    const sortOrder = Number(note && note.sortOrder);
+    if (!Number.isFinite(sortOrder)) return;
+    if (!any || sortOrder < min) {
+      min = sortOrder;
+      any = true;
+    }
+  });
+  return any ? min - 1024 : 0;
+}
+
+function noteWithoutPublicFiles(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = attachmentToken(raw.id, 80);
+  const file = lockerFileSource(raw) || {};
+  const name = String(file.name || raw.name || '').trim().slice(0, 180);
+  const labelSource = raw.label != null ? raw.label : (raw.title || '');
+  const label = String(labelSource).replace(/[ \t\f\v]+/g, ' ').trim().slice(0, NOTE_LABEL_MAX);
+  if (!id || !name || /^(https?:|data:|blob:)/i.test(name)) return null;
+  return { id: id, label: label, name: name };
+}
+
+function normalizeNoteForSync(raw) {
+  const note = normalizeNote(raw);
+  if (!note) return null;
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return noteWithoutPublicFiles(note) || note;
+  return note;
+}
+
+function noteSyncSig(list) {
+  return normalizeNotes(list).map(function (note) {
+    return [note.id, note.label, note.name, note.sortOrder, note.updatedAt || 0, note.driveFileId || ''].join('\u0001');
+  }).join('\u0002');
+}
+
+function keepLockerFile(preferred, other) {
+  const out = Object.assign({}, preferred || {});
+  const chosen = driveFileIdOk(preferred && preferred.driveFileId)
+    ? preferred
+    : (driveFileIdOk(other && other.driveFileId) ? other : null);
+  if (!chosen) return out;
+  out.driveFileId = chosen.driveFileId;
+  out.store = 'drive';
+  out.mime = chosen.mime || out.mime || '';
+  out.size = chosen.size || out.size || 0;
+  out.uploadedAt = chosen.uploadedAt || out.uploadedAt || 0;
+  if (!out.name) out.name = chosen.name || '';
+  return out;
+}
+
+function mergeNotesPreferNewer(localArr, remoteArr, records, opts) {
+  opts = opts || {};
+  const allowAdds = opts.allowAdds !== false;
+  const tombs = Array.isArray(records) ? records : [];
+  const byId = new Map();
+
+  function put(raw, isRemote) {
+    const note = normalizeNote(raw);
+    if (!note) return;
+    if (deletionRecordsBlockItem(tombs, note, 'note')) return;
+    const existing = byId.get(note.id);
+    if (!existing) {
+      if (isRemote && !allowAdds) return;
+      byId.set(note.id, note);
+      return;
+    }
+    const preferred = itemSyncTs(note) > itemSyncTs(existing) ? note : existing;
+    const other = preferred === note ? existing : note;
+    byId.set(note.id, keepLockerFile(preferred, other));
+  }
+
+  (Array.isArray(localArr) ? localArr : []).forEach(function (raw) { put(raw, false); });
+  (Array.isArray(remoteArr) ? remoteArr : []).forEach(function (raw) { put(raw, true); });
+  const arr = sortNotes(Array.from(byId.values()));
+  return { arr: arr, changed: noteSyncSig(localArr) !== noteSyncSig(arr) };
+}
+
+function applyRemoteNotes(remote, flags) {
+  flags = flags || {};
+  if (!state) return false;
+  const unionLists = flags.unionLists === true;
+  const authoritative = flags.authoritative === true;
+  const allowAdds = flags.allowAdds === true;
+  const viewOnly = typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY;
+  if (!Array.isArray(remote && remote.notes) && !unionLists) return false;
+  let remoteNotes = [];
+  if (Array.isArray(remote && remote.notes)) {
+    remoteNotes = filterRemoteItemsByDeletions(
+      remote.notes.map(normalizeNoteForSync).filter(Boolean),
+      'note'
+    );
+    if ((authoritative || unionLists) && !viewOnly) clearDeletionRecordsForItems(remoteNotes, 'note');
+  }
+  const records = viewOnly ? [] : loadDeletionRecords();
+  const merged = mergeNotesPreferNewer(state.notes, remoteNotes, records, {
+    allowAdds: allowAdds || unionLists,
+    unionFiles: unionLists
+  });
+  let next = merged.arr;
+  let pruned = false;
+  if (!unionLists && authoritative && Array.isArray(remote && remote.notes)) {
+    const dropped = pruneAbsentFromAuthoritativeRemote(next, remoteNotes, Number(remote.updatedAt) || 0);
+    next = sortNotes(dropped.arr);
+    pruned = dropped.changed;
+  }
+  if (merged.changed || pruned) {
+    state.notes = next;
+    return true;
+  }
+  return false;
+}
+
+function shareNoteRow(raw) {
+  const pub = noteWithoutPublicFiles(raw);
+  if (!pub || !pub.id || !pub.name) return null;
+  return [pub.id, pub.label || '', pub.name];
+}
+
+function addNoteRecord(list, input, now) {
+  const notes = normalizeNotes(list);
+  const name = String(input && (input.name || input.title) || '').trim();
+  if (!name) return { ok: false, notes: notes, error: 'file' };
+  if (notes.length >= NOTES_MAX_COUNT) return { ok: false, notes: notes, error: 'full' };
+  const stamp = Number(now) || Date.now();
+  const note = normalizeNote({
+    id: (input && input.id) || uid('n'),
+    label: input && input.label,
+    name: name,
+    mime: input && input.mime,
+    size: input && input.size,
+    uploadedAt: (input && input.uploadedAt) || stamp,
+    store: input && input.store,
+    driveFileId: input && input.driveFileId,
+    createdAt: stamp,
+    updatedAt: stamp,
+    sortOrder: nextTopNoteSortOrder(notes),
+    orderUpdatedAt: stamp
+  });
+  if (!note || !note.driveFileId) return { ok: false, notes: notes, error: 'file' };
+  notes.push(note);
+  return { ok: true, notes: sortNotes(notes), note: note };
+}
+
+function deleteNoteRecord(list, id) {
+  const notes = normalizeNotes(list);
+  const note = notes.find(function (item) { return item && item.id === id; }) || null;
+  if (!note) return { ok: false, notes: notes, note: null };
+  return {
+    ok: true,
+    notes: notes.filter(function (item) { return item.id !== id; }),
+    note: note
+  };
+}
+
+function noteDeleteConfirmMessage() {
+  return '確定刪除此檔案？';
+}
+
+function rememberNoteDeletion(note) {
+  if (!note || !note.id) return;
+  rememberDeletion({ kind: 'note', id: String(note.id), at: Date.now(), blockSync: true });
+  if (note.driveFileId) deleteStoredAttachment(note);
+}
+
+function cachedDriveNotesFolder() {
+  try {
+    const id = localStorage.getItem(DRIVE_NOTES_FOLDER_KEY) || '';
+    return driveFileIdOk(id) ? id : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function rememberDriveNotesFolder(id) {
+  try {
+    if (driveFileIdOk(id)) localStorage.setItem(DRIVE_NOTES_FOLDER_KEY, id);
+  } catch (e) {}
+}
+
+function forgetDriveNotesFolder() {
+  try { localStorage.removeItem(DRIVE_NOTES_FOLDER_KEY); } catch (e) {}
+}
+
+async function driveNotesFolder() {
+  const rootId = await driveAttachRootFolder();
+  const cached = cachedDriveNotesFolder();
+  if (cached) {
+    try {
+      const res = await driveAttachApi(
+        'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(cached) + '?fields=id,name,mimeType,trashed,parents',
+        { method: 'GET' }
+      );
+      const meta = await res.json();
+      const parents = meta && Array.isArray(meta.parents) ? meta.parents : [];
+      if (meta && driveFileIdOk(meta.id) && !meta.trashed && meta.mimeType === DRIVE_FOLDER_MIME &&
+          meta.name === DRIVE_NOTES_FOLDER_NAME && parents.indexOf(rootId) !== -1) {
+        return String(meta.id);
+      }
+    } catch (e) {}
+    forgetDriveNotesFolder();
+  }
+  const found = await driveFindFolder(DRIVE_NOTES_FOLDER_NAME, rootId);
+  if (found) {
+    rememberDriveNotesFolder(found);
+    return found;
+  }
+  const created = await driveCreateFolder(DRIVE_NOTES_FOLDER_NAME, rootId);
+  rememberDriveNotesFolder(created);
+  return created;
+}
+
+async function driveNoteFolder(noteId) {
+  const parentId = await driveNotesFolder();
+  const noteKey = attachmentToken(noteId, 80);
+  if (!noteKey) {
+    const err = new Error('note');
+    err.code = 'note';
+    throw err;
+  }
+  const found = await driveFindFolder(noteKey, parentId);
+  if (found) return found;
+  return driveCreateFolder(noteKey, parentId);
+}
+
+async function uploadNoteAttachment(noteId, file) {
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) {
+    const err = new Error('view-only');
+    err.code = 'signed-out';
+    throw err;
+  }
+  if (typeof firebaseCanWrite !== 'function' || !firebaseCanWrite()) {
+    const err = new Error('signed-out');
+    err.code = 'signed-out';
+    throw err;
+  }
+  if (!driveAttachTokenReady()) {
+    const err = new Error('drive-signed-out');
+    err.code = 'drive-signed-out';
+    throw err;
+  }
+  if (!file || !file.size) {
+    const err = new Error('empty');
+    err.code = 'empty';
+    throw err;
+  }
+  if (file.size > EVENT_ATTACHMENT_MAX_BYTES) {
+    const err = new Error('too-big');
+    err.code = 'too-big';
+    throw err;
+  }
+  const parentId = await driveNoteFolder(noteId);
+  const contentType = file.type ? String(file.type).slice(0, 120) : 'application/octet-stream';
+  const safeName = attachmentSafeName(file.name);
+  const meta = file.size <= DRIVE_MULTIPART_MAX_BYTES
+    ? await driveMultipartUpload(parentId, file, contentType, safeName)
+    : await driveResumableUpload(parentId, file, contentType, safeName);
+  const driveFileId = meta && driveFileIdOk(meta.id) ? String(meta.id) : '';
+  if (!driveFileId) {
+    const err = new Error('upload');
+    err.code = 'upload';
+    throw err;
+  }
+  try { seedAttachmentPreview({ driveFileId: driveFileId, name: file.name, mime: contentType }, file); } catch (e) {}
+  return {
+    name: String(file.name || safeName || 'file').trim().slice(0, 180) || safeName,
+    mime: contentType,
+    size: Math.round(file.size),
+    uploadedAt: Date.now(),
+    store: 'drive',
+    driveFileId: driveFileId
+  };
+}
+
+function invalidateNoteUploads(noteId) {
+  const key = String(noteId || '');
+  noteUploadEpoch[key] = (noteUploadEpoch[key] || 0) + 1;
+}
+
+function noteUploadToast(err) {
+  const code = err && err.code ? String(err.code) : '';
+  if (code === 'signed-out') showShareToast(EVENT_ATTACHMENT_SIGNIN_MSG);
+  else if (code === 'drive-signed-out') showShareToast(DRIVE_ATTACH_NEED_MSG);
+  else if (code === 'too-big') showShareToast('檔案太大，每個上限 10MB');
+  else if (code === 'empty') showShareToast('檔案是空的，未能上載');
+  else showShareToast('上載失敗，請再試');
+}
+
+function noteItemHtml(note) {
+  const display = escapeHtml(noteDisplayLabel(note));
+  const filename = escapeHtml(note.name || '');
+  const showFile = note.label && note.label !== note.name;
+  const fileLine = showFile ? '<span class="meta note-file-meta">' + filename + '</span>' : '';
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) {
+    const placeholder = attachmentLooksLikeImage(note)
+      ? '<span class="event-thumb-placeholder">圖片</span>'
+      : '';
+    return '<article class="note-item">' + placeholder +
+      '<p class="note-label-text">' + display + '</p>' + fileLine + '</article>';
+  }
+  const opener = attachmentLooksLikeImage(note)
+    ? attachmentThumbHtml(note, 'data-note-open')
+    : '<button type="button" class="event-file" data-note-open="' + escapeHtml(note.id) + '" aria-label="開啟檔案 ' + display + '">' + display + '</button>';
+  return '<article class="note-item note-locker">' +
+    opener +
+    '<label class="note-label-field notes-owner-only"><span class="field-label">標籤（可留空）</span>' +
+      '<input type="text" class="note-label" maxlength="' + NOTE_LABEL_MAX + '" data-note-label="' + escapeHtml(note.id) + '" value="' + escapeHtml(note.label || '') + '" placeholder="標籤（可留空）" />' +
+      fileLine + '</label>' +
+    '<button type="button" class="btn btn-ghost btn-sm notes-owner-only" data-note-del="' + escapeHtml(note.id) + '">刪除</button>' +
+  '</article>';
+}
+
+function renderNotes() {
+  if (typeof document === 'undefined' || !document || typeof document.getElementById !== 'function') return;
+  const list = document.getElementById('noteList');
+  const hint = document.getElementById('notesHint');
+  if (hint) {
+    hint.textContent = (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY)
+      ? '只顯示標籤同檔名。'
+      : '放經常要開的圖片或文件。標籤可留空，會用檔名。按圖或檔名開啟原本。檔案放喺 Google Drive「小布丁活動附件／Notes」，保持私人。最多 30 個，每個 10MB。';
+  }
+  const notes = sortNotes(normalizeNotes(state && state.notes));
+  notes.forEach(function (note) {
+    try { indexAttachmentForThumb(note); } catch (e) {}
+  });
+  if (list) {
+    list.innerHTML = notes.length
+      ? notes.map(noteItemHtml).join('')
+      : '<div class="empty">未有檔案</div>';
+  }
+  try { refreshOpenAttachmentThumbs(); } catch (e) {}
+  try { paintDriveAttachStatus(); } catch (e2) {}
+  try { updateBlockSummaries(); } catch (e3) {}
+}
+
+function deleteNoteById(id) {
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return;
+  const note = (state.notes || []).find(function (item) { return item && item.id === id; });
+  if (!note) return;
+  if (!confirm(noteDeleteConfirmMessage())) return;
+  invalidateNoteUploads(id);
+  const result = deleteNoteRecord(state.notes, id);
+  if (!result.ok) return;
+  rememberNoteDeletion(result.note);
+  state.notes = result.notes;
+  saveState();
+  renderNotes();
+  try { updateBlockSummaries(); } catch (e) {}
+}
+
+function setNoteLabel(id, label) {
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return;
+  const notes = state.notes || [];
+  const idx = notes.findIndex(function (item) { return item && item.id === id; });
+  if (idx < 0) return;
+  const next = normalizeNote(Object.assign({}, notes[idx], {
+    label: String(label || '').trim().slice(0, NOTE_LABEL_MAX),
+    updatedAt: Date.now()
+  }));
+  if (!next) return;
+  state.notes[idx] = next;
+  saveState();
+}
+
+function beginNoteUpload() {
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return;
+  if (typeof firebaseCanWrite !== 'function' || !firebaseCanWrite()) {
+    showShareToast(EVENT_ATTACHMENT_SIGNIN_MSG);
+    return;
+  }
+  if ((state.notes || []).length >= NOTES_MAX_COUNT) {
+    showShareToast('最多 30 個檔案');
+    return;
+  }
+  if (!driveAttachTokenReady()) {
+    requestDriveAttachToken(false).then(function (ok) {
+      try { paintDriveAttachStatus(); } catch (e) {}
+      if (ok === true) showShareToast('已連接 Drive，請再按上載');
+      else if (ok !== 'missing-lib' && !driveAttachTokenReady()) showShareToast(DRIVE_ATTACH_NEED_MSG);
+    });
+    return;
+  }
+  const input = document.getElementById('noteFileInput');
+  if (input) input.click();
+}
+
+async function uploadFilesOntoNotes(fileList) {
+  const files = Array.prototype.slice.call(fileList || []);
+  for (let i = 0; i < files.length; i++) {
+    if ((state.notes || []).length >= NOTES_MAX_COUNT) {
+      showShareToast('最多 30 個檔案');
+      break;
+    }
+    const file = files[i];
+    if (!file || !file.size) {
+      showShareToast('檔案是空的，未能上載');
+      continue;
+    }
+    if (file.size > EVENT_ATTACHMENT_MAX_BYTES) {
+      showShareToast('檔案太大，每個上限 10MB');
+      continue;
+    }
+    const noteId = uid('n');
+    const epoch = noteUploadEpoch[noteId] || 0;
+    try {
+      const stored = await uploadNoteAttachment(noteId, file);
+      if ((noteUploadEpoch[noteId] || 0) !== epoch) {
+        deleteStoredAttachment(stored);
+        continue;
+      }
+      const added = addNoteRecord(state.notes, Object.assign({ id: noteId, label: '' }, stored), Date.now());
+      if (!added.ok) {
+        deleteStoredAttachment(stored);
+        if (added.error === 'full') showShareToast('最多 30 個檔案');
+        break;
+      }
+      try { indexAttachmentForThumb(added.note); } catch (e) {}
+      state.notes = added.notes;
+      saveState();
+      renderNotes();
+      try { updateBlockSummaries(); } catch (e2) {}
+    } catch (err) {
+      noteUploadToast(err);
+    }
+  }
+}
+
+function openNoteFile(noteId) {
+  const note = (state.notes || []).find(function (item) { return item && item.id === noteId; });
+  if (!note) return;
+  if (!note.driveFileId) {
+    showShareToast('未能開啟附件');
+    return;
+  }
+  openEventAttachment(note);
+}
+
+function onNoteListClick(e) {
+  const target = e && e.target;
+  if (!target || !target.closest) return;
+  if (target.closest('[data-note-label]')) return;
+  const delNote = target.closest('[data-note-del]');
+  if (delNote) {
+    deleteNoteById(delNote.getAttribute('data-note-del'));
+    return;
+  }
+  const openBtn = target.closest('[data-note-open]');
+  if (openBtn) openNoteFile(openBtn.getAttribute('data-note-open'));
+}
+
+function bindNotesUi() {
+  const addBtn = document.getElementById('btnAddNote');
+  if (addBtn && !addBtn._notesBound) {
+    addBtn._notesBound = true;
+    addBtn.addEventListener('click', beginNoteUpload);
+  }
+  const driveBtn = document.getElementById('notesDriveConnect');
+  if (driveBtn && !driveBtn._notesBound) {
+    driveBtn._notesBound = true;
+    driveBtn.addEventListener('click', function () {
+      if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return;
+      if (typeof firebaseCanWrite !== 'function' || !firebaseCanWrite()) {
+        showShareToast(EVENT_ATTACHMENT_SIGNIN_MSG);
+        return;
+      }
+      requestDriveAttachToken(true).then(function (ok) {
+        try { paintDriveAttachStatus(); } catch (e) {}
+        if (ok === true) showShareToast(driveAttachEmail ? ('已連接 Drive：' + driveAttachEmail) : '已連接 Drive');
+        else if (ok !== 'missing-lib' && !driveAttachTokenReady()) showShareToast(DRIVE_ATTACH_NEED_MSG);
+      });
+    });
+  }
+  const list = document.getElementById('noteList');
+  if (list && !list._notesBound) {
+    list._notesBound = true;
+    list.addEventListener('click', onNoteListClick);
+    list.addEventListener('change', function (e) {
+      const input = e.target && e.target.closest ? e.target.closest('[data-note-label]') : null;
+      if (!input) return;
+      setNoteLabel(input.getAttribute('data-note-label'), input.value);
+    });
+  }
+  const input = document.getElementById('noteFileInput');
+  if (input && !input._notesBound) {
+    input._notesBound = true;
+    input.addEventListener('change', function () {
+      const files = Array.prototype.slice.call(input.files || []);
+      input.value = '';
+      if (!files.length) return;
+      uploadFilesOntoNotes(files);
+    });
+  }
+  try { paintDriveAttachStatus(); } catch (e) {}
+}
+/* NOTES_END */
 function normalizeEvent(e) {
   const title = String((e && e.title) || '');
   let date = '';
@@ -7600,6 +8502,8 @@ function normalizeState(data) {
     expandedSection: null,
     trainingExpanded: false,
     busExpanded: false,
+    notes: [],
+    notesExpanded: false,
     todoTab: 'today',
     theme: 'rain-cafe',
     syncUpdatedAt: 0,
@@ -7712,9 +8616,11 @@ function normalizeState(data) {
   const exp = data.expandedSection;
   base.expandedSection = (exp === null || exp === undefined || exp === '')
     ? null
-    : (['shortcuts', 'todos', 'events', 'training', 'bus', 'calendar'].includes(exp) ? exp : null);
+    : (['shortcuts', 'todos', 'events', 'notes', 'training', 'bus', 'calendar'].includes(exp) ? exp : null);
   base.trainingExpanded = !!data.trainingExpanded;
   base.busExpanded = !!data.busExpanded;
+  base.notesExpanded = !!data.notesExpanded;
+  base.notes = normalizeNotes(data.notes);
   // Same rule as eventsFilter: do not restore 明天 / 後日 / 七天內 / 未完成 from storage.
   base.todoTab = 'today';
   const THEMES = ['provence-field', 'sunny-beach', 'rain-cafe', 'sky', 'cloud', 'clear', 'dusk', 'toy'];
@@ -7756,6 +8662,7 @@ function lockedEmptyState() {
   base.shortcuts = [];
   base.categories = [];
   base.busStops = [];
+  base.notes = [];
   return base;
 }
 
@@ -7765,6 +8672,7 @@ function buildExportPayload() {
     schemaVersion: SCHEMA_VERSION,
     todos: Array.isArray(state.todos) ? state.todos : [],
     events: (Array.isArray(state.events) ? state.events : []).map(eventForExport),
+    notes: normalizeNotes(state && state.notes),
     shortcuts: Array.isArray(state.shortcuts) ? state.shortcuts : [],
     categories: Array.isArray(state.categories) ? state.categories : [],
     busStops: Array.isArray(state.busStops) ? state.busStops : [],
@@ -7779,7 +8687,7 @@ function buildExportPayload() {
   };
 }
 
-/** Sync payload — todos + events + busStops + shortcuts + categories + theme. */
+/** Sync payload — todos + events + notes + busStops + shortcuts + categories + theme. */
 function buildSyncPayload() {
   return buildExportPayload();
 }
@@ -7804,6 +8712,8 @@ function saveState(opts) {
         busStops: state.busStops,
         trainingExpanded: !!state.trainingExpanded,
         busExpanded: !!state.busExpanded,
+        notes: state.notes,
+        notesExpanded: !!state.notesExpanded,
         todoTab: 'today',
         theme: state.theme || 'rain-cafe',
         syncUpdatedAt: state.syncUpdatedAt || 0,
@@ -7881,7 +8791,7 @@ function allCategories() {
 }
 
 /* ===== Feature sections ===== */
-const SECTION_IDS = ['todos', 'events', 'calendar', 'training', 'bus', 'shortcuts'];
+const SECTION_IDS = ['todos', 'events', 'calendar', 'notes', 'training', 'bus', 'shortcuts'];
 
 function summaryNumHtml(n, unit) {
   return '<strong class="summary-num">' + n + '</strong><span class="summary-unit">' + escapeHtml(unit) + '</span>';
@@ -7907,6 +8817,11 @@ function updateBlockSummaries() {
   if (calEl) {
     const marks = countMarksInViewMonth();
     calEl.innerHTML = summaryNumHtml(marks, '日有事項');
+  }
+  const notesEl = document.getElementById('summary-notes');
+  if (notesEl) {
+    const n = Array.isArray(state.notes) ? state.notes.length : 0;
+    notesEl.innerHTML = summaryNumHtml(n, '個');
   }
   const trEl = document.getElementById('summary-training');
   if (trEl) {
@@ -7963,13 +8878,17 @@ function syncShortcutsDisclosure() {
 }
 
 function syncExpandableSections() {
+  applyExpandableSection('notes', !!state.notesExpanded);
   applyExpandableSection('training', !!state.trainingExpanded);
   applyExpandableSection('bus', !!state.busExpanded);
   syncShortcutsDisclosure();
 }
 
 function toggleExpandableSection(id) {
-  if (id === 'training') {
+  if (id === 'notes') {
+    state.notesExpanded = !state.notesExpanded;
+    applyExpandableSection('notes', state.notesExpanded);
+  } else if (id === 'training') {
     state.trainingExpanded = !state.trainingExpanded;
     applyExpandableSection('training', state.trainingExpanded);
   } else if (id === 'bus') {
@@ -7989,7 +8908,7 @@ function toggleExpandableSection(id) {
 }
 
 function bindExpandableHeaders() {
-  ['training', 'bus', 'shortcuts'].forEach(function (id) {
+  ['notes', 'training', 'bus', 'shortcuts'].forEach(function (id) {
     const hdr = document.getElementById('hdr-' + id);
     if (!hdr) return;
     hdr.addEventListener('click', function () {
@@ -8005,6 +8924,11 @@ function bindExpandableHeaders() {
 function scrollToSectionFromHash() {
   const id = location.hash ? location.hash.slice(1) : '';
   if (!SECTION_IDS.includes(id)) return;
+  if (id === 'notes' && !state.notesExpanded) {
+    state.notesExpanded = true;
+    applyExpandableSection('notes', true);
+    saveState();
+  }
   if (id === 'training' && !state.trainingExpanded) {
     state.trainingExpanded = true;
     applyExpandableSection('training', true);
@@ -9633,6 +10557,9 @@ function renderEvents() {
       '</div>'
     );
   }).join('');
+  visible.forEach(function (ev) {
+    normalizeAttachments(ev.attachments).forEach(indexAttachmentForThumb);
+  });
   list.querySelectorAll('.event-item').forEach(row => {
     const id = row.getAttribute('data-id');
     const titleBtn = row.querySelector('.event-title-toggle');
@@ -9698,6 +10625,7 @@ function renderEvents() {
     }
     if (!VIEW_ONLY && row.classList.contains('event-draggable')) bindEventDnD(row, list);
   });
+  try { refreshOpenAttachmentThumbs(); } catch (e) {}
   bindEventListFit();
   fitEventListToFiveCards();
 }
@@ -12273,6 +13201,11 @@ const DELETED_SYNC_IDS_KEY = 'dash-hub-deleted-sync-ids';
 const DELETED_SYNC_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const DELETED_SYNC_CAP = 400;
 
+function deletionSyncKind(kind, fallbackEvent) {
+  if (kind === 'todo' || kind === 'event' || kind === 'note' || kind === 'noteFile') return kind;
+  return fallbackEvent ? 'event' : '';
+}
+
 function loadDeletionRecords() {
   let items = [];
   try {
@@ -12285,7 +13218,7 @@ function loadDeletionRecords() {
   const now = Date.now();
   const kept = [];
   items.forEach(function (x) {
-    if (!x || (x.kind !== 'todo' && x.kind !== 'event') || !x.id) return;
+    if (!x || !deletionSyncKind(x.kind, false) || !x.id) return;
     const at = Number(x.at) || 0;
     if (!at || now - at > DELETED_SYNC_TTL_MS) return;
     kept.push(x);
@@ -12305,7 +13238,7 @@ function rememberDeletion(entry) {
   if (VIEW_ONLY || !entry || !entry.id) return;
   const items = loadDeletionRecords();
   const id = String(entry.id);
-  const kind = entry.kind === 'todo' ? 'todo' : 'event';
+  const kind = deletionSyncKind(entry.kind, true);
   const at = Number(entry.at) || Date.now();
   const blockSync = entry.blockSync !== false;
   let found = false;
@@ -12472,7 +13405,7 @@ function mergeDeletionRecordLists(a, b) {
   const items = [];
   function add(entry) {
     if (!entry || !entry.id) return;
-    const kind = entry.kind === 'todo' ? 'todo' : (entry.kind === 'event' ? 'event' : '');
+    const kind = deletionSyncKind(entry.kind, false);
     if (!kind) return;
     const id = String(entry.id);
     const at = Number(entry.at) || 0;
@@ -12514,7 +13447,7 @@ function unionSyncItems(localArr, remoteArr, records, kind) {
 }
 
 /**
- * Firestore write body. Todos, events, and deletedIds are the union of both
+ * Firestore write body. Todos, events, notes, and deletedIds are the union of both
  * devices. Todo sortOrder survives that union: the newer orderUpdatedAt wins,
  * and a tie keeps the order already stored on the document. This device's
  * other fields stay. Does not read or write the UI.
@@ -12526,6 +13459,12 @@ function combineFirebaseSyncDocs(localDoc, remoteDoc) {
   const out = Object.assign({}, local);
   out.todos = unionSyncItems(local.todos, remote.todos, deletedIds, 'todo');
   out.events = unionSyncItems(local.events, remote.events, deletedIds, 'event');
+  out.notes = mergeNotesPreferNewer(
+    Array.isArray(local.notes) ? local.notes : [],
+    Array.isArray(remote.notes) ? remote.notes : [],
+    deletedIds,
+    { allowAdds: true, unionFiles: true }
+  ).arr;
   out.deletedIds = deletedIds;
   out.updatedAt = Date.now();
   out.schemaVersion = SCHEMA_VERSION;
@@ -12608,6 +13547,11 @@ function applyRemoteSyncPayload(remote, opts) {
       changed = true;
     }
   }
+  if (applyRemoteNotes(remote, {
+    authoritative: authoritative,
+    unionLists: unionLists,
+    allowAdds: allowAdds
+  })) changed = true;
   if (remoteUpdated && remoteUpdated > localSync) {
     state.syncUpdatedAt = remoteUpdated;
     changed = true;
@@ -12674,12 +13618,16 @@ function dashboardVisibleSig() {
     rows(state && state.busStops, function (b) {
       return [b.id, b.route, b.stopId, b.stopName, b.direction, b.sortOrder].join('\u0001');
     }),
+    rows(state && state.notes, function (n) {
+      return [n.id, n.label, n.name, n.sortOrder].join('\u0001');
+    }),
     String(state && state.theme || ''),
     String(state && state.todoTab || ''),
     String(state && state.eventsFilter || ''),
     String(state && state.eventsKind || ''),
     state && state.trainingExpanded ? 1 : 0,
     state && state.busExpanded ? 1 : 0,
+    state && state.notesExpanded ? 1 : 0,
     share.enabled ? 1 : 0,
     Number(share.expiresAt) || 0,
     Number(share.updatedAt) || 0
@@ -12700,7 +13648,7 @@ function reRenderAfterSyncNow(extras) {
   // Hold the current list height across innerHTML. Otherwise the list collapses
   // to empty and then grows again, which is the open-page jump.
   const locks = [];
-  ['todoList', 'eventList', 'shortcutGrid'].forEach(function (id) {
+  ['todoList', 'eventList', 'noteList', 'shortcutGrid'].forEach(function (id) {
     const el = document.getElementById(id);
     if (!el) return;
     const h = el.getBoundingClientRect().height;
@@ -12712,6 +13660,7 @@ function reRenderAfterSyncNow(extras) {
   try {
     try { renderTodos(); } catch (e) {}
     try { renderEvents(); } catch (e) {}
+    try { renderNotes(); } catch (e) {}
     try { updateBlockSummaries(); } catch (e) {}
     if (extras) {
       try { applyTheme(state.theme || 'rain-cafe', false); } catch (e) {}
@@ -12861,7 +13810,7 @@ function buildFirebaseSyncDoc() {
   const payload = buildSyncPayload();
   payload.deletedIds = loadDeletionRecords().map(function (x) {
     const row = {
-      kind: x.kind === 'todo' ? 'todo' : 'event',
+      kind: deletionSyncKind(x.kind, true),
       id: String(x.id || ''),
       at: Number(x.at) || 0,
       blockSync: x.blockSync !== false
@@ -12896,7 +13845,7 @@ function adoptRemoteDeletionRecords(list) {
   let changed = false;
   list.forEach(function (entry) {
     if (!entry || !entry.id) return;
-    const kind = entry.kind === 'todo' ? 'todo' : (entry.kind === 'event' ? 'event' : '');
+    const kind = deletionSyncKind(entry.kind, false);
     if (!kind) return;
     const id = String(entry.id);
     const at = Number(entry.at) || 0;
@@ -14789,10 +15738,11 @@ function shareEventUnchanged(event) {
     n.work === seed.work && n.kind === seed.kind && !n.done;
 }
 
-/** Wire form: {u, t:[[id,title,due,done]], e:[[id,title,date,time,done,kind,work?]]}. */
+/** Wire form: {u, t:[[id,title,due,done]], e:[[id,title,date,time,done,kind,work?]], n:[[id,title,remark?,names?]]}. */
 function buildShareWire(payload, opts) {
   opts = opts || {};
   const includeWork = opts.includeWork !== false;
+  const includeNotes = opts.includeNotes !== false;
   const updatedAt = Number(payload && payload.updatedAt) || 0;
   const todos = [];
   (payload && payload.todos || []).forEach(function (t) {
@@ -14808,7 +15758,16 @@ function buildShareWire(payload, opts) {
     if (includeWork && n.work && (!seed || n.work !== seed.work)) row.push(n.work);
     events.push(row);
   });
-  return { u: updatedAt, t: todos, e: events };
+  const wire = { u: updatedAt, t: todos, e: events };
+  if (includeNotes) {
+    const noteRows = [];
+    (payload && payload.notes || []).forEach(function (raw) {
+      const row = shareNoteRow(raw);
+      if (row) noteRows.push(row);
+    });
+    if (noteRows.length) wire.n = noteRows;
+  }
+  return wire;
 }
 
 function expandShareWire(data) {
@@ -14846,7 +15805,17 @@ function expandShareWire(data) {
     if (updatedAt) out.updatedAt = updatedAt;
     return out;
   }).filter(Boolean);
-  return {
+  const shareNotes = Array.isArray(data.n) ? data.n.map(function (row) {
+    if (!row || !Array.isArray(row)) return null;
+    const id = String(row[0] || '');
+    const label = String(row[1] || '').trim().slice(0, 80);
+    const name = String(row[2] || '').trim().slice(0, 180);
+    if (!id || !name || /^(https?:|data:|blob:)/i.test(name)) return null;
+    const out = { id: id, label: label, name: name, createdAt: updatedAt || 1 };
+    if (updatedAt) out.updatedAt = updatedAt;
+    return out;
+  }).filter(Boolean) : null;
+  const shareExpanded = {
     updatedAt: updatedAt,
     schemaVersion: SCHEMA_VERSION,
     todos: todos,
@@ -14859,6 +15828,8 @@ function expandShareWire(data) {
       expiresAt: updatedAt ? updatedAt + SHARE_TTL_MS : 0
     }
   };
+  if (Array.isArray(data.n)) shareExpanded.notes = shareNotes || [];
+  return shareExpanded;
 }
 
 /** LZSS, 4095-byte window, matches of 3–18 bytes. No CompressionStream required. */
@@ -14962,8 +15933,10 @@ async function deflateShareBytes(bytes) {
 
 async function encodeShareSnapshot(payload) {
   const variants = [
-    buildShareWire(payload, { includeWork: true }),
-    buildShareWire(payload, { includeWork: false })
+    buildShareWire(payload, { includeWork: true, includeNotes: true }),
+    buildShareWire(payload, { includeWork: false, includeNotes: true }),
+    buildShareWire(payload, { includeWork: true, includeNotes: false }),
+    buildShareWire(payload, { includeWork: false, includeNotes: false })
   ];
   for (let v = 0; v < variants.length; v++) {
     const bytes = new TextEncoder().encode(JSON.stringify(variants[v]));
@@ -15335,6 +16308,7 @@ function renderDashboardSurfaces() {
   syncEventsFilterUI();
   renderEvents();
   renderCalendar();
+  renderNotes();
   renderTraining();
   renderBus();
   updateBlockSummaries();
@@ -15449,6 +16423,7 @@ async function bootDashboard(opts) {
     if (!dashboardBound) {
       dashboardBound = true;
       bindExpandableHeaders();
+      bindNotesUi();
       bindCalendarControls();
       bindBusEtaControls();
       bindSyncUi();
@@ -15787,6 +16762,9 @@ function pagesSyncPayload() {
   payload.events = (payload.events || []).map(function (ev) {
     return eventWithoutPublicFiles(eventForExport(ev));
   });
+  payload.notes = (payload.notes || []).map(function (note) {
+    return noteWithoutPublicFiles(note);
+  }).filter(function (note) { return note && note.id && note.name; });
   return payload;
 }
 
