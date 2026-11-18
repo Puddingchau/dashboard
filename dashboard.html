@@ -2706,7 +2706,9 @@
     body .todo-item.todo-draggable.reorder-hold,
     body .todo-item.todo-draggable.dragging,
     body .event-item.event-draggable.reorder-hold,
-    body .event-item.event-draggable.dragging {
+    body .event-item.event-draggable.dragging,
+    body .note-tile.note-draggable.reorder-hold,
+    body .note-tile.note-draggable.dragging {
       cursor: grabbing;
       opacity: 1 !important;
       position: relative;
@@ -2935,16 +2937,6 @@
       color: var(--muted);
       pointer-events: none;
     }
-    .note-locker {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 8px;
-      align-items: center;
-    }
-    .note-label-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-    .note-label { width: 100%; min-height: 40px; }
-    .note-label-text { margin: 0; font-weight: 700; word-break: break-word; }
-    .note-file-meta { margin: 0; }
     @media (max-width: 639px) {
       .event-thumb,
       .event-thumb-placeholder {
@@ -2953,57 +2945,174 @@
         min-width: 64px;
         min-height: 64px;
       }
-      .note-locker { grid-template-columns: auto minmax(0, 1fr); }
-      .note-locker > .btn { grid-column: 1 / -1; }
     }
 
-
-    .note-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    .note-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+      gap: 10px;
       margin-top: 10px;
     }
-    .note-item {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 6px;
-      padding: 10px 12px;
-      background: var(--row-bg, #0f172a);
-      border-radius: 14px;
+    .note-grid > .empty { grid-column: 1 / -1; }
+    .note-tile {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 16px;
       border: 1px solid var(--border-soft);
+      background: var(--row-bg, rgba(255, 255, 255, 0.55));
+      overflow: hidden;
       min-width: 0;
+      box-shadow: 0 10px 18px -16px var(--card-shadow, rgba(20, 35, 55, 0.45));
     }
-    .note-item-head {
+    .note-tile.note-draggable {
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: pan-y;
+    }
+    .note-tile.is-unnamed {
+      box-shadow: inset 0 0 0 2px var(--accent-primary);
+    }
+    .note-tile > .note-tile-face {
+      position: absolute;
+      inset: 0;
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: auto;
+      height: auto;
       min-width: 0;
-    }
-    .note-item-title {
+      min-height: 0;
+      max-width: none;
       margin: 0;
+      padding: 0 8px 52px;
+      border: 0;
+      border-radius: 0;
+      flex: none;
+      background: var(--accent-light);
+      color: var(--accent-badge-text, var(--accent-primary));
+      cursor: pointer;
+      font: inherit;
+    }
+    .note-tile .event-thumb-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 0;
+    }
+    .note-doc-sheet {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 60px;
+      border-radius: 8px;
+      background: var(--surface-2, rgba(255, 255, 255, 0.86));
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 8px 16px -12px var(--card-shadow, rgba(20, 35, 55, 0.55));
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: var(--accent-badge-text, var(--accent-primary));
+    }
+    .note-tile-caption,
+    .note-tile > .note-tile-name {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 2;
+      margin: 0;
+      background: var(--surface-2, var(--card-bg, #fff));
+    }
+    .note-tile-caption {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px;
+    }
+    .note-tile-caption .note-tile-name,
+    .note-tile > .note-tile-name {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text);
+      word-break: break-word;
+    }
+    .note-tile-caption .note-tile-name {
+      position: static;
       flex: 1 1 auto;
       min-width: 0;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.35;
-      word-break: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      background: none;
+      padding: 0;
     }
-    .note-item-actions,
-    .note-upload-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
+    .note-tile > .note-tile-name {
+      padding: 8px;
     }
-    .note-item-actions { flex: 0 1 auto; justify-content: flex-end; }
-    .note-remark {
-      margin: 0;
+    .note-tile > .note-tile-name.is-unnamed-text { color: var(--muted); }
+    .note-tile-caption input.note-tile-name-input {
+      min-height: 36px;
+      height: 36px;
+      padding: 4px 8px;
+      border-radius: 10px;
       font-size: 13px;
-      line-height: 1.45;
-      white-space: pre-wrap;
-      word-break: break-word;
+      font-weight: 700;
+    }
+    .note-tile.is-unnamed .note-tile-name-input {
+      border-color: var(--accent-primary);
+    }
+    .note-tile.is-unnamed .note-tile-name-input::placeholder {
+      color: var(--accent-badge-text, var(--accent-primary));
+      font-weight: 800;
+      opacity: 1;
+    }
+    .note-tile-rename,
+    .note-tile-del {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 1px solid var(--border-soft);
+      background: var(--card-bg, #fff);
+      color: var(--text);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      border-radius: 999px;
+      padding: 5px 7px;
+      cursor: pointer;
+    }
+    .note-tile-rename { flex: 0 0 auto; }
+    .note-tile-del {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 3;
+    }
+    .note-tile.drag-over {
+      outline: 2px dashed var(--accent-primary);
+      outline-offset: 2px;
+    }
+    body .note-tile.note-draggable.reorder-hold > .note-tile-doc,
+    body .note-tile.note-draggable.dragging > .note-tile-doc {
+      background: transparent;
+    }
+    body .note-tile.note-draggable.reorder-hold::after,
+    body .note-tile.note-draggable.dragging::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 3px var(--drag-active-border, #B86E12);
+      pointer-events: none;
+      z-index: 4;
     }
     .notes-hint {
       display: block;
@@ -3016,39 +3125,6 @@
       align-items: center;
       gap: 8px;
       margin: 0 0 8px;
-    }
-    .note-item.note-locker {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 8px;
-    }
-    @media (max-width: 639px) {
-      .note-item.note-locker { grid-template-columns: auto minmax(0, 1fr); }
-      .note-item.note-locker > .btn { grid-column: 1 / -1; }
-    }
-    .note-files {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .note-file-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-    .note-file-row .event-file,
-    .note-file-row .event-file-name {
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-    @media (max-width: 639px) {
-      .note-item-head { flex-direction: column; }
-      .note-item-actions,
-      .note-upload-row { width: 100%; }
-      .note-item-actions .btn,
-      .note-upload-row .btn { flex: 1 1 auto; }
     }
 
     .todo-actions {
@@ -4157,13 +4233,13 @@
         <div class="section-toolbar">
           <button type="button" class="btn btn-primary btn-sm notes-owner-only" id="btnAddNote">上載</button>
         </div>
-        <p class="meta notes-hint" id="notesHint">放經常要開的圖片或文件。標籤可留空，會用檔名。按圖或檔名開啟原本。檔案放喺 Google Drive「小布丁活動附件／Notes」，保持私人。</p>
+        <p class="meta notes-hint" id="notesHint">放經常要開的圖片或文件。每項都要有 Note 名，可隨時改名。長按或拖曳可重新排序。按方格開啟原本。檔案放喺 Google Drive「小布丁活動附件／Notes」，保持私人。最多 30 個，每個 10MB。</p>
         <div class="notes-drive notes-owner-only">
           <button type="button" class="btn btn-ghost btn-sm" id="notesDriveConnect">連接 Drive（附件）</button>
           <p class="meta event-attach-who" id="notesDriveWho"></p>
         </div>
         <input type="file" id="noteFileInput" class="notes-owner-only" multiple hidden tabindex="-1" />
-        <div class="note-list" id="noteList"></div>
+        <div class="note-grid" id="noteList"></div>
       </div>
         </div>
       </div>
@@ -6628,22 +6704,47 @@ function bindEventAttachments(eventId, initial) {
 try { restoreDriveAttachToken(); } catch (e) {}
 /* EVENT_ATTACHMENTS_END */
 /* NOTES_START
-   Notes is a locker for images and documents that are opened often.
+   Notes is a locker of square tiles for images and documents that are opened often.
    Each item is one private Drive file under 「小布丁活動附件/Notes/<id>」.
-   The list (id, optional label, filename, mime, size, Drive file id, timestamps,
-   sortOrder) syncs on users/{uid}/dashboard/sync with id-union and deletedIds.
-   A label may be blank; the screen then shows the filename. Notes are not
-   calendar events. Share/public copies keep the label and filename only. */
+   The owner list (id, note name, stored filename, mime, size, Drive file id,
+   timestamps, sortOrder, orderUpdatedAt) syncs on users/{uid}/dashboard/sync.
+   A new item needs a note name before it is saved. An older item with an empty
+   label stays unnamed until the owner types one. The stored filename is never
+   shown. Order uses sortOrder / orderUpdatedAt: the newer stamp wins, same as
+   To-Do, so a rename does not wipe a newer order and a reorder does not wipe
+   a newer name. Share and public copies keep the note name only. */
 const DRIVE_NOTES_FOLDER_NAME = 'Notes';
 const DRIVE_NOTES_FOLDER_KEY = 'dash-hub-drive-notes-folder';
 const NOTES_MAX_COUNT = 30;
 const NOTE_LABEL_MAX = 80;
+const NOTE_ORDER_STEP = 1024;
+const NOTE_OWNER_HINT = '放經常要開的圖片或文件。每項都要有 Note 名，可隨時改名。長按或拖曳可重新排序。按方格開啟原本。檔案放喺 Google Drive「小布丁活動附件／Notes」，保持私人。最多 30 個，每個 10MB。';
+const NOTE_VIEW_HINT = '只顯示 Note 名。';
 let noteUploadEpoch = Object.create(null);
+let noteNameEditId = '';
+let noteDragId = null;
+let noteDragMoved = false;
+let noteNameHold = false;
+let noteNameCommitting = false;
+
+function cleanNoteLabel(value) {
+  return String(value == null ? '' : value).replace(/[ \t\f\v]+/g, ' ').trim().slice(0, NOTE_LABEL_MAX);
+}
+
+function noteIsNamed(note) {
+  return !!cleanNoteLabel(note && note.label);
+}
 
 function noteDisplayLabel(note) {
-  const label = String(note && note.label || '').trim();
-  if (label) return label;
-  return String(note && note.name || '');
+  const label = cleanNoteLabel(note && note.label);
+  return label || '未命名';
+}
+
+function noteKindLabel(note) {
+  if (typeof attachmentLooksLikeImage === 'function' && attachmentLooksLikeImage(note)) return '圖片';
+  const mime = String(note && note.mime || '').toLowerCase();
+  if (mime.indexOf('pdf') !== -1) return 'PDF';
+  return '檔案';
 }
 
 function lockerFileSource(raw) {
@@ -6656,14 +6757,15 @@ function lockerFileSource(raw) {
 function normalizeNote(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const id = attachmentToken(raw.id, 80);
+  if (!id) return null;
+  const labelSource = raw.label != null ? raw.label : (raw.title || '');
+  const label = cleanNoteLabel(labelSource);
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return { id: id, label: label };
   const file = lockerFileSource(raw) || {};
   const name = String(file.name || raw.name || '').trim().slice(0, 180);
-  if (!id || !name || /^(https?:|data:|blob:)/i.test(name)) return null;
-  const labelSource = raw.label != null ? raw.label : (raw.title || '');
-  const label = String(labelSource).replace(/[ \t\f\v]+/g, ' ').trim().slice(0, NOTE_LABEL_MAX);
+  if (!name || /^(https?:|data:|blob:)/i.test(name)) return null;
   const createdAt = Number(raw.createdAt) || 0;
   const updatedAt = Number(raw.updatedAt) || createdAt || 0;
-  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return { id: id, label: label, name: name };
   const out = {
     id: id,
     label: label,
@@ -6671,9 +6773,9 @@ function normalizeNote(raw) {
     createdAt: createdAt || updatedAt || 0,
     updatedAt: updatedAt || createdAt || 0
   };
-  const sortOrder = Number(raw.sortOrder);
-  if (Number.isFinite(sortOrder)) out.sortOrder = sortOrder;
-  const orderUpdatedAt = Number(raw.orderUpdatedAt) || 0;
+  const sortOrder = noteSortOrderValue(raw);
+  if (sortOrder != null) out.sortOrder = sortOrder;
+  const orderUpdatedAt = noteOrderUpdatedAt(raw);
   if (orderUpdatedAt) out.orderUpdatedAt = orderUpdatedAt;
   const driveFileId = String(file.driveFileId || raw.driveFileId || '').trim();
   const size = Number(file.size != null ? file.size : raw.size);
@@ -6687,23 +6789,20 @@ function normalizeNote(raw) {
   return out;
 }
 
-function normalizeNotes(list) {
-  const out = [];
-  const seen = Object.create(null);
-  const src = Array.isArray(list) ? list : [];
-  for (let i = 0; i < src.length; i++) {
-    const note = normalizeNote(src[i]);
-    if (!note || seen[note.id]) continue;
-    seen[note.id] = true;
-    out.push(note);
-    if (out.length >= NOTES_MAX_COUNT) break;
-  }
-  return sortNotes(out);
+function noteSortOrderValue(item) {
+  if (!item || item.sortOrder == null || item.sortOrder === '') return null;
+  const n = Number(item.sortOrder);
+  return Number.isFinite(n) ? n : null;
+}
+
+function noteOrderUpdatedAt(item) {
+  const n = Number(item && item.orderUpdatedAt);
+  return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 function noteSortKey(note) {
-  const sortOrder = Number(note && note.sortOrder);
-  if (Number.isFinite(sortOrder)) return sortOrder;
+  const sortOrder = noteSortOrderValue(note);
+  if (sortOrder != null) return sortOrder;
   return Number(note && note.createdAt) || Number(note && note.updatedAt) || 0;
 }
 
@@ -6715,41 +6814,79 @@ function sortNotes(list) {
   });
 }
 
-function nextTopNoteSortOrder(list) {
-  let min = 0;
+function backfillNoteSortOrders(arr) {
+  const list = Array.isArray(arr) ? arr : [];
+  let max = 0;
   let any = false;
-  (list || []).forEach(function (note) {
-    const sortOrder = Number(note && note.sortOrder);
-    if (!Number.isFinite(sortOrder)) return;
-    if (!any || sortOrder < min) {
-      min = sortOrder;
-      any = true;
-    }
+  list.forEach(function (item) {
+    const n = noteSortOrderValue(item);
+    if (n == null) return;
+    any = true;
+    if (n > max) max = n;
   });
-  return any ? min - 1024 : 0;
+  let cursor = any ? max : 0;
+  list.forEach(function (item) {
+    if (!item || typeof item !== 'object') return;
+    if (noteSortOrderValue(item) != null) return;
+    cursor += NOTE_ORDER_STEP;
+    item.sortOrder = cursor;
+  });
+  return list;
+}
+
+function normalizeNotes(list) {
+  const out = [];
+  const seen = Object.create(null);
+  const src = Array.isArray(list) ? list : [];
+  for (let i = 0; i < src.length; i++) {
+    const note = normalizeNote(src[i]);
+    if (!note || seen[note.id]) continue;
+    seen[note.id] = true;
+    out.push(note);
+    if (out.length >= NOTES_MAX_COUNT) break;
+  }
+  const sorted = sortNotes(out);
+  backfillNoteSortOrders(sorted);
+  return sortNotes(sorted);
+}
+
+function nextTopNoteSortOrder(list) {
+  let min = null;
+  (list || []).forEach(function (note) {
+    const sortOrder = noteSortOrderValue(note);
+    if (sortOrder == null) return;
+    if (min == null || sortOrder < min) min = sortOrder;
+  });
+  return min == null ? 0 : min - NOTE_ORDER_STEP;
 }
 
 function noteWithoutPublicFiles(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const id = attachmentToken(raw.id, 80);
+  if (!id) return null;
   const file = lockerFileSource(raw) || {};
-  const name = String(file.name || raw.name || '').trim().slice(0, 180);
+  const fileName = String(file.name || raw.name || '').trim();
+  if (fileName && /^(https?:|data:|blob:)/i.test(fileName)) return null;
   const labelSource = raw.label != null ? raw.label : (raw.title || '');
-  const label = String(labelSource).replace(/[ \t\f\v]+/g, ' ').trim().slice(0, NOTE_LABEL_MAX);
-  if (!id || !name || /^(https?:|data:|blob:)/i.test(name)) return null;
-  return { id: id, label: label, name: name };
+  return { id: id, label: cleanNoteLabel(labelSource) };
 }
 
 function normalizeNoteForSync(raw) {
-  const note = normalizeNote(raw);
-  if (!note) return null;
-  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return noteWithoutPublicFiles(note) || note;
-  return note;
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return noteWithoutPublicFiles(raw);
+  return normalizeNote(raw);
 }
 
 function noteSyncSig(list) {
   return normalizeNotes(list).map(function (note) {
-    return [note.id, note.label, note.name, note.sortOrder, note.updatedAt || 0, note.driveFileId || ''].join('\u0001');
+    return [
+      note.id,
+      note.label,
+      note.name || '',
+      note.sortOrder,
+      note.orderUpdatedAt || 0,
+      note.updatedAt || 0,
+      note.driveFileId || ''
+    ].join('\u0001');
   }).join('\u0002');
 }
 
@@ -6768,20 +6905,66 @@ function keepLockerFile(preferred, other) {
   return out;
 }
 
+function pickNoteOrderFields(localItem, remoteItem, preferRemoteOrder) {
+  const lAt = noteOrderUpdatedAt(localItem);
+  const rAt = noteOrderUpdatedAt(remoteItem);
+  const lOrd = noteSortOrderValue(localItem);
+  const rOrd = noteSortOrderValue(remoteItem);
+  if (lOrd == null && rOrd == null) return null;
+  if (rAt > lAt && rOrd != null) return { sortOrder: rOrd, orderUpdatedAt: rAt };
+  if (lAt > rAt && lOrd != null) return { sortOrder: lOrd, orderUpdatedAt: lAt };
+  if (preferRemoteOrder && rOrd != null) return { sortOrder: rOrd, orderUpdatedAt: rAt };
+  if (lOrd != null) return { sortOrder: lOrd, orderUpdatedAt: lAt };
+  if (rOrd != null) return { sortOrder: rOrd, orderUpdatedAt: rAt };
+  return null;
+}
+
+function applyPickedNoteOrder(item, picked) {
+  if (!item || !picked) return item;
+  const sameOrder = noteSortOrderValue(item) === picked.sortOrder;
+  const sameAt = noteOrderUpdatedAt(item) === (picked.orderUpdatedAt || 0);
+  if (sameOrder && sameAt) return item;
+  const out = Object.assign({}, item);
+  out.sortOrder = picked.sortOrder;
+  if (picked.orderUpdatedAt) out.orderUpdatedAt = picked.orderUpdatedAt;
+  else delete out.orderUpdatedAt;
+  return out;
+}
+
+function collectNoteSide(arr, records) {
+  const out = [];
+  const seen = Object.create(null);
+  const src = Array.isArray(arr) ? arr : [];
+  for (let i = 0; i < src.length; i++) {
+    const note = normalizeNote(src[i]);
+    if (!note || seen[note.id]) continue;
+    if (records && deletionRecordsBlockItem(records, note, 'note')) continue;
+    seen[note.id] = true;
+    out.push(note);
+  }
+  backfillNoteSortOrders(sortNotes(out));
+  return sortNotes(out);
+}
+
 function mergeNotesPreferNewer(localArr, remoteArr, records, opts) {
   opts = opts || {};
   const allowAdds = opts.allowAdds !== false;
+  const preferRemoteOrder = opts.preferRemoteOrder !== false;
   const tombs = Array.isArray(records) ? records : [];
+  const localNotes = collectNoteSide(localArr, tombs);
+  const remoteNotes = collectNoteSide(remoteArr, tombs);
+  const localById = new Map();
+  localNotes.forEach(function (note) { if (note && note.id) localById.set(note.id, note); });
+  const remoteById = new Map();
+  remoteNotes.forEach(function (note) { if (note && note.id) remoteById.set(note.id, note); });
   const byId = new Map();
 
-  function put(raw, isRemote) {
-    const note = normalizeNote(raw);
+  function put(note, isRemote) {
     if (!note) return;
-    if (deletionRecordsBlockItem(tombs, note, 'note')) return;
     const existing = byId.get(note.id);
     if (!existing) {
       if (isRemote && !allowAdds) return;
-      byId.set(note.id, note);
+      byId.set(note.id, Object.assign({}, note));
       return;
     }
     const preferred = itemSyncTs(note) > itemSyncTs(existing) ? note : existing;
@@ -6789,9 +6972,15 @@ function mergeNotesPreferNewer(localArr, remoteArr, records, opts) {
     byId.set(note.id, keepLockerFile(preferred, other));
   }
 
-  (Array.isArray(localArr) ? localArr : []).forEach(function (raw) { put(raw, false); });
-  (Array.isArray(remoteArr) ? remoteArr : []).forEach(function (raw) { put(raw, true); });
-  const arr = sortNotes(Array.from(byId.values()));
+  localNotes.forEach(function (note) { put(note, false); });
+  remoteNotes.forEach(function (note) { put(note, true); });
+  const merged = Array.from(byId.values()).map(function (item) {
+    return applyPickedNoteOrder(
+      item,
+      pickNoteOrderFields(localById.get(item.id), remoteById.get(item.id), preferRemoteOrder)
+    );
+  });
+  const arr = sortNotes(merged);
   return { arr: arr, changed: noteSyncSig(localArr) !== noteSyncSig(arr) };
 }
 
@@ -6814,7 +7003,8 @@ function applyRemoteNotes(remote, flags) {
   const records = viewOnly ? [] : loadDeletionRecords();
   const merged = mergeNotesPreferNewer(state.notes, remoteNotes, records, {
     allowAdds: allowAdds || unionLists,
-    unionFiles: unionLists
+    unionFiles: unionLists,
+    preferRemoteOrder: !!(authoritative || unionLists)
   });
   let next = merged.arr;
   let pruned = false;
@@ -6832,19 +7022,21 @@ function applyRemoteNotes(remote, flags) {
 
 function shareNoteRow(raw) {
   const pub = noteWithoutPublicFiles(raw);
-  if (!pub || !pub.id || !pub.name) return null;
-  return [pub.id, pub.label || '', pub.name];
+  if (!pub || !pub.id) return null;
+  return [pub.id, pub.label || ''];
 }
 
 function addNoteRecord(list, input, now) {
   const notes = normalizeNotes(list);
+  const label = cleanNoteLabel(input && input.label);
+  if (!label) return { ok: false, notes: notes, error: 'name' };
   const name = String(input && (input.name || input.title) || '').trim();
   if (!name) return { ok: false, notes: notes, error: 'file' };
   if (notes.length >= NOTES_MAX_COUNT) return { ok: false, notes: notes, error: 'full' };
   const stamp = Number(now) || Date.now();
   const note = normalizeNote({
     id: (input && input.id) || uid('n'),
-    label: input && input.label,
+    label: label,
     name: name,
     mime: input && input.mime,
     size: input && input.size,
@@ -6859,6 +7051,23 @@ function addNoteRecord(list, input, now) {
   if (!note || !note.driveFileId) return { ok: false, notes: notes, error: 'file' };
   notes.push(note);
   return { ok: true, notes: sortNotes(notes), note: note };
+}
+
+function renameNoteRecord(list, id, label, now) {
+  const notes = normalizeNotes(list).map(function (note) { return Object.assign({}, note); });
+  const idx = notes.findIndex(function (item) { return item && item.id === id; });
+  if (idx < 0) return { ok: false, notes: notes, error: 'missing' };
+  const trimmed = cleanNoteLabel(label);
+  if (!trimmed) return { ok: false, notes: notes, error: 'name' };
+  const prev = notes[idx];
+  if (prev.label === trimmed) return { ok: true, notes: notes, note: prev, unchanged: true };
+  const next = normalizeNote(Object.assign({}, prev, {
+    label: trimmed,
+    updatedAt: Number(now) || Date.now()
+  }));
+  if (!next) return { ok: false, notes: notes, error: 'file' };
+  notes[idx] = next;
+  return { ok: true, notes: sortNotes(notes), note: next };
 }
 
 function deleteNoteRecord(list, id) {
@@ -6880,6 +7089,25 @@ function rememberNoteDeletion(note) {
   if (!note || !note.id) return;
   rememberDeletion({ kind: 'note', id: String(note.id), at: Date.now(), blockSync: true });
   if (note.driveFileId) deleteStoredAttachment(note);
+}
+
+/**
+ * Same splice the drag used. Stamp sortOrder from the resulting array and
+ * orderUpdatedAt on every row so this order wins over an older stamp.
+ */
+function moveNotesInOrder(notes, fromId, toId, at) {
+  const list = normalizeNotes(notes).map(function (note) { return Object.assign({}, note); });
+  const fromIdx = list.findIndex(function (item) { return item && item.id === fromId; });
+  const toIdx = list.findIndex(function (item) { return item && item.id === toId; });
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return { arr: list, changed: false };
+  const item = list.splice(fromIdx, 1)[0];
+  list.splice(toIdx, 0, item);
+  const atMs = Number(at) || Date.now();
+  list.forEach(function (row, i) {
+    row.sortOrder = (i + 1) * NOTE_ORDER_STEP;
+    row.orderUpdatedAt = atMs;
+  });
+  return { arr: list, changed: true };
 }
 
 function cachedDriveNotesFolder() {
@@ -7005,28 +7233,97 @@ function noteUploadToast(err) {
   else showShareToast('上載失敗，請再試');
 }
 
-function noteItemHtml(note) {
+function askNoteName(index, total) {
+  return new Promise(function (resolve) {
+    if (typeof openModal !== 'function' || typeof document === 'undefined') {
+      resolve('');
+      return;
+    }
+    let settled = false;
+    function finish(value) {
+      if (settled) return;
+      settled = true;
+      modalOnDismiss = null;
+      try { closeModal(); } catch (e) {}
+      resolve(cleanNoteLabel(value));
+    }
+    const progress = total > 1 ? '（' + (index + 1) + '／' + total + '）' : '';
+    openModal(
+      '<h3>Note 名' + progress + '</h3>' +
+      '<p class="meta">請輸入 Note 名。名稱會顯示在方格上。</p>' +
+      '<form class="form-stack" id="noteNameForm">' +
+        '<div><label class="field-label" for="noteNameInput">Note 名</label>' +
+          '<input type="text" id="noteNameInput" name="label" required maxlength="' + NOTE_LABEL_MAX + '" placeholder="請輸入 Note 名" autocomplete="off" /></div>' +
+        '<div class="modal-actions">' +
+          '<button type="button" class="btn btn-ghost" id="noteNameCancel">取消</button>' +
+          '<button type="submit" class="btn btn-primary">儲存</button>' +
+        '</div>' +
+      '</form>'
+    );
+    const form = document.getElementById('noteNameForm');
+    const cancel = document.getElementById('noteNameCancel');
+    if (!form || !cancel) {
+      finish('');
+      return;
+    }
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      const label = cleanNoteLabel(new FormData(form).get('label'));
+      if (!label) return;
+      finish(label);
+    };
+    cancel.onclick = function () { finish(''); };
+    modalOnDismiss = function () { finish(''); };
+  });
+}
+
+function noteTileHtml(note) {
+  const id = escapeHtml(note.id);
   const display = escapeHtml(noteDisplayLabel(note));
-  const filename = escapeHtml(note.name || '');
-  const showFile = note.label && note.label !== note.name;
-  const fileLine = showFile ? '<span class="meta note-file-meta">' + filename + '</span>' : '';
-  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) {
-    const placeholder = attachmentLooksLikeImage(note)
-      ? '<span class="event-thumb-placeholder">圖片</span>'
-      : '';
-    return '<article class="note-item">' + placeholder +
-      '<p class="note-label-text">' + display + '</p>' + fileLine + '</article>';
+  const named = noteIsNamed(note);
+  const viewOnly = typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY;
+  const image = !viewOnly && typeof attachmentLooksLikeImage === 'function' && attachmentLooksLikeImage(note);
+  const kind = escapeHtml(noteKindLabel(viewOnly ? { label: note.label } : note));
+  let face;
+  if (viewOnly) {
+    face = '<div class="note-tile-face" aria-hidden="true"><span class="note-doc-sheet">' + kind + '</span></div>';
+  } else if (image) {
+    face = '<div class="note-tile-face event-thumb" data-note-open="' + id + '" role="button" tabindex="0" aria-label="開啟 ' + display + '">' +
+      '<span class="event-thumb-fallback">圖片</span>' +
+      '<img alt="" class="event-thumb-img" hidden />' +
+    '</div>';
+  } else {
+    face = '<div class="note-tile-face note-tile-doc" data-note-open="' + id + '" role="button" tabindex="0" aria-label="開啟 ' + display + '">' +
+      '<span class="note-doc-sheet">' + kind + '</span></div>';
   }
-  const opener = attachmentLooksLikeImage(note)
-    ? attachmentThumbHtml(note, 'data-note-open')
-    : '<button type="button" class="event-file" data-note-open="' + escapeHtml(note.id) + '" aria-label="開啟檔案 ' + display + '">' + display + '</button>';
-  return '<article class="note-item note-locker">' +
-    opener +
-    '<label class="note-label-field notes-owner-only"><span class="field-label">標籤（可留空）</span>' +
-      '<input type="text" class="note-label" maxlength="' + NOTE_LABEL_MAX + '" data-note-label="' + escapeHtml(note.id) + '" value="' + escapeHtml(note.label || '') + '" placeholder="標籤（可留空）" />' +
-      fileLine + '</label>' +
-    '<button type="button" class="btn btn-ghost btn-sm notes-owner-only" data-note-del="' + escapeHtml(note.id) + '">刪除</button>' +
-  '</article>';
+  let caption;
+  if (viewOnly) {
+    caption = '<p class="note-tile-name' + (named ? '' : ' is-unnamed-text') + '">' + display + '</p>';
+  } else if (!named || noteNameEditId === note.id) {
+    caption = '<label class="note-tile-caption">' +
+      '<input type="text" class="note-tile-name-input' + (named ? '' : ' is-required') + '" maxlength="' + NOTE_LABEL_MAX + '" required data-note-name="' + id + '" value="' + escapeHtml(note.label || '') + '" placeholder="未命名" aria-label="Note 名" aria-required="true"' + (named ? '' : ' aria-invalid="true"') + ' />' +
+    '</label>';
+  } else {
+    caption = '<div class="note-tile-caption">' +
+      '<p class="note-tile-name" title="' + escapeHtml(note.label) + '">' + escapeHtml(note.label) + '</p>' +
+      '<button type="button" class="note-tile-rename notes-owner-only" data-note-rename="' + id + '" aria-label="修改名稱">改名</button>' +
+    '</div>';
+  }
+  const del = viewOnly ? '' :
+    '<button type="button" class="note-tile-del notes-owner-only" data-note-del="' + id + '" aria-label="刪除">刪除</button>';
+  const drag = viewOnly ? '' : ' draggable="true"';
+  const cls = 'note-tile' + (viewOnly ? '' : ' note-draggable') + (named ? '' : ' is-unnamed');
+  return '<article class="' + cls + '"' + drag + ' data-id="' + id + '">' + face + caption + del + '</article>';
+}
+
+function focusNoteNameEdit() {
+  if (!noteNameEditId || typeof document === 'undefined' || !document || typeof document.querySelector !== 'function') return;
+  const input = document.querySelector('[data-note-name="' + noteNameEditId + '"]');
+  if (!input || typeof input.focus !== 'function') return;
+  try {
+    input.focus();
+    if (typeof input.select === 'function') input.select();
+  } catch (e) {}
 }
 
 function renderNotes() {
@@ -7034,9 +7331,7 @@ function renderNotes() {
   const list = document.getElementById('noteList');
   const hint = document.getElementById('notesHint');
   if (hint) {
-    hint.textContent = (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY)
-      ? '只顯示標籤同檔名。'
-      : '放經常要開的圖片或文件。標籤可留空，會用檔名。按圖或檔名開啟原本。檔案放喺 Google Drive「小布丁活動附件／Notes」，保持私人。最多 30 個，每個 10MB。';
+    hint.textContent = (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) ? NOTE_VIEW_HINT : NOTE_OWNER_HINT;
   }
   const notes = sortNotes(normalizeNotes(state && state.notes));
   notes.forEach(function (note) {
@@ -7044,12 +7339,14 @@ function renderNotes() {
   });
   if (list) {
     list.innerHTML = notes.length
-      ? notes.map(noteItemHtml).join('')
+      ? notes.map(noteTileHtml).join('')
       : '<div class="empty">未有檔案</div>';
   }
-  try { refreshOpenAttachmentThumbs(); } catch (e) {}
-  try { paintDriveAttachStatus(); } catch (e2) {}
-  try { updateBlockSummaries(); } catch (e3) {}
+  try { bindNoteTiles(list); } catch (e) {}
+  try { refreshOpenAttachmentThumbs(); } catch (e2) {}
+  try { paintDriveAttachStatus(); } catch (e3) {}
+  try { updateBlockSummaries(); } catch (e4) {}
+  focusNoteNameEdit();
 }
 
 function deleteNoteById(id) {
@@ -7061,6 +7358,7 @@ function deleteNoteById(id) {
   const result = deleteNoteRecord(state.notes, id);
   if (!result.ok) return;
   rememberNoteDeletion(result.note);
+  if (noteNameEditId === id) noteNameEditId = '';
   state.notes = result.notes;
   saveState();
   renderNotes();
@@ -7068,17 +7366,52 @@ function deleteNoteById(id) {
 }
 
 function setNoteLabel(id, label) {
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return false;
+  const result = renameNoteRecord(state && state.notes, id, label, Date.now());
+  if (!result.ok) {
+    if (typeof showShareToast === 'function') showShareToast('請輸入 Note 名');
+    return false;
+  }
+  noteNameEditId = '';
+  if (!result.unchanged) {
+    state.notes = result.notes;
+    if (typeof saveState === 'function') saveState();
+  }
+  return true;
+}
+
+function beginNoteRename(id) {
   if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return;
-  const notes = state.notes || [];
-  const idx = notes.findIndex(function (item) { return item && item.id === id; });
-  if (idx < 0) return;
-  const next = normalizeNote(Object.assign({}, notes[idx], {
-    label: String(label || '').trim().slice(0, NOTE_LABEL_MAX),
-    updatedAt: Date.now()
-  }));
-  if (!next) return;
-  state.notes[idx] = next;
-  saveState();
+  noteNameEditId = String(id || '');
+  renderNotes();
+}
+
+function commitNoteNameInput(input) {
+  if (noteNameCommitting || !input || !input.getAttribute) return;
+  const id = input.getAttribute('data-note-name');
+  if (!id) return;
+  noteNameCommitting = true;
+  try {
+    const current = (state.notes || []).find(function (item) { return item && item.id === id; });
+    if (!current) return;
+    const value = cleanNoteLabel(input.value);
+    if (!value) {
+      if (noteIsNamed(current)) {
+        if (typeof showShareToast === 'function') showShareToast('請輸入 Note 名');
+        noteNameEditId = '';
+        renderNotes();
+      }
+      return;
+    }
+    const changed = value !== cleanNoteLabel(current.label);
+    if (!setNoteLabel(id, value)) return;
+    if (changed || noteNameEditId) {
+      noteNameEditId = '';
+    }
+    renderNotes();
+  } finally {
+    noteNameCommitting = false;
+  }
 }
 
 function beginNoteUpload() {
@@ -7119,6 +7452,11 @@ async function uploadFilesOntoNotes(fileList) {
       showShareToast('檔案太大，每個上限 10MB');
       continue;
     }
+    const label = await askNoteName(i, files.length);
+    if (!label) {
+      showShareToast('請輸入 Note 名');
+      break;
+    }
     const noteId = uid('n');
     const epoch = noteUploadEpoch[noteId] || 0;
     try {
@@ -7127,10 +7465,12 @@ async function uploadFilesOntoNotes(fileList) {
         deleteStoredAttachment(stored);
         continue;
       }
-      const added = addNoteRecord(state.notes, Object.assign({ id: noteId, label: '' }, stored), Date.now());
+      const added = addNoteRecord(state.notes, Object.assign({ id: noteId, label: label }, stored), Date.now());
       if (!added.ok) {
         deleteStoredAttachment(stored);
-        if (added.error === 'full') showShareToast('最多 30 個檔案');
+        if (added.error === 'name') showShareToast('請輸入 Note 名');
+        else if (added.error === 'full') showShareToast('最多 30 個檔案');
+        else showShareToast('上載失敗，請再試');
         break;
       }
       try { indexAttachmentForThumb(added.note); } catch (e) {}
@@ -7154,10 +7494,29 @@ function openNoteFile(noteId) {
   openEventAttachment(note);
 }
 
+function reorderNotes(fromId, toId) {
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return;
+  if (!state || !Array.isArray(state.notes)) return;
+  const moved = moveNotesInOrder(state.notes, fromId, toId, Date.now());
+  if (!moved.changed) return;
+  state.notes = moved.arr;
+  saveState();
+  renderNotes();
+}
+
 function onNoteListClick(e) {
   const target = e && e.target;
   if (!target || !target.closest) return;
-  if (target.closest('[data-note-label]')) return;
+  if (noteDragMoved) {
+    noteDragMoved = false;
+    return;
+  }
+  if (target.closest('[data-note-name]')) return;
+  const renameBtn = target.closest('[data-note-rename]');
+  if (renameBtn) {
+    beginNoteRename(renameBtn.getAttribute('data-note-rename'));
+    return;
+  }
   const delNote = target.closest('[data-note-del]');
   if (delNote) {
     deleteNoteById(delNote.getAttribute('data-note-del'));
@@ -7165,6 +7524,105 @@ function onNoteListClick(e) {
   }
   const openBtn = target.closest('[data-note-open]');
   if (openBtn) openNoteFile(openBtn.getAttribute('data-note-open'));
+}
+
+function bindOneNoteTile(tile, list) {
+  const id = tile.getAttribute('data-id');
+  bindReorderPress(tile, { onSlideAway: function () { clearTimeout(longPressTimer); } });
+  tile.addEventListener('pointerdown', function () {
+    noteDragMoved = false;
+  });
+  tile.addEventListener('dragstart', function (e) {
+    if (typeof reorderGestureBlocked === 'function' && reorderGestureBlocked(e.target)) {
+      e.preventDefault();
+      return;
+    }
+    noteDragId = id;
+    noteDragMoved = true;
+    tile.classList.add('dragging', 'reorder-hold');
+    tile.classList.remove('reorder-idle');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+    if (typeof paintReorderDragImage === 'function') paintReorderDragImage(e, tile);
+  });
+  tile.addEventListener('dragend', function () {
+    if (typeof endReorderHold === 'function') endReorderHold(tile);
+    if (list && list.querySelectorAll) list.querySelectorAll('.drag-over').forEach(function (el) { el.classList.remove('drag-over'); });
+    noteDragId = null;
+    setTimeout(function () { noteDragMoved = false; }, 50);
+  });
+  tile.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    tile.classList.add('drag-over');
+  });
+  tile.addEventListener('dragleave', function () { tile.classList.remove('drag-over'); });
+  tile.addEventListener('drop', function (e) {
+    e.preventDefault();
+    tile.classList.remove('drag-over');
+    const from = noteDragId || (e.dataTransfer && e.dataTransfer.getData('text/plain'));
+    if (from && id && from !== id) reorderNotes(from, id);
+  });
+
+  let startX = 0;
+  let startY = 0;
+  tile.addEventListener('touchstart', function (e) {
+    if (typeof reorderGestureBlocked === 'function' && reorderGestureBlocked(e.target)) return;
+    if (typeof beginReorderHold === 'function') beginReorderHold(tile, e.target);
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    longPressTimer = setTimeout(function () {
+      noteDragId = id;
+      noteDragMoved = true;
+      tile.classList.add('dragging', 'reorder-hold');
+      if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {}
+    }, 420);
+  }, { passive: true });
+  tile.addEventListener('touchmove', function (e) {
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+      if (!noteDragId) {
+        clearTimeout(longPressTimer);
+        tile.classList.remove('reorder-hold');
+        tile.classList.add('reorder-idle');
+      }
+    }
+    if (noteDragId) {
+      e.preventDefault();
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el && el.closest ? el.closest('.note-tile.note-draggable') : null;
+      if (list && list.querySelectorAll) list.querySelectorAll('.drag-over').forEach(function (x) { x.classList.remove('drag-over'); });
+      if (target && target.getAttribute('data-id') !== noteDragId) target.classList.add('drag-over');
+    }
+  }, { passive: false });
+  tile.addEventListener('touchend', function (e) {
+    clearTimeout(longPressTimer);
+    if (noteDragId) {
+      const t = e.changedTouches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el && el.closest ? el.closest('.note-tile.note-draggable') : null;
+      const to = target && target.getAttribute('data-id');
+      if (to && to !== noteDragId) reorderNotes(noteDragId, to);
+      if (list && list.querySelectorAll) list.querySelectorAll('.note-tile').forEach(function (x) { x.classList.remove('dragging', 'reorder-hold', 'drag-over'); });
+      noteDragId = null;
+      e.preventDefault();
+    }
+    if (typeof endReorderHold === 'function') endReorderHold(tile);
+  });
+  tile.addEventListener('touchcancel', function () {
+    clearTimeout(longPressTimer);
+    if (typeof endReorderHold === 'function') endReorderHold(tile);
+    noteDragId = null;
+  });
+}
+
+function bindNoteTiles(list) {
+  if (typeof VIEW_ONLY !== 'undefined' && VIEW_ONLY) return;
+  if (!list || typeof list.querySelectorAll !== 'function') return;
+  if (typeof bindReorderPress !== 'function') return;
+  const tiles = list.querySelectorAll('.note-tile.note-draggable');
+  for (let i = 0; i < tiles.length; i++) bindOneNoteTile(tiles[i], list);
 }
 
 function bindNotesUi() {
@@ -7193,10 +7651,35 @@ function bindNotesUi() {
   if (list && !list._notesBound) {
     list._notesBound = true;
     list.addEventListener('click', onNoteListClick);
-    list.addEventListener('change', function (e) {
-      const input = e.target && e.target.closest ? e.target.closest('[data-note-label]') : null;
+    list.addEventListener('pointerdown', function (e) {
+      const target = e.target && e.target.closest ? e.target : null;
+      const editing = document.activeElement && document.activeElement.closest && document.activeElement.closest('[data-note-name]');
+      if (target && target.closest && target.closest('[data-note-del]') && editing) noteNameHold = true;
+      else noteNameHold = false;
+    });
+    list.addEventListener('keydown', function (e) {
+      const input = e.target && e.target.closest ? e.target.closest('[data-note-name]') : null;
+      if (input && e.key === 'Enter') {
+        e.preventDefault();
+        commitNoteNameInput(input);
+        return;
+      }
+      if (!input && (e.key === 'Enter' || e.key === ' ') && e.target && e.target.closest) {
+        const openBtn = e.target.closest('[data-note-open]');
+        if (openBtn) {
+          e.preventDefault();
+          openNoteFile(openBtn.getAttribute('data-note-open'));
+        }
+      }
+    });
+    list.addEventListener('focusout', function (e) {
+      const input = e.target && e.target.closest ? e.target.closest('[data-note-name]') : null;
       if (!input) return;
-      setNoteLabel(input.getAttribute('data-note-label'), input.value);
+      if (noteNameHold) {
+        noteNameHold = false;
+        return;
+      }
+      commitNoteNameInput(input);
     });
   }
   const input = document.getElementById('noteFileInput');
@@ -7212,6 +7695,7 @@ function bindNotesUi() {
   try { paintDriveAttachStatus(); } catch (e) {}
 }
 /* NOTES_END */
+
 function normalizeEvent(e) {
   const title = String((e && e.title) || '');
   let date = '';
@@ -7858,7 +8342,7 @@ let longPressTimer = null;
 
 function reorderGestureBlocked(target) {
   if (!target || !target.closest) return true;
-  return !!target.closest('.todo-check, [data-edit], [data-del], .bus-del, .sc-edit-btn, .event-file, .event-files');
+  return !!target.closest('.todo-check, [data-edit], [data-del], .bus-del, .sc-edit-btn, .event-file, .event-files, [data-note-name], [data-note-rename], [data-note-del], .note-tile-name-input, .note-tile-rename, .note-tile-del');
 }
 
 function beginReorderHold(el, target) {
@@ -13189,8 +13673,8 @@ function unionSyncItems(localArr, remoteArr, records, kind) {
 
 /**
  * Firestore write body. Todos, events, notes, and deletedIds are the union of both
- * devices. Todo sortOrder survives that union: the newer orderUpdatedAt wins,
- * and a tie keeps the order already stored on the document. This device's
+ * devices. Todo and Notes sortOrder survive that union: the newer orderUpdatedAt
+ * wins, and a tie keeps the order already stored on the document. This device's
  * other fields stay. Does not read or write the UI.
  */
 function combineFirebaseSyncDocs(localDoc, remoteDoc) {
@@ -15479,7 +15963,7 @@ function shareEventUnchanged(event) {
     n.work === seed.work && n.kind === seed.kind && !n.done;
 }
 
-/** Wire form: {u, t:[[id,title,due,done]], e:[[id,title,date,time,done,kind,work?]], n:[[id,title,remark?,names?]]}. */
+/** Wire form: {u, t:[[id,title,due,done]], e:[[id,title,date,time,done,kind,work?]], n:[[id,noteName]]}. */
 function buildShareWire(payload, opts) {
   opts = opts || {};
   const includeWork = opts.includeWork !== false;
@@ -15549,10 +16033,10 @@ function expandShareWire(data) {
   const shareNotes = Array.isArray(data.n) ? data.n.map(function (row) {
     if (!row || !Array.isArray(row)) return null;
     const id = String(row[0] || '');
-    const label = String(row[1] || '').trim().slice(0, 80);
-    const name = String(row[2] || '').trim().slice(0, 180);
-    if (!id || !name || /^(https?:|data:|blob:)/i.test(name)) return null;
-    const out = { id: id, label: label, name: name, createdAt: updatedAt || 1 };
+    const label = String(row[1] || '').replace(/[ \t\f\v]+/g, ' ').trim().slice(0, 80);
+    if (!id) return null;
+    // Older wires kept a filename in row[2]. Do not keep it on the note.
+    const out = { id: id, label: label, createdAt: updatedAt || 1 };
     if (updatedAt) out.updatedAt = updatedAt;
     return out;
   }).filter(Boolean) : null;
@@ -16492,7 +16976,8 @@ async function pushPagesShareGate(config) {
 /**
  * Guest snapshot. Personal and school events are included. Plaintext passwords
  * are never written. The signed-in Firestore doc keeps the private Drive file
- * id. This public copy keeps filenames only: no Drive id and no download link.
+ * id. Event rows in this public copy keep filenames only: no Drive id and no
+ * download link. Notes keep the note name only.
  */
 function pagesSyncPayload() {
   const payload = buildSyncPayload();
@@ -16505,7 +16990,7 @@ function pagesSyncPayload() {
   });
   payload.notes = (payload.notes || []).map(function (note) {
     return noteWithoutPublicFiles(note);
-  }).filter(function (note) { return note && note.id && note.name; });
+  }).filter(function (note) { return note && note.id; });
   return payload;
 }
 
