@@ -451,3 +451,124 @@ test('a signed-in upload sends the file to Drive multipart and not Storage', asy
   context.driveAttachAccessToken = '';
   context.driveAttachTokenExp = 0;
 });
+
+test('a drive.file 403 or 404 opens the private viewer for the connected owner', async () => {
+  const toasts = [];
+  const originalToast = context.showShareToast;
+  const originalOpen = context.window.open;
+  context.showShareToast = function (msg) { toasts.push(String(msg)); };
+  context.VIEW_ONLY = false;
+  context.driveAttachAccessToken = 'ya29.owner';
+  context.driveAttachTokenExp = Date.now() + 3600000;
+  context.gdriveAccessToken = 'calendar-token';
+  const att = {
+    id: 'a_9',
+    name: '通告.pdf',
+    mime: 'application/pdf',
+    size: 1200,
+    store: 'drive',
+    driveFileId: '1AbCdefGHIjklMNOpqr'
+  };
+  const note = {
+    id: 'n_lab',
+    label: '實驗尺',
+    name: '尺.pdf',
+    mime: 'application/pdf',
+    size: 1200,
+    store: 'drive',
+    driveFileId: '1NotesFileFromOtherApp'
+  };
+  function httpError(status) {
+    return { ok: false, status: status };
+  }
+  async function openWith(status, email, target) {
+    const replaced = [];
+    const fetched = [];
+    let tab = null;
+    toasts.length = 0;
+    context.driveAttachEmail = email;
+    context.window.open = function (url, winTarget, features) {
+      tab = {
+        closed: false,
+        opened: { url: String(url), target: winTarget || '', features: features || '' },
+        location: {
+          replace(next) { replaced.push(String(next)); }
+        },
+        close() { this.closed = true; }
+      };
+      return tab;
+    };
+    context.fetch = async function (url, opts) {
+      const href = String(url);
+      fetched.push(href);
+      assert.equal(href.includes('/permissions'), false);
+      assert.equal(href.includes('anyone'), false);
+      assert.equal((opts && opts.headers && opts.headers.Authorization) || '', 'Bearer ya29.owner');
+      return httpError(status);
+    };
+    await context.openEventAttachment(target);
+    return { replaced: replaced, fetched: fetched, tab: tab };
+  }
+  try {
+    const denied = await openWith(403, 'puddingchau1125@gmail.com', att);
+    assert.deepEqual(denied.fetched, [
+      'https://www.googleapis.com/drive/v3/files/1AbCdefGHIjklMNOpqr?alt=media'
+    ]);
+    assert.deepEqual(denied.replaced, [
+      'https://drive.google.com/file/d/1AbCdefGHIjklMNOpqr/view?authuser=puddingchau1125%40gmail.com'
+    ]);
+    assert.equal(denied.tab.closed, false);
+    assert.equal(denied.tab.opened.url, 'about:blank');
+    assert.equal(toasts.length, 0);
+
+    const hidden = await openWith(404, '', note);
+    assert.deepEqual(hidden.fetched, [
+      'https://www.googleapis.com/drive/v3/files/1NotesFileFromOtherApp?alt=media'
+    ]);
+    assert.deepEqual(hidden.replaced, [
+      'https://drive.google.com/file/d/1NotesFileFromOtherApp/view'
+    ]);
+    assert.equal(hidden.replaced[0].includes('authuser='), false);
+    assert.equal(hidden.tab.closed, false);
+    assert.equal(toasts.length, 0);
+
+    context.URL = {
+      createObjectURL() { return 'blob:preview'; },
+      revokeObjectURL() {}
+    };
+    const replaced = [];
+    context.driveAttachEmail = 'puddingchau1125@gmail.com';
+    context.window.open = function () {
+      return {
+        closed: false,
+        location: { replace(next) { replaced.push(String(next)); } },
+        close() { this.closed = true; }
+      };
+    };
+    context.fetch = async function () {
+      return {
+        ok: true,
+        status: 200,
+        blob: async function () { return { size: 4 }; }
+      };
+    };
+    await context.openEventAttachment(att);
+    assert.deepEqual(replaced, ['blob:preview']);
+
+    toasts.length = 0;
+    context.window.open = undefined;
+    context.fetch = async function () { return httpError(403); };
+    await context.openEventAttachment(att);
+    assert.deepEqual(toasts, ['找不到呢個檔案。可能連咗另一個 Google 帳戶，或者檔案已喺 Drive 刪除。']);
+  } finally {
+    context.showShareToast = originalToast;
+    context.window.open = originalOpen;
+    context.fetch = undefined;
+    context.URL = undefined;
+    context.driveAttachEmail = '';
+    context.driveAttachAccessToken = '';
+    context.driveAttachTokenExp = 0;
+    context.gdriveAccessToken = '';
+    context.VIEW_ONLY = false;
+  }
+});
