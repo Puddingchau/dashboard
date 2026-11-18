@@ -6341,13 +6341,24 @@ function openEventAttachment(att) {
       .then(function (blob) { openDriveBlob(tab, blob, att && att.name); });
   }
   function openPrivateView(tab) {
-    const view = 'https://drive.google.com/file/d/' + encodeURIComponent(driveId) + '/view';
-    if (tab && !tab.closed) {
-      try { tab.location.replace(view); return; } catch (e) {}
+    // drive.file cannot download a file this client did not create. Drive
+    // answers 403 (appNotAuthorizedToFile) or 404 (the file is hidden from
+    // this app). The private viewer uses the connected Google account and
+    // does not change sharing.
+    let view = 'https://drive.google.com/file/d/' + encodeURIComponent(driveId) + '/view';
+    const email = String(driveAttachEmail || '').trim();
+    if (email && email.length <= 180 && /^[^\s/?#]+@[^\s/?#]+$/.test(email)) {
+      view += '?authuser=' + encodeURIComponent(email);
     }
-    if (typeof window !== 'undefined' && window.open) window.open(view, '_blank', 'noopener');
+    if (tab && !tab.closed) {
+      try { tab.location.replace(view); return true; } catch (e) {}
+    }
+    if (typeof window !== 'undefined' && window.open) {
+      try { window.open(view, '_blank', 'noopener'); return true; } catch (e2) {}
+    }
+    return false;
   }
-  requestDriveAttachToken(false).then(function (ok) {
+  return requestDriveAttachToken(false).then(function (ok) {
     if (ok !== true) {
       closePreview(preview);
       if (ok !== 'missing-lib' && !driveAttachTokenReady()) showShareToast(DRIVE_ATTACH_NEED_MSG);
@@ -6366,19 +6377,17 @@ function openEventAttachment(att) {
           }
           const retryTab = (typeof window !== 'undefined' && window.open) ? window.open('about:blank', '_blank') : null;
           return load(retryTab).catch(function (err2) {
-            if (err2 && (err2.status === 404 || err2.status === 403 || err2.code === 'missing')) {
+            if (!openPrivateView(retryTab)) {
               closePreview(retryTab);
               throw err2;
             }
-            openPrivateView(retryTab);
           });
         });
       }
-      if (err && (err.status === 404 || err.status === 403 || err.code === 'missing')) {
+      if (!openPrivateView(tab)) {
         closePreview(tab);
         throw err;
       }
-      openPrivateView(tab);
     });
   }).catch(fail);
 }
