@@ -64,11 +64,24 @@ test('both pages share the Notes feature and leave sync limits alone', () => {
   assert.match(notesBlock, /driveAttachRootFolder\(/);
   assert.match(notesBlock, /requestDriveAttachToken\(/);
   assert.match(notesBlock, /EVENT_ATTACHMENT_MAX_BYTES/);
-  assert.match(notesBlock, /標籤（可留空）/);
+  assert.match(notesBlock, /請輸入 Note 名/);
+  assert.match(notesBlock, /未命名/);
+  assert.match(notesBlock, /moveNotesInOrder\(/);
+  assert.match(notesBlock, /orderUpdatedAt/);
   assert.match(notesBlock, /openEventAttachment\(/);
-  assert.match(notesBlock, /attachmentThumbHtml\(/);
+  assert.match(notesBlock, /class="note-tile-face event-thumb"/);
+  assert.match(notesBlock, /refreshOpenAttachmentThumbs\(/);
+  assert.doesNotMatch(notesBlock, /標籤（可留空）|會用檔名|note-file-meta/);
   assert.doesNotMatch(notesBlock, /標題必填|備註（選填）|新增筆記/);
   assert.doesNotMatch(notesBlock, /anyoneWithLink|firebase\.storage|uploadBytes|initTokenClient|prompt:\s*'none'|ENABLE_DRIVE_SYNC/);
+  const upload = extractFn(indexHtml, 'uploadFilesOntoNotes');
+  assert.ok(upload.indexOf('askNoteName') < upload.indexOf('uploadNoteAttachment'));
+  assert.ok(upload.indexOf('askNoteName') < upload.indexOf('addNoteRecord'));
+  for (const page of [indexHtml, dashHtml]) {
+    assert.match(page, /class="note-grid" id="noteList"/);
+    assert.match(page, /body \.note-tile\.note-draggable\.reorder-hold/);
+    assert.doesNotMatch(between(page, 'id="notesHint"', '</p>'), /檔名/);
+  }
   const deleteNote = extractFn(indexHtml, 'deleteNoteById');
   assert.ok(deleteNote.indexOf('confirm(noteDeleteConfirmMessage') < deleteNote.indexOf('rememberNoteDeletion'));
   const preview = extractFn(indexHtml, 'loadAttachmentPreview');
@@ -188,11 +201,24 @@ const driveFile = {
   data: 'data:application/pdf;base64,AAAA'
 };
 
-test('a locker item keeps the filename, an optional label, and a delete confirm', () => {
+test('a new note requires a name and still stores the file without showing it', () => {
   blankState([]);
+  const missing = context.addNoteRecord([], {
+    id: 'n_blank',
+    label: '   ',
+    name: '尺.pdf',
+    mime: driveFile.mime,
+    size: driveFile.size,
+    uploadedAt: driveFile.uploadedAt,
+    store: 'drive',
+    driveFileId: driveFile.driveFileId
+  }, 1000);
+  assert.equal(missing.ok, false);
+  assert.equal(missing.error, 'name');
+  assert.equal(missing.notes.length, 0);
   const added = context.addNoteRecord([], {
     id: 'n_lab',
-    label: '',
+    label: '  實驗尺  ',
     name: '尺.pdf',
     mime: driveFile.mime,
     size: driveFile.size,
@@ -201,16 +227,17 @@ test('a locker item keeps the filename, an optional label, and a delete confirm'
     driveFileId: driveFile.driveFileId
   }, 1000);
   assert.equal(added.ok, true);
-  assert.equal(added.note.label, '');
+  assert.equal(added.note.label, '實驗尺');
   assert.equal(added.note.name, '尺.pdf');
-  assert.equal(context.noteDisplayLabel(added.note), '尺.pdf');
+  assert.equal(context.noteDisplayLabel(added.note), '實驗尺');
   assert.equal(added.note.driveFileId, driveFile.driveFileId);
+  assert.equal(added.note.label.length <= 80, true);
   assert.equal(JSON.stringify(added.note).includes('data:'), false);
   assert.equal(JSON.stringify(added.note).includes('drive.google.com'), false);
-  assert.equal(context.addNoteRecord(added.notes, { name: '   ' }, 2).ok, false);
-  const labeled = context.normalizeNote(Object.assign({}, added.note, { label: '  實驗尺  ' }));
-  assert.equal(labeled.label, '實驗尺');
-  assert.equal(context.noteDisplayLabel(labeled), '實驗尺');
+  assert.equal(context.addNoteRecord(added.notes, { name: '   ', label: '有名' }, 2).ok, false);
+  const longName = '名'.repeat(90);
+  const capped = context.normalizeNote(Object.assign({}, added.note, { label: longName }));
+  assert.equal(capped.label.length, 80);
   assert.equal(context.noteDeleteConfirmMessage(), '確定刪除此檔案？');
   const removed = context.deleteNoteRecord(added.notes, 'n_lab');
   assert.equal(removed.ok, true);
@@ -271,7 +298,7 @@ test('notes stay in the Firebase payload and a deleted note stays tombstoned', (
     allowAdds: true,
     unionFiles: true
   });
-  assert.deepEqual(union.arr.map(function (note) { return note.id; }), ['n_other']);
+  assert.deepEqual(Array.from(union.arr.map(function (note) { return note.id; })), ['n_other']);
 });
 
 test('a deleted locker file stays tombstoned when the other device still has it', () => {
@@ -299,7 +326,7 @@ test('a deleted locker file stays tombstoned when the other device still has it'
   assert.equal(JSON.stringify(merged.arr).includes(driveFile.driveFileId), false);
 });
 
-test('share and public snapshots keep titles and filenames only', () => {
+test('share and public snapshots keep note names only', () => {
   blankState([]);
   const added = context.addNoteRecord([], {
     id: 'n_lab',
@@ -315,9 +342,10 @@ test('share and public snapshots keep titles and filenames only', () => {
   context.state.notes = added.notes;
   const pub = context.pagesSyncPayload();
   assert.equal(pub.notes[0].label, '實驗尺');
-  assert.equal(pub.notes[0].name, '尺.pdf');
+  assert.equal(pub.notes[0].name, undefined);
   assert.equal(pub.notes[0].driveFileId, undefined);
-  const pubText = JSON.stringify(pub);
+  const pubText = JSON.stringify(pub.notes);
+  assert.equal(pubText.includes('尺.pdf'), false);
   assert.equal(pubText.includes(driveFile.driveFileId), false);
   assert.equal(pubText.includes('drive.google.com'), false);
   assert.equal(pubText.includes('alt=media'), false);
@@ -325,30 +353,83 @@ test('share and public snapshots keep titles and filenames only', () => {
 
   const wire = context.buildShareWire(pub, { includeNotes: true, includeWork: true });
   const wireText = JSON.stringify(wire);
-  assert.equal(wire.n[0][0], 'n_lab');
-  assert.equal(wire.n[0][1], '實驗尺');
-  assert.equal(wire.n[0][2], '尺.pdf');
+  assert.deepEqual(Array.from(wire.n[0]), ['n_lab', '實驗尺']);
+  assert.equal(wireText.includes('尺.pdf'), false);
   assert.equal(wireText.includes(driveFile.driveFileId), false);
   assert.equal(wireText.includes('drive.google.com'), false);
   assert.equal(wireText.includes('attachments'), false);
 
   const expanded = context.expandShareWire(wire);
   assert.equal(expanded.notes[0].label, '實驗尺');
-  assert.equal(expanded.notes[0].name, '尺.pdf');
-  assert.equal(expanded.notes[0].driveFileId, undefined);
-  assert.equal(JSON.stringify(expanded.notes).includes(driveFile.driveFileId), false);
+  assert.equal(expanded.notes[0].name, undefined);
+  assert.equal(JSON.stringify(expanded.notes).includes('尺.pdf'), false);
+
+  const legacy = context.expandShareWire({
+    u: 1000,
+    t: [],
+    e: [],
+    n: [['n_old', '', 'secret-file.pdf']]
+  });
+  assert.equal(legacy.notes[0].label, '');
+  assert.equal(legacy.notes[0].name, undefined);
+  assert.equal(JSON.stringify(legacy.notes).includes('secret-file.pdf'), false);
 
   context.VIEW_ONLY = true;
   const viewNote = context.normalizeNoteForSync(added.note);
-  assert.equal(viewNote.name, '尺.pdf');
   assert.equal(viewNote.label, '實驗尺');
+  assert.equal(viewNote.name, undefined);
   assert.equal(JSON.stringify(viewNote).includes(driveFile.driveFileId), false);
+  assert.equal(JSON.stringify(viewNote).includes('尺.pdf'), false);
   context.VIEW_ONLY = false;
 });
 
-test('the locker shows an image thumbnail and share view keeps names only', () => {
-  blankState([]);
-  const added = context.addNoteRecord([], {
+test('tiles show the note name, not the filename, and an empty label stays unnamed', () => {
+  const storedName = '26-27結石避免進食食物.pdf';
+  const existing = context.normalizeNote({
+    id: 'n_old',
+    label: '',
+    name: storedName,
+    mime: 'application/pdf',
+    size: 1200,
+    uploadedAt: 11,
+    store: 'drive',
+    driveFileId: driveFile.driveFileId,
+    createdAt: 10,
+    updatedAt: 10,
+    sortOrder: 1024,
+    orderUpdatedAt: 10
+  });
+  assert.equal(existing.label, '');
+  assert.equal(existing.name, storedName);
+  assert.equal(context.noteDisplayLabel(existing), '未命名');
+  blankState([existing]);
+  context.VIEW_ONLY = false;
+  context.renderNotes();
+  const unnamedHtml = elements.noteList.innerHTML;
+  assert.equal(unnamedHtml.includes('note-tile'), true);
+  assert.equal(unnamedHtml.includes('placeholder="未命名"'), true);
+  assert.equal(unnamedHtml.includes('data-note-name="n_old"'), true);
+  assert.equal(unnamedHtml.includes(storedName), false);
+  assert.equal(unnamedHtml.includes('標籤'), false);
+
+  const renamed = context.renameNoteRecord([existing], 'n_old', '  結石食物  ', 50);
+  assert.equal(renamed.ok, true);
+  assert.equal(renamed.note.label, '結石食物');
+  assert.equal(renamed.note.name, storedName);
+  assert.equal(renamed.note.sortOrder, 1024);
+  assert.equal(renamed.note.orderUpdatedAt, 10);
+  assert.equal(context.renameNoteRecord([renamed.note], 'n_old', '   ', 60).ok, false);
+  context.state.notes = renamed.notes;
+  context.renderNotes();
+  const namedHtml = elements.noteList.innerHTML;
+  assert.equal(namedHtml.includes('結石食物'), true);
+  assert.equal(namedHtml.includes('改名'), true);
+  assert.equal(namedHtml.includes('刪除'), true);
+  assert.equal(namedHtml.includes(storedName), false);
+  assert.equal(namedHtml.includes('未命名'), false);
+  assert.equal(namedHtml.includes('http'), false);
+
+  const picture = context.addNoteRecord([], {
     id: 'n_pic',
     label: '課堂相',
     name: '課堂.jpg',
@@ -358,30 +439,97 @@ test('the locker shows an image thumbnail and share view keeps names only', () =
     store: 'drive',
     driveFileId: driveFile.driveFileId
   }, 1000);
-  context.state.notes = added.notes;
-  context.VIEW_ONLY = false;
+  context.state.notes = picture.notes;
   context.renderNotes();
   const ownerHtml = elements.noteList.innerHTML;
   assert.equal(ownerHtml.includes('event-thumb'), true);
   assert.equal(ownerHtml.includes('data-note-open="n_pic"'), true);
   assert.equal(ownerHtml.includes('課堂相'), true);
-  assert.equal(ownerHtml.includes('刪除'), true);
-  assert.equal(ownerHtml.includes('標籤（可留空）'), true);
+  assert.equal(ownerHtml.includes('課堂.jpg'), false);
   assert.equal(ownerHtml.includes(driveFile.driveFileId), false);
-  assert.equal(ownerHtml.includes('drive.google.com'), false);
-  assert.equal(ownerHtml.includes('http'), false);
 
   context.VIEW_ONLY = true;
   context.renderNotes();
   const viewHtml = elements.noteList.innerHTML;
   assert.equal(viewHtml.includes('課堂相'), true);
-  assert.equal(viewHtml.includes('課堂.jpg'), true);
-  assert.equal(viewHtml.includes('event-thumb-placeholder'), true);
+  assert.equal(viewHtml.includes('課堂.jpg'), false);
   assert.equal(viewHtml.includes('<button'), false);
+  assert.equal(viewHtml.includes('data-note-open'), false);
   assert.equal(viewHtml.includes('刪除'), false);
   assert.equal(viewHtml.includes('上載'), false);
+  assert.equal(viewHtml.includes('改名'), false);
   assert.equal(viewHtml.includes(driveFile.driveFileId), false);
   assert.equal(viewHtml.includes('http'), false);
-  assert.equal(elements.notesHint.textContent, '只顯示標籤同檔名。');
+  assert.equal(elements.notesHint.textContent, '只顯示 Note 名。');
   context.VIEW_ONLY = false;
+});
+
+test('reorder stamps sortOrder and a newer stamp wins over a newer rename', () => {
+  blankState([]);
+  const first = context.addNoteRecord([], {
+    id: 'n_a',
+    label: '甲',
+    name: '甲.pdf',
+    mime: 'application/pdf',
+    size: 100,
+    uploadedAt: 11,
+    store: 'drive',
+    driveFileId: '1AAAAAAAAAAAAAAA111'
+  }, 1000);
+  const second = context.addNoteRecord(first.notes, {
+    id: 'n_b',
+    label: '乙',
+    name: '乙.pdf',
+    mime: 'application/pdf',
+    size: 100,
+    uploadedAt: 12,
+    store: 'drive',
+    driveFileId: '1BBBBBBBBBBBBBB222'
+  }, 2000);
+  assert.deepEqual(Array.from(second.notes.map(function (note) { return note.id; })), ['n_b', 'n_a']);
+  const moved = context.moveNotesInOrder(second.notes, 'n_a', 'n_b', 9000);
+  assert.equal(moved.changed, true);
+  assert.deepEqual(Array.from(moved.arr.map(function (note) { return note.id; })), ['n_a', 'n_b']);
+  assert.equal(moved.arr[0].orderUpdatedAt, 9000);
+  assert.equal(moved.arr[1].orderUpdatedAt, 9000);
+  assert.ok(moved.arr[0].sortOrder < moved.arr[1].sortOrder);
+  context.state.notes = moved.arr;
+  const doc = context.buildFirebaseSyncDoc();
+  assert.deepEqual(Array.from(doc.notes.map(function (note) { return note.id; })), ['n_a', 'n_b']);
+  assert.equal(doc.notes[0].orderUpdatedAt, 9000);
+  assert.equal(doc.notes[0].name, '甲.pdf');
+
+  const remote = doc.notes.map(function (note) { return Object.assign({}, note); });
+  remote[0] = Object.assign({}, remote[0], {
+    label: '甲改',
+    updatedAt: 12000,
+    sortOrder: 8000,
+    orderUpdatedAt: 1000
+  });
+  remote[1] = Object.assign({}, remote[1], { sortOrder: 1000, orderUpdatedAt: 1000 });
+  const merged = context.mergeNotesPreferNewer(doc.notes, remote, [], {
+    allowAdds: true,
+    preferRemoteOrder: true
+  });
+  const byId = new Map(merged.arr.map(function (note) { return [note.id, note]; }));
+  assert.equal(byId.get('n_a').label, '甲改');
+  assert.equal(byId.get('n_a').name, '甲.pdf');
+  assert.equal(byId.get('n_a').orderUpdatedAt, 9000);
+  assert.ok(byId.get('n_a').sortOrder < byId.get('n_b').sortOrder);
+  assert.deepEqual(Array.from(merged.arr.map(function (note) { return note.id; })), ['n_a', 'n_b']);
+
+  const stale = moved.arr.map(function (note, i) {
+    return Object.assign({}, note, {
+      sortOrder: (moved.arr.length - i) * 1024,
+      orderUpdatedAt: 1000
+    });
+  });
+  context.state.notes = moved.arr;
+  const changed = context.applyRemoteNotes({ notes: stale, updatedAt: 20000 }, {
+    authoritative: true,
+    unionLists: true,
+    allowAdds: true
+  });
+  assert.equal(changed, false);
+  assert.deepEqual(Array.from(context.state.notes.map(function (note) { return note.id; })), ['n_a', 'n_b']);
 });

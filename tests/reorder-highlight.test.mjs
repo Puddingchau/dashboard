@@ -29,11 +29,12 @@ for (const [name, html] of [['index', indexHtml], ['dashboard', dashHtml]]) {
     assert.doesNotMatch(themeBlock(html, 'body.theme-rain-cafe {'), /#8EBEFF/);
   });
 
-  test(name + ' hold class paints todos, events, shortcuts, and bus rows', () => {
+  test(name + ' hold class paints todos, events, shortcuts, bus rows, and note tiles', () => {
     assert.match(html, /body \.todo-item\.todo-draggable\.reorder-hold/);
     assert.match(html, /body \.event-item\.event-draggable\.reorder-hold/);
     assert.match(html, /body \.sc-item\.reorder-hold/);
     assert.match(html, /body \.bus-card\.reorder-hold/);
+    assert.match(html, /body \.note-tile\.note-draggable\.reorder-hold/);
     assert.match(html, /background-color:\s*var\(--drag-active-bg,\s*#F6C453\)\s*!important/);
     assert.match(html, /function beginReorderHold/);
     assert.match(html, /function endReorderHold/);
