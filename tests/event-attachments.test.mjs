@@ -316,6 +316,42 @@ test('event cards use a button for the filename and share view shows text only',
   context.VIEW_ONLY = false;
 });
 
+test('image attachments render a thumbnail and share view stays non-clickable', () => {
+  context.VIEW_ONLY = false;
+  const image = {
+    id: 'a_img',
+    name: '通告.jpg',
+    mime: 'image/jpeg',
+    size: 1200,
+    uploadedAt: 12,
+    store: 'drive',
+    driveFileId: '1ImgFileIdForThumb99'
+  };
+  const html = context.eventAttachmentCardHtml({ attachments: [image, driveGood] });
+  assert.match(html, /class="event-thumb"/);
+  assert.match(html, /data-attachment="a_img"/);
+  assert.match(html, /開啟圖片/);
+  assert.match(html, /data-attachment="a_9"/);
+  assert.match(html, /通告\.pdf/);
+  assert.equal(html.includes('href='), false);
+  assert.equal(html.includes('http'), false);
+  assert.equal(html.includes(image.driveFileId), false);
+  assert.equal(html.includes(driveGood.driveFileId), false);
+  context.VIEW_ONLY = true;
+  const share = context.eventAttachmentCardHtml({ attachments: [image] });
+  assert.match(share, /event-thumb-placeholder/);
+  assert.match(share, /event-file-name/);
+  assert.match(share, /通告\.jpg/);
+  assert.equal(share.includes('<button'), false);
+  assert.equal(share.includes('href='), false);
+  assert.equal(share.includes(image.driveFileId), false);
+  assert.equal(share.includes('http'), false);
+  context.VIEW_ONLY = false;
+  const preview = indexHtml.slice(indexHtml.indexOf('function loadAttachmentPreview'), indexHtml.indexOf('function paintAttachmentThumb'));
+  assert.match(preview, /alt=media/);
+  assert.doesNotMatch(preview, /requestDriveAttachToken/);
+});
+
 test('an event keeps at most five attachments', () => {
   const list = [];
   for (let i = 0; i < 8; i++) {
