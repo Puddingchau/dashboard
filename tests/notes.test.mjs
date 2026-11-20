@@ -71,6 +71,11 @@ test('both pages share the Notes feature and leave sync limits alone', () => {
   assert.match(notesBlock, /openEventAttachment\(/);
   assert.match(notesBlock, /class="note-tile-face event-thumb"/);
   assert.match(notesBlock, /refreshOpenAttachmentThumbs\(/);
+  assert.match(notesBlock, /data-note-rename=/);
+  assert.match(extractFn(indexHtml, 'noteTileHtml'), /class="note-tile-name notes-owner-only"/);
+  assert.match(extractFn(indexHtml, 'onNoteListClick'), /closest\('\[data-note-rename\]'\)/);
+  assert.match(extractFn(indexHtml, 'onNoteListClick'), /beginNoteRename\(/);
+  assert.doesNotMatch(notesBlock, /note-tile-rename|>改名</);
   assert.doesNotMatch(notesBlock, /標籤（可留空）|會用檔名|note-file-meta/);
   assert.doesNotMatch(notesBlock, /標題必填|備註（選填）|新增筆記/);
   assert.doesNotMatch(notesBlock, /anyoneWithLink|firebase\.storage|uploadBytes|initTokenClient|prompt:\s*'none'|ENABLE_DRIVE_SYNC/);
@@ -80,6 +85,8 @@ test('both pages share the Notes feature and leave sync limits alone', () => {
   for (const page of [indexHtml, dashHtml]) {
     assert.match(page, /class="note-grid" id="noteList"/);
     assert.match(page, /body \.note-tile\.note-draggable\.reorder-hold/);
+    assert.match(page, /\.note-tile-caption button\.note-tile-name \{[^}]*cursor:\s*pointer;/);
+    assert.doesNotMatch(page, /note-tile-rename/);
     assert.doesNotMatch(between(page, 'id="notesHint"', '</p>'), /檔名/);
   }
   const deleteNote = extractFn(indexHtml, 'deleteNoteById');
@@ -423,7 +430,10 @@ test('tiles show the note name, not the filename, and an empty label stays unnam
   context.renderNotes();
   const namedHtml = elements.noteList.innerHTML;
   assert.equal(namedHtml.includes('結石食物'), true);
-  assert.equal(namedHtml.includes('改名'), true);
+  assert.equal(namedHtml.includes('改名'), false);
+  assert.equal(namedHtml.includes('note-tile-rename'), false);
+  assert.match(namedHtml, /<button type="button" class="note-tile-name[^"]*" draggable="false" data-note-rename="n_old"[^>]*>結石食物<\/button>/);
+  assert.match(namedHtml, /data-note-del="n_old"[^>]*>刪除<\/button>/);
   assert.equal(namedHtml.includes('刪除'), true);
   assert.equal(namedHtml.includes(storedName), false);
   assert.equal(namedHtml.includes('未命名'), false);
@@ -461,7 +471,88 @@ test('tiles show the note name, not the filename, and an empty label stays unnam
   assert.equal(viewHtml.includes(driveFile.driveFileId), false);
   assert.equal(viewHtml.includes('http'), false);
   assert.equal(elements.notesHint.textContent, '只顯示 Note 名。');
+  assert.equal(viewHtml.includes('data-note-rename'), false);
   context.VIEW_ONLY = false;
+});
+
+test('tapping the note label starts rename and the tile has no 改名 control', () => {
+  const storedName = '26-27結石避免進食食物.pdf';
+  const existing = context.normalizeNote({
+    id: 'n_label',
+    label: '結石食物',
+    name: storedName,
+    mime: 'application/pdf',
+    size: 1200,
+    uploadedAt: 11,
+    store: 'drive',
+    driveFileId: driveFile.driveFileId,
+    createdAt: 10,
+    updatedAt: 10,
+    sortOrder: 1024,
+    orderUpdatedAt: 10
+  });
+  blankState([existing]);
+  context.renderNotes();
+  const html = elements.noteList.innerHTML;
+  assert.equal(html.includes('改名'), false);
+  assert.equal(html.includes('note-tile-rename'), false);
+  assert.match(html, /data-note-rename="n_label"/);
+  assert.match(html, />結石食物<\/button>/);
+  assert.match(html, /data-note-del="n_label"/);
+  assert.match(html, />刪除</);
+  assert.equal((html.match(/<button/g) || []).length, 2);
+
+  const label = {
+    getAttribute(name) {
+      return name === 'data-note-rename' ? 'n_label' : null;
+    },
+    closest(sel) {
+      return sel === '[data-note-rename]' ? label : null;
+    }
+  };
+  context.onNoteListClick({ target: label });
+  const editing = elements.noteList.innerHTML;
+  assert.match(editing, /data-note-name="n_label"/);
+  assert.match(editing, /value="結石食物"/);
+  assert.equal(editing.includes('改名'), false);
+  assert.equal(editing.includes('data-note-rename'), false);
+  assert.equal(editing.includes('>結石食物</button>'), false);
+  assert.match(editing, />刪除</);
+
+  context.commitNoteNameInput({
+    value: '   ',
+    getAttribute(name) { return name === 'data-note-name' ? 'n_label' : null; }
+  });
+  assert.equal(context.state.notes[0].label, '結石食物');
+  assert.equal(context.state.notes[0].name, storedName);
+  assert.equal(context.state.notes[0].updatedAt, 10);
+  assert.equal(elements.noteList.innerHTML.includes('改名'), false);
+  assert.match(elements.noteList.innerHTML, /data-note-rename="n_label"/);
+  assert.match(elements.noteList.innerHTML, />結石食物<\/button>/);
+
+  context.onNoteListClick({ target: label });
+  assert.match(elements.noteList.innerHTML, /data-note-name="n_label"/);
+  context.commitNoteNameInput({
+    value: '  結石食物表  ',
+    getAttribute(name) { return name === 'data-note-name' ? 'n_label' : null; }
+  });
+  assert.equal(context.state.notes[0].label, '結石食物表');
+  assert.equal(context.state.notes[0].name, storedName);
+  assert.equal(context.state.notes[0].sortOrder, 1024);
+  assert.equal(context.state.notes[0].orderUpdatedAt, 10);
+  assert.ok(context.state.notes[0].updatedAt > 10);
+  const renamed = elements.noteList.innerHTML;
+  assert.match(renamed, />結石食物表<\/button>/);
+  assert.equal(renamed.includes('改名'), false);
+  assert.match(renamed, /data-note-rename="n_label"/);
+  assert.match(renamed, />刪除</);
+  const doc = context.buildFirebaseSyncDoc();
+  assert.equal(doc.notes[0].id, 'n_label');
+  assert.equal(doc.notes[0].label, '結石食物表');
+  assert.equal(doc.notes[0].name, storedName);
+  assert.equal(doc.notes[0].updatedAt, context.state.notes[0].updatedAt);
+  assert.equal(doc.notes[0].sortOrder, 1024);
+  assert.equal(doc.notes[0].orderUpdatedAt, 10);
 });
 
 test('reorder stamps sortOrder and a newer stamp wins over a newer rename', () => {

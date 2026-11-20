@@ -3176,6 +3176,37 @@
       background: none;
       padding: 0;
     }
+    .note-tile-caption.note-tile-caption-name { padding: 0; }
+    .note-tile-caption button.note-tile-name {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: 6px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      text-decoration-line: underline;
+      text-decoration-style: dotted;
+      text-underline-offset: 3px;
+    }
+    .note-tile-caption button.note-tile-name:hover,
+    .note-tile-caption button.note-tile-name:focus-visible {
+      text-decoration-style: solid;
+      background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+    }
+    .note-tile-caption button.note-tile-name:focus-visible {
+      outline: 2px solid var(--accent-primary);
+      outline-offset: -2px;
+    }
     .note-tile > .note-tile-name {
       padding: 8px;
     }
@@ -3196,7 +3227,6 @@
       font-weight: 800;
       opacity: 1;
     }
-    .note-tile-rename,
     .note-tile-del {
       appearance: none;
       -webkit-appearance: none;
@@ -3211,7 +3241,6 @@
       padding: 5px 7px;
       cursor: pointer;
     }
-    .note-tile-rename { flex: 0 0 auto; }
     .note-tile-del {
       position: absolute;
       top: 6px;
@@ -7713,9 +7742,8 @@ function noteTileHtml(note) {
       '<input type="text" class="note-tile-name-input' + (named ? '' : ' is-required') + '" maxlength="' + NOTE_LABEL_MAX + '" required data-note-name="' + id + '" value="' + escapeHtml(note.label || '') + '" placeholder="未命名" aria-label="Note 名" aria-required="true"' + (named ? '' : ' aria-invalid="true"') + ' />' +
     '</label>';
   } else {
-    caption = '<div class="note-tile-caption">' +
-      '<p class="note-tile-name" title="' + escapeHtml(note.label) + '">' + escapeHtml(note.label) + '</p>' +
-      '<button type="button" class="note-tile-rename notes-owner-only" data-note-rename="' + id + '" aria-label="修改名稱">改名</button>' +
+    caption = '<div class="note-tile-caption note-tile-caption-name">' +
+      '<button type="button" class="note-tile-name notes-owner-only" draggable="false" data-note-rename="' + id + '" title="' + escapeHtml(note.label) + '" aria-label="編輯名稱：' + escapeHtml(note.label) + '">' + escapeHtml(note.label) + '</button>' +
     '</div>';
   }
   const del = viewOnly ? '' :
@@ -8751,7 +8779,7 @@ let longPressTimer = null;
 
 function reorderGestureBlocked(target) {
   if (!target || !target.closest) return true;
-  return !!target.closest('.todo-check, [data-edit], [data-del], .bus-del, .sc-edit-btn, .event-file, .event-files, [data-note-name], [data-note-rename], [data-note-del], .note-tile-name-input, .note-tile-rename, .note-tile-del');
+  return !!target.closest('.todo-check, [data-edit], [data-del], .bus-del, .sc-edit-btn, .event-file, .event-files, [data-note-name], [data-note-rename], [data-note-del], .note-tile-name-input, .note-tile-del');
 }
 
 function beginReorderHold(el, target) {
