@@ -1818,13 +1818,19 @@
       justify-self: stretch;
     }
 
-    /* Mobile / narrow: todos → events → calendar → shortcuts → training+bus */
+    /* Mobile / narrow: todos → events → calendar → notes → shortcuts → training → bus.
+       Wider layouts keep Notes inside the left column with 培訓 and 巴士.
+       display:contents only on this breakpoint so those three can be ordered
+       around 捷徑 without moving them in the DOM. */
     @media (max-width: 639px) {
       #todos { grid-row: 1; order: 1; }
       #events { grid-row: 2; order: 2; }
       #calendar { grid-row: 3; order: 3; }
-      #shortcuts { grid-row: 4; order: 4; }
-      #leftStack { grid-row: 5; order: 5; }
+      #leftStack { display: contents; }
+      #notes { grid-row: 4; order: 4; }
+      #shortcuts { grid-row: 5; order: 5; }
+      #training { grid-row: 6; order: 6; }
+      #bus { grid-row: 7; order: 7; }
       /* 捷徑冷啟動收起；點標題才展開。唔寫入本機狀態。 */
       #shortcuts:not(.is-open) {
         align-self: start;
