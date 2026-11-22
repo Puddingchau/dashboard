@@ -2762,6 +2762,40 @@
     .todo-item.done .todo-num {
       display: none;
     }
+    /* Colour follows the visible rank in the list on screen: 1–2 red, 3–5 blue, 6+ green.
+       Badge plus a thin rail — the card, date chip, and edit/delete stay as they are. */
+    .todo-item.prio-high,
+    .todo-item.prio-mid,
+    .todo-item.prio-low {
+      position: relative;
+    }
+    .todo-item.prio-high::before,
+    .todo-item.prio-mid::before,
+    .todo-item.prio-low::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+    .todo-item.prio-high::before { background: #B91C1C; }
+    .todo-item.prio-mid::before { background: #1D4ED8; }
+    .todo-item.prio-low::before { background: #166534; }
+    .todo-item.prio-high .todo-num {
+      background: #B91C1C;
+      color: #fff;
+    }
+    .todo-item.prio-mid .todo-num {
+      background: #1D4ED8;
+      color: #fff;
+    }
+    .todo-item.prio-low .todo-num {
+      background: #166534;
+      color: #fff;
+    }
     .todo-body { flex: 1; min-width: 0; }
     .todo-title {
       font-weight: 600;
@@ -10181,6 +10215,15 @@ function openTodoEditModal(editId) {
   };
 }
 
+/** On-screen rank colour. 1–2 red, 3–5 blue, 6+ green. Not a stored field. */
+function todoRankPriorityClass(ord) {
+  const n = Number(ord) || 0;
+  if (n < 1) return '';
+  if (n <= 2) return 'prio-high';
+  if (n <= 5) return 'prio-mid';
+  return 'prio-low';
+}
+
 function renderTodos() {
   applySessionViewFilters();
   const list = document.getElementById('todoList');
@@ -10204,11 +10247,12 @@ function renderTodos() {
     const dd = todoDayOffset(t);
     const dragCls = (VIEW_ONLY || t.done) ? '' : ' todo-draggable';
     const ord = t.done ? 0 : (++openOrd);
+    const prioCls = todoRankPriorityClass(ord);
     const numHtml = t.done
       ? ''
       : '<span class="todo-num" aria-label="次序 ' + ord + '">' + ord + '</span>';
     return (
-      '<div class="todo-item' + (t.done ? ' done' : '') + dragCls + '" data-id="' + escapeHtml(t.id) + '">' +
+      '<div class="todo-item' + (t.done ? ' done' : '') + dragCls + (prioCls ? ' ' + prioCls : '') + '" data-id="' + escapeHtml(t.id) + '">' +
         numHtml +
         '<input type="checkbox" class="todo-check" ' + (t.done ? 'checked' : '') + (VIEW_ONLY ? ' disabled' : '') + ' aria-label="完成" />' +
         '<div class="todo-body">' +
