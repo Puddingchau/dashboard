@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>神眼刻度精靈：破解非零陷阱</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              yellow: '#FBBF24',
+              warmBg: '#FFFBEB',
+              blue: '#0EA5E9',
+              darkBlue: '#0369A1',
+              orange: '#F97316',
+              rose: '#FB7185',
+              dark: '#1E293B'
+            }
+          },
+          fontFamily: {
+            sans: ['"Noto Sans TC"', '"PingFang HK"', '"PingFang TC"', '"Microsoft JhengHei"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar & Utility Animations */
+    body {
+      background-color: #0f172a;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #0ea5e9;
+      border-radius: 999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    /* Idle float animation */
+    @keyframes floatBreath {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-6px) rotate(1deg); }
+    }
+    .animate-breath {
+      animation: floatBreath 3s ease-in-out infinite;
+    }
+
+    /* Attack dash */
+    @keyframes heroAttack {
+      0% { transform: translateX(0) scale(1); }
+      40% { transform: translateX(40px) scale(1.15) rotate(5deg); }
+      100% { transform: translateX(0) scale(1); }
+    }
+    .animate-attack {
+      animation: heroAttack 0.45s ease-out;
+    }
+
+    /* Monster Hurt Shake */
+    @keyframes monsterHurt {
+      0%, 100% { transform: translateX(0); filter: drop-shadow(0 0 0 transparent); }
+      20% { transform: translateX(-12px) rotate(-4deg); filter: drop-shadow(0 0 12px #ef4444); }
+      40% { transform: translateX(12px) rotate(4deg); filter: drop-shadow(0 0 18px #ef4444); }
+      60% { transform: translateX(-8px); filter: drop-shadow(0 0 12px #ef4444); }
+      80% { transform: translateX(8px); }
+    }
+    .animate-hurt {
+      animation: monsterHurt 0.5s ease-in-out;
+    }
+
+    /* Hero Hurt Shake */
+    @keyframes heroHurt {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      20% { transform: translateX(-8px) rotate(-5deg); }
+      40% { transform: translateX(8px) rotate(5deg); }
+      60% { transform: translateX(-4px); }
+    }
+    .animate-hero-hurt {
+      animation: heroHurt 0.5s ease-in-out;
+    }
+
+    /* Pulse Glow */
+    @keyframes goldGlow {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)); }
+      50% { filter: drop-shadow(0 0 20px rgba(251, 191, 36, 1)); }
+    }
+    .animate-gold-glow {
+      animation: goldGlow 2s infinite;
+    }
+
+    /* Smooth Ruler Alignment Shift */
+    .ruler-object-group {
+      transition: transform 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    #screen-game {
+      overflow-y: auto;
+    }
+    #battle-arena {
+      min-height: 0;
+    }
+    button:disabled {
+      cursor: default;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-0 sm:p-4 text-brand-dark font-sans">
+
+  <!-- Mobile View Container (Max 480px) -->
+  <div id="app-container" class="w-full max-w-[480px] min-h-screen sm:min-h-[844px] sm:max-h-[900px] bg-amber-50 relative flex flex-col justify-between overflow-hidden sm:rounded-3xl shadow-2xl border-0 sm:border-4 border-amber-300">
+    
+    <!-- Audio Switch Floating Widget -->
+    <button id="btn-audio-toggle" onclick="toggleAudio()" class="absolute top-3 right-3 z-50 bg-white/80 backdrop-blur border border-amber-300 p-2 rounded-full shadow-md text-amber-700 hover:bg-amber-100 transition active:scale-95" aria-label="切換音效">
+      <svg id="icon-sound-on" class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+      <svg id="icon-sound-off" class="w-6 h-6 fill-current hidden text-gray-400" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+    </button>
+
+    <!-- ========================================== -->
+    <!-- SCREEN 1: 遊戲主頁 (HOME MENU) -->
+    <!-- ========================================== -->
+    <section id="screen-main-menu" class="flex-1 flex flex-col justify-between p-6 text-center z-10 relative">
+      <!-- Title & Subtitle Header -->
+      <div class="mt-6 space-y-2">
+        <div class="inline-block bg-amber-200 text-amber-900 text-xs px-3 py-1 rounded-full font-bold tracking-wider border border-amber-300">
+          小學三年級數學・長度與距離
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-black text-amber-900 drop-shadow-sm leading-tight">
+          神眼刻度精靈<br><span class="text-sky-600">破解非零陷阱</span>
+        </h1>
+        <p class="text-xs sm:text-sm text-amber-800 font-semibold max-w-[320px] mx-auto">
+          看破零點視覺陷阱，讓尺尺獸進化成黃金度量王！
+        </p>
+      </div>
+
+      <!-- Hero Character Animated Display -->
+      <div class="my-auto py-4 relative flex flex-col items-center justify-center">
+        <!-- Background Radiant Halo -->
+        <div class="absolute w-60 h-60 bg-gradient-to-tr from-amber-200 to-sky-200 rounded-full blur-2xl opacity-70 -z-10 animate-pulse"></div>
+        <div id="hero-svg-container-menu" class="w-48 h-48 animate-breath">
+          <!-- Render Hero Stage 1 SVG -->
+        </div>
+        <div class="mt-2 bg-white/90 border border-amber-300 px-4 py-1.5 rounded-full shadow-sm text-xs font-bold text-amber-900 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          初階形態：尺尺獸
+        </div>
+      </div>
+
+      <!-- Action Buttons (Height >= 52px) -->
+      <div class="space-y-3 mb-4">
+        <button onclick="goToIntroScreen()" class="w-full h-14 bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-xl rounded-2xl shadow-lg shadow-orange-500/30 hover:brightness-105 active:scale-95 transition flex items-center justify-center gap-2 border-b-4 border-orange-600">
+          <span>開始冒險</span>
+          <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+
+        <button onclick="openLeaderboardModal()" class="w-full h-13 py-3 bg-white text-sky-700 font-bold text-base rounded-2xl border-2 border-sky-300 shadow-sm hover:bg-sky-50 active:scale-95 transition flex items-center justify-center gap-2">
+          <svg class="w-5 h-5 fill-current text-amber-500" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span>查看龍虎榜</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SCREEN 2: 遊戲介紹頁 (GAME INTRO) -->
+    <!-- ========================================== -->
+    <section id="screen-intro" class="hidden flex-1 flex flex-col justify-between p-6 z-10 relative">
+      <div class="mt-4">
+        <h2 class="text-2xl font-black text-amber-900 text-center mb-1">冒險前行準備</h2>
+        <p class="text-xs text-amber-700 text-center mb-4">掌握神眼秘訣，輕鬆破解三大關卡！</p>
+        
+        <!-- Explanation Cards -->
+        <div class="space-y-3">
+          <!-- Card 1 -->
+          <div class="bg-white p-4 rounded-2xl border-2 border-sky-200 shadow-sm flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center text-sky-600 font-black text-lg shrink-0">
+              ①
+            </div>
+            <div>
+              <h3 class="font-bold text-sky-900 text-sm">玩法指引</h3>
+              <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                觀察厘米尺上物件的<span class="text-sky-600 font-bold">「起點」</span>與<span class="text-sky-600 font-bold">「終點」</span>刻度，選出正確答案發動攻擊！遇到難題按 <span class="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">🔍 神眼透視</span> 可開啟彩色輔助線。
+              </p>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="bg-white p-4 rounded-2xl border-2 border-amber-200 shadow-sm flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 font-black text-lg shrink-0">
+              ②
+            </div>
+            <div>
+              <h3 class="font-bold text-amber-900 text-sm">學習目標</h3>
+              <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                學會計算<span class="text-rose-500 font-bold">「終點刻度 − 起點刻度」</span>、準確把厘米 (cm) 化為毫米 (mm)，並找出不同物件的長度相差！
+              </p>
+            </div>
+          </div>
+
+          <!-- Card 3 (Evolution Teaser) -->
+          <div class="bg-gradient-to-r from-amber-100 to-orange-100 p-3.5 rounded-2xl border border-amber-300 text-xs text-amber-900 flex items-center gap-3">
+            <div class="text-2xl">⚡</div>
+            <div class="font-semibold">
+              擊敗第 4 題與第 7 題 Boss，精靈將觸發全螢幕黃金進化並補滿生命值！
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-auto pt-4 space-y-2">
+        <button onclick="startGameAdventure()" class="w-full h-14 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-xl rounded-2xl shadow-lg shadow-teal-500/30 hover:brightness-105 active:scale-95 transition flex items-center justify-center gap-2 border-b-4 border-teal-700">
+          <span>進入第一關</span>
+          <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+        </button>
+        <button onclick="backToMainMenu()" class="w-full py-2 text-xs text-amber-800 font-bold hover:underline">
+          返回主頁
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SCREEN 3: 遊戲戰鬥主畫面 (GAME BATTLE) -->
+    <!-- ========================================== -->
+    <section id="screen-game" class="hidden flex-1 flex flex-col justify-between p-3 sm:p-4 z-10 relative">
+      
+      <!-- Top Status Header Bar -->
+      <div class="bg-white/90 backdrop-blur border border-amber-200 rounded-2xl p-2 shadow-sm flex items-center justify-between text-xs font-bold gap-2">
+        <!-- Stage / Q Progress -->
+        <div class="flex items-center gap-1.5 min-w-0">
+          <button type="button" onclick="pauseGame()" class="shrink-0 bg-white border border-amber-300 text-amber-900 px-2 py-1 rounded-lg font-black text-[11px] shadow-sm hover:bg-amber-100 active:scale-95 transition" aria-label="暫停遊戲">暫停</button>
+          <span id="badge-stage" class="bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full text-[11px] font-black">第1關</span>
+          <span id="label-q-num" class="text-slate-700 truncate">題目 1 / 10</span>
+        </div>
+
+        <!-- Timer & Max Combo -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1 text-slate-600">
+            <svg class="w-4 h-4 text-sky-500 fill-current" viewBox="0 0 24 24"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.962 8.962 0 0012 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+            <span id="timer-text" class="font-mono text-sm">00:00</span>
+          </div>
+          <div class="flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+            <span>🔥</span>
+            <span id="combo-text">0 Combo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RPG Battle Arena (Player vs Monster) — compact so the ruler stays primary -->
+      <div id="battle-arena" class="my-1.5 bg-gradient-to-b from-sky-100/60 to-amber-100/60 border border-sky-200/80 rounded-2xl px-2.5 py-1.5 relative flex items-end justify-between shadow-inner overflow-hidden">
+        
+        <!-- Player Elf Card (Left) -->
+        <div class="flex flex-col items-center w-1/2 pr-1 z-10">
+          <div class="w-full bg-white/80 p-1.5 rounded-xl border border-sky-200 shadow-sm mb-1 text-[11px]">
+            <div class="flex justify-between items-center mb-0.5 font-bold">
+              <span id="hero-name" class="text-sky-900 truncate">尺尺獸</span>
+              <span id="hero-stage-tag" class="text-[9px] bg-sky-100 text-sky-700 px-1 rounded">初階</span>
+            </div>
+            <!-- HP Bar -->
+            <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden mb-1">
+              <div id="hero-hp-bar" class="bg-emerald-500 h-full w-full transition-all duration-300"></div>
+            </div>
+            <!-- EXP Bar -->
+            <div class="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+              <div id="hero-exp-bar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
+            </div>
+          </div>
+          <!-- Hero SVG Container -->
+          <div id="battle-hero-svg" class="w-16 h-16 sm:w-20 sm:h-20 animate-breath transition-all"></div>
+        </div>
+
+        <!-- Attack Beam FX overlay -->
+        <div id="attack-fx" class="absolute top-1/2 left-1/4 w-0 h-3 bg-gradient-to-r from-amber-300 via-sky-400 to-white rounded-full opacity-0 pointer-events-none z-20 transition-all duration-300"></div>
+
+        <!-- Monster Card (Right) -->
+        <div class="flex flex-col items-center w-1/2 pl-1 z-10">
+          <div class="w-full bg-white/80 p-1.5 rounded-xl border border-rose-200 shadow-sm mb-1 text-[11px]">
+            <div class="flex justify-between items-center mb-0.5 font-bold">
+              <span id="monster-name" class="text-rose-900 truncate">迷糊小尺怪</span>
+              <span id="boss-crown" class="hidden text-amber-500">👑 Boss</span>
+            </div>
+            <!-- Monster HP Bar -->
+            <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+              <div id="monster-hp-bar" class="bg-rose-500 h-full w-full transition-all duration-300"></div>
+            </div>
+          </div>
+          <!-- Monster SVG Container -->
+          <div id="battle-monster-svg" class="w-16 h-16 sm:w-20 sm:h-20 transition-all"></div>
+        </div>
+      </div>
+
+      <!-- Interactive SVG Ruler & Question Display Area -->
+      <div class="bg-white border-2 border-amber-300 rounded-2xl p-3 shadow-md flex flex-col gap-2">
+        
+        <!-- Ruler Controls Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-1 text-xs">
+          <div class="flex items-center gap-1.5 font-bold text-amber-900">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>觀測厘米尺 (0-15 cm)</span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <!-- 3-Stage Zoom Button Group (1x, x2, x4) -->
+            <div class="flex items-center bg-amber-100 p-0.5 rounded-lg border border-amber-300 text-[11px] font-bold">
+              <button onclick="setZoomLevel(1)" id="btn-zoom-1" class="px-2 py-0.5 rounded-md bg-amber-500 text-white shadow-sm transition">1×</button>
+              <button onclick="setZoomLevel(2)" id="btn-zoom-2" class="px-2 py-0.5 rounded-md text-amber-900 hover:bg-amber-200 transition">×2</button>
+              <button onclick="setZoomLevel(4)" id="btn-zoom-4" class="px-2 py-0.5 rounded-md text-amber-900 hover:bg-amber-200 transition">×4</button>
+            </div>
+
+            <!-- Divine Eye Assist Button -->
+            <button onclick="toggleDivineEye()" id="btn-divine-eye" class="bg-gradient-to-r from-sky-500 to-blue-600 text-white px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 text-[11px] shadow-sm hover:brightness-105 active:scale-95 transition">
+              <span>🔍 神眼透視</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SVG Ruler Container (Supports horizontal scroll when zoomed) -->
+        <div id="ruler-viewport" class="w-full bg-amber-50/50 rounded-xl border border-amber-200 overflow-x-auto custom-scrollbar p-1 scroll-smooth">
+          <div id="ruler-svg-wrapper" class="w-full min-w-[340px] transition-all duration-300">
+            <!-- Dynamic SVG Ruler Rendered Here -->
+          </div>
+        </div>
+
+        <!-- Millimetre loupe + per-item tick navigation (classroom reading aid) -->
+        <div id="tick-nav-bar" class="flex flex-col gap-1">
+          <div class="flex items-center justify-between gap-1 flex-wrap">
+            <span class="text-[11px] font-black text-amber-900">毫米放大鏡</span>
+            <div id="loupe-item-tabs" class="flex flex-wrap gap-1"></div>
+          </div>
+          <div id="loupe-jump-buttons" class="flex flex-wrap gap-1"></div>
+          <div id="loupe-panes" class="grid grid-cols-2 gap-1.5"></div>
+        </div>
+
+        <!-- Question Prompt Text -->
+        <div class="bg-amber-100/60 p-2.5 rounded-xl border border-amber-200">
+          <p id="question-text" class="text-sm font-bold text-slate-800 leading-snug">
+            載入題目中...
+          </p>
+        </div>
+
+        <!-- 4 Option Buttons Grid (2x2) -->
+        <div id="options-grid" class="grid grid-cols-2 gap-2 mt-1">
+          <!-- Options rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Dynamic Feedback / Formula Modal Box (In-Screen) -->
+      <div id="feedback-box" class="hidden mt-2 p-3 bg-emerald-50 border-2 border-emerald-400 rounded-2xl shadow-md text-xs text-emerald-950 flex flex-col gap-1.5 animate-fadeIn">
+        <div class="flex items-center justify-between font-black text-sm text-emerald-800">
+          <span id="feedback-title" class="flex items-center gap-1">✨ 答對了！精靈發動長度解析打擊！</span>
+        </div>
+        <p id="feedback-detail" class="text-slate-700 leading-relaxed font-semibold">
+          算式解說...
+        </p>
+        <button id="btn-next-q" onclick="handleNextQuestion()" class="mt-1 w-full py-2.5 bg-emerald-600 text-white font-black text-xs rounded-xl shadow hover:bg-emerald-700 active:scale-95 transition flex items-center justify-center gap-1">
+          <span>繼續前進 / 下一題</span>
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-8.29-1.42 1.42L16.86 11H5v2z"/></svg>
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- OVERLAY 1: 全螢幕進化動畫 (EVOLUTION OVERLAY) -->
+    <!-- ========================================== -->
+    <div id="overlay-evolution" class="hidden fixed inset-0 bg-slate-950/90 z-50 flex flex-col items-center justify-center p-6 text-center">
+      <div class="absolute w-80 h-80 bg-gradient-to-r from-amber-400 via-orange-500 to-yellow-300 rounded-full blur-3xl opacity-50 animate-pulse"></div>
+      <div class="relative z-10 space-y-4">
+        <div class="inline-block bg-amber-400 text-amber-950 px-4 py-1 rounded-full font-black text-xs tracking-widest uppercase animate-bounce">
+          ✦ 光芒全滿・觸發進化 ✦
+        </div>
+        <h2 id="evo-title" class="text-3xl font-black text-amber-300 drop-shadow-md">
+          尺尺獸 進化！
+        </h2>
+        
+        <!-- Dynamic Evolved SVG Display -->
+        <div id="evo-svg-container" class="w-56 h-56 mx-auto animate-gold-glow">
+          <!-- SVG -->
+        </div>
+
+        <p id="evo-name" class="text-2xl font-black text-white tracking-wide">
+          【中階】神眼尺靈
+        </p>
+        <p id="evo-desc" class="text-xs text-amber-200 max-w-[280px] mx-auto leading-relaxed">
+          解鎖「神眼游標翼」，全能力提升並回復滿血 100 HP！
+        </p>
+
+        <button onclick="closeEvolutionOverlay()" class="mt-6 px-8 py-3 bg-gradient-to-r from-amber-400 to-orange-500 text-amber-950 font-black text-base rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition">
+          攜手繼續戰鬥！
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SCREEN 4: 通關戰報卡 & 龍虎榜 (FINAL REPORT) -->
+    <!-- ========================================== -->
+    <section id="screen-report" class="hidden flex-1 flex flex-col justify-between p-5 text-center z-10 relative overflow-y-auto custom-scrollbar">
+      <div class="my-auto space-y-4">
+        <!-- Badge Title -->
+        <div class="inline-block bg-amber-400 text-amber-950 font-black text-xs px-4 py-1 rounded-full shadow">
+          🏆 通關成功・神眼度量大宗師
+        </div>
+        
+        <h2 class="text-2xl font-black text-amber-900">
+          《黃金度量王・神眼戰報卡》
+        </h2>
+
+        <!-- Final Stage SVG Card -->
+        <div class="bg-gradient-to-b from-amber-100 to-white p-4 rounded-3xl border-2 border-amber-300 shadow-md relative overflow-hidden">
+          <div id="report-hero-svg" class="w-40 h-40 mx-auto animate-breath"></div>
+          <h3 id="report-title-rank" class="text-xl font-black text-amber-900 mt-1">
+            神眼無雙度量王
+          </h3>
+          <p class="text-xs text-amber-700 font-bold">終極形態：黃金度量王</p>
+
+          <!-- Stats Grid -->
+          <div class="grid grid-cols-2 gap-2 mt-4 text-left">
+            <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+              <span class="text-[10px] text-slate-500 block font-bold">通關總時間</span>
+              <span id="report-time" class="text-base font-black text-sky-700">00:00</span>
+            </div>
+            <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+              <span class="text-[10px] text-slate-500 block font-bold">最高連勝 Combo</span>
+              <span id="report-combo" class="text-base font-black text-orange-600">10 連勝</span>
+            </div>
+            <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+              <span class="text-[10px] text-slate-500 block font-bold">首次答對率</span>
+              <span id="report-accuracy" class="text-base font-black text-emerald-600">100%</span>
+            </div>
+            <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+              <span class="text-[10px] text-slate-500 block font-bold">獲得戰力積分</span>
+              <span id="report-score" class="text-base font-black text-purple-600">9500 PTS</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaderboard Section inside Report -->
+        <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-left">
+          <div class="flex justify-between items-center mb-2">
+            <h4 class="font-bold text-xs text-slate-800 flex items-center gap-1">
+              <span>🏅 本機神眼龍虎榜</span>
+            </h4>
+            <div class="flex gap-1 text-[10px]">
+              <button onclick="renderLeaderboardTab('speed')" id="btn-tab-speed" class="px-2 py-0.5 rounded bg-sky-500 text-white font-bold">速度榜</button>
+              <button onclick="renderLeaderboardTab('combo')" id="btn-tab-combo" class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">連勝榜</button>
+            </div>
+          </div>
+          <div id="leaderboard-list" class="space-y-1 text-xs max-h-32 overflow-y-auto custom-scrollbar">
+            <!-- Items rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Teacher Screenshot Tip -->
+        <div class="bg-sky-50 border border-sky-200 rounded-xl p-2.5 text-xs text-sky-900 font-bold flex items-center justify-center gap-2">
+          <span>📸</span>
+          <span>可截圖此戰報卡上傳給老師參加班級龍虎榜！</span>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="pt-2">
+        <button onclick="restartGame()" class="w-full h-13 py-3 bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-base rounded-2xl shadow-lg shadow-orange-500/30 hover:brightness-105 active:scale-95 transition">
+          再戰一次刷新紀錄 🔄
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- MODAL: 獨立龍虎榜彈窗 (LEADERBOARD MODAL) -->
+    <!-- ========================================== -->
+    <div id="modal-leaderboard" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-[360px] rounded-3xl p-5 shadow-2xl border-2 border-amber-300 space-y-4">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-black text-lg text-amber-900 flex items-center gap-1.5">
+            <span>🏆 神眼戰報龍虎榜</span>
+          </h3>
+          <button onclick="closeLeaderboardModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+        </div>
+
+        <div class="flex gap-2">
+          <button onclick="renderModalLeaderboard('speed')" id="btn-modal-speed" class="flex-1 py-1.5 rounded-xl font-bold text-xs bg-sky-500 text-white">⏱️ 速度排行榜</button>
+          <button onclick="renderModalLeaderboard('combo')" id="btn-modal-combo" class="flex-1 py-1.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600">🔥 最高連勝榜</button>
+        </div>
+
+        <div id="modal-leaderboard-list" class="space-y-1.5 text-xs max-h-48 overflow-y-auto custom-scrollbar">
+          <!-- List items -->
+        </div>
+
+        <button onclick="closeLeaderboardModal()" class="w-full py-2.5 bg-amber-100 text-amber-900 font-bold text-xs rounded-xl hover:bg-amber-200 transition">
+          關閉
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: 能量補給鼓勵彈窗 (REVIVE MODAL) -->
+    <!-- ========================================== -->
+    <div id="modal-revive" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-[340px] rounded-3xl p-5 shadow-2xl border-2 border-amber-300 text-center space-y-3">
+        <div class="w-14 h-14 mx-auto bg-amber-100 rounded-full flex items-center justify-center text-3xl">💪</div>
+        <h3 class="font-black text-lg text-amber-900">能量耗盡，別灰心！</h3>
+        <p class="text-xs text-slate-600 leading-relaxed font-semibold">
+          精靈為你注入 <span class="text-emerald-600 font-black">60 HP</span> 能量補給，並自動開啟「🔍 神眼透視」彩色輔助線，仔細看看起點與終點刻度再試一次吧！
+        </p>
+        <button onclick="closeReviveModal()" class="w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-sm rounded-2xl shadow hover:brightness-105 active:scale-95 transition">
+          繼續挑戰本題！
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL: 暫停 / 返回主頁 -->
+    <div id="modal-pause" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-[340px] rounded-3xl p-5 shadow-2xl border-2 border-amber-300 text-center space-y-3">
+        <h3 class="font-black text-lg text-amber-900">遊戲已暫停</h3>
+        <p class="text-xs text-slate-600 font-semibold leading-relaxed">計時已暫時停止。返回主頁不會儲存今次成績。</p>
+        <button type="button" onclick="resumeGame()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm rounded-2xl shadow hover:brightness-105 active:scale-95 transition">
+          繼續遊戲
+        </button>
+        <button type="button" onclick="quitToMainMenu()" class="w-full py-2.5 bg-white text-amber-900 font-bold text-sm rounded-2xl border-2 border-amber-300 hover:bg-amber-50 active:scale-95 transition">
+          返回主頁
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT LOGIC & SVG GENERATORS -->
+  <!-- ========================================== -->
+  <script>
+    /* --------------------------------------------------
+       1. WEB AUDIO API SYNTHESIZER
+    -------------------------------------------------- */
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function toggleAudio() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('icon-sound-on').classList.toggle('hidden', !soundEnabled);
+      document.getElementById('icon-sound-off').classList.toggle('hidden', soundEnabled);
+      if (soundEnabled) playSound('click');
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'click') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } else if (type === 'attack') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(900, now + 0.15);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'hurt') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'win') {
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.08);
+          gain.gain.setValueAtTime(0.2, now + i * 0.08);
+          gain.gain.linearRampToValueAtTime(0.01, now + i * 0.08 + 0.15);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + i * 0.08);
+          osc.stop(now + i * 0.08 + 0.15);
+        });
+      } else if (type === 'evolve') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.8);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.8);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.8);
+      }
+    }
+
+    /* --------------------------------------------------
+       2. ORIGINAL SVG CHARACTER & MONSTER GENERATORS
+    -------------------------------------------------- */
+    function getHeroSVG(stage, state = 'normal') {
+      const isAttack = state === 'attack';
+      const isHurt = state === 'hurt';
+
+      // Eye expressions based on battle state
+      let eyesSVG = '';
+      if (isHurt) {
+        eyesSVG = `
+          <path d="M 42 54 L 50 62 M 50 54 L 42 62" stroke="#1E293B" stroke-width="3" stroke-linecap="round"/>
+          <path d="M 70 54 L 78 62 M 78 54 L 70 62" stroke="#1E293B" stroke-width="3" stroke-linecap="round"/>
+        `;
+      } else if (isAttack) {
+        eyesSVG = `
+          <path d="M 40 56 L 52 60 L 40 63 Z" fill="#0EA5E9"/>
+          <path d="M 80 56 L 68 60 L 80 63 Z" fill="#0EA5E9"/>
+        `;
+      } else {
+        eyesSVG = `
+          <circle cx="46" cy="58" r="5.5" fill="#1E293B"/>
+          <circle cx="44" cy="56" r="2" fill="#FFFFFF"/>
+          <circle cx="74" cy="58" r="5.5" fill="#1E293B"/>
+          <circle cx="72" cy="56" r="2" fill="#FFFFFF"/>
+        `;
+      }
+
+      const mouthSVG = isHurt
+        ? `<path d="M 54 71 Q 60 66 66 71" fill="none" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round"/>`
+        : (isAttack
+          ? `<ellipse cx="60" cy="70" rx="6" ry="5" fill="#F43F5E"/>`
+          : `<path d="M 54 68 Q 60 74 66 68" fill="none" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round"/>`);
+
+      if (stage === 1) {
+        // Stage 1: 初階「尺尺獸」
+        return `
+        <svg viewBox="0 0 120 120" class="w-full h-full drop-shadow-md">
+          <!-- Cute Tail with Ruler Ticks -->
+          <path d="M 24 82 Q 8 72 14 56 Q 22 52 28 68" fill="#FBBF24" stroke="#B45309" stroke-width="2.5"/>
+          <line x1="14" y1="64" x2="19" y2="66" stroke="#78350F" stroke-width="2"/>
+          <line x1="16" y1="71" x2="21" y2="72" stroke="#78350F" stroke-width="2"/>
+
+          <!-- Main Chubby Body -->
+          <ellipse cx="60" cy="68" rx="34" ry="32" fill="#FEF08A" stroke="#D97706" stroke-width="3"/>
+          <ellipse cx="60" cy="74" rx="22" ry="18" fill="#FFFFFF" opacity="0.85"/>
+
+          <!-- Ruler Crest on Head -->
+          <rect x="38" y="24" width="44" height="14" rx="4" fill="#38BDF8" stroke="#0369A1" stroke-width="2.5"/>
+          <line x1="46" y1="24" x2="46" y2="31" stroke="#FFFFFF" stroke-width="2"/>
+          <line x1="54" y1="24" x2="54" y2="29" stroke="#FFFFFF" stroke-width="1.5"/>
+          <line x1="60" y1="24" x2="60" y2="33" stroke="#FFFFFF" stroke-width="2"/>
+          <line x1="66" y1="24" x2="66" y2="29" stroke="#FFFFFF" stroke-width="1.5"/>
+          <line x1="74" y1="24" x2="74" y2="31" stroke="#FFFFFF" stroke-width="2"/>
+
+          <!-- Cheeks -->
+          <ellipse cx="37" cy="65" rx="5" ry="3" fill="#FB7185" opacity="0.7"/>
+          <ellipse cx="83" cy="65" rx="5" ry="3" fill="#FB7185" opacity="0.7"/>
+
+          <!-- Eyes & Mouth -->
+          ${eyesSVG}
+          ${mouthSVG}
+
+          <!-- Little Feet -->
+          <ellipse cx="45" cy="99" rx="9" ry="5" fill="#F59E0B" stroke="#B45309" stroke-width="2"/>
+          <ellipse cx="75" cy="99" rx="9" ry="5" fill="#F59E0B" stroke="#B45309" stroke-width="2"/>
+        </svg>`;
+      } else if (stage === 2) {
+        // Stage 2: 中階「神眼尺靈」
+        return `
+        <svg viewBox="0 0 120 120" class="w-full h-full drop-shadow-lg">
+          <!-- Caliper Energy Wings -->
+          <path d="M 32 62 L 6 38 L 16 68 L 8 78 L 34 76 Z" fill="#38BDF8" stroke="#0284C7" stroke-width="2"/>
+          <path d="M 88 62 L 114 38 L 104 68 L 112 78 L 86 76 Z" fill="#38BDF8" stroke="#0284C7" stroke-width="2"/>
+
+          <!-- Flowing Scarf -->
+          <path d="M 35 80 Q 60 92 85 80 L 92 98 Q 60 105 28 98 Z" fill="#F97316" stroke="#C2410C" stroke-width="2"/>
+
+          <!-- Sleek Body -->
+          <ellipse cx="60" cy="66" rx="30" ry="31" fill="#E0F2FE" stroke="#0284C7" stroke-width="3"/>
+          <path d="M 42 74 L 60 88 L 78 74 Z" fill="#FBBF24"/>
+
+          <!-- Divine Eye Forehead Tiara -->
+          <polygon points="34,36 60,18 86,36 78,44 42,44" fill="#FBBF24" stroke="#B45309" stroke-width="2.5"/>
+          <circle cx="60" cy="33" r="6" fill="#0EA5E9" stroke="#FFFFFF" stroke-width="2"/>
+          <circle cx="60" cy="33" r="2.5" fill="#FEF08A"/>
+
+          <!-- Cheeks -->
+          <ellipse cx="38" cy="64" rx="4.5" ry="2.5" fill="#FB7185" opacity="0.75"/>
+          <ellipse cx="82" cy="64" rx="4.5" ry="2.5" fill="#FB7185" opacity="0.75"/>
+
+          ${eyesSVG}
+          ${mouthSVG}
+        </svg>`;
+      } else {
+        // Stage 3: 終極「黃金度量王」
+        return `
+        <svg viewBox="0 0 120 120" class="w-full h-full drop-shadow-xl">
+          <!-- Golden Aura Ring -->
+          <circle cx="60" cy="62" r="48" fill="none" stroke="#FBBF24" stroke-width="2.5" stroke-dasharray="6 4"/>
+
+          <!-- Royal Golden Wings -->
+          <path d="M 30 58 L 4 26 L 18 62 L 6 76 L 34 78 Z" fill="#FBBF24" stroke="#B45309" stroke-width="2"/>
+          <path d="M 90 58 L 116 26 L 102 62 L 114 76 L 86 78 Z" fill="#FBBF24" stroke="#B45309" stroke-width="2"/>
+
+          <!-- Royal Cape -->
+          <path d="M 28 74 L 18 108 L 102 108 L 92 74 Z" fill="#0284C7" stroke="#0369A1" stroke-width="2.5"/>
+
+          <!-- Golden Armor Body -->
+          <ellipse cx="60" cy="66" rx="29" ry="30" fill="#FEF3C7" stroke="#D97706" stroke-width="3"/>
+          <rect x="44" y="75" width="32" height="14" rx="5" fill="#F59E0B" stroke="#B45309" stroke-width="2"/>
+
+          <!-- King's Crown & Divine Gem -->
+          <polygon points="34,38 42,18 52,30 60,14 68,30 78,18 86,38" fill="#FBBF24" stroke="#B45309" stroke-width="2.5"/>
+          <circle cx="60" cy="33" r="5" fill="#EF4444" stroke="#FFFFFF" stroke-width="1.5"/>
+
+          <!-- Golden Measurement Scepter (Right Hand) -->
+          <line x1="98" y1="30" x2="98" y2="104" stroke="#F59E0B" stroke-width="4.5" stroke-linecap="round"/>
+          <circle cx="98" cy="26" r="9" fill="#38BDF8" stroke="#B45309" stroke-width="2.5"/>
+          <circle cx="98" cy="26" r="4" fill="#FEF08A"/>
+
+          ${eyesSVG}
+          ${mouthSVG}
+        </svg>`;
+      }
+    }
+
+    function getMonsterSVG(monsterId, isDefeated = false) {
+      const opacity = isDefeated ? '0.45' : '1';
+      const dizzyOverlay = isDefeated ? `
+        <g>
+          <text x="60" y="22" font-size="16" font-weight="black" fill="#F59E0B" text-anchor="middle">💫 暈倒了！</text>
+          <path d="M 38 52 L 48 62 M 48 52 L 38 62" stroke="#FFF" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M 72 52 L 82 62 M 82 52 L 72 62" stroke="#FFF" stroke-width="3.5" stroke-linecap="round"/>
+        </g>` : '';
+
+      if (monsterId === 'slime_ruler') {
+        return `
+        <svg viewBox="0 0 120 120" class="w-full h-full" style="opacity:${opacity}">
+          <path d="M 22 95 Q 20 42 60 40 Q 100 42 98 95 Z" fill="#A855F7" stroke="#6B21A8" stroke-width="3"/>
+          <polygon points="38,54 52,60 38,64" fill="#FEF08A"/>
+          <polygon points="82,54 68,60 82,64" fill="#FEF08A"/>
+          <path d="M 46 76 Q 60 68 74 76" fill="none" stroke="#3B0764" stroke-width="3" stroke-linecap="round"/>
+          <!-- Bent Trick Ruler -->
+          <rect x="20" y="82" width="80" height="12" rx="3" transform="rotate(-8 60 88)" fill="#FDE047" stroke="#CA8A04" stroke-width="2"/>
+          ${dizzyOverlay}
+        </svg>`;
+      } else if (monsterId === 'general_broken') {
+        return `
+        <svg viewBox="0 0 120 120" class="w-full h-full" style="opacity:${opacity}">
+          <!-- Samurai Helmet & Horns -->
+          <path d="M 24 52 L 10 24 L 38 40 Z" fill="#FBBF24" stroke="#991B1B" stroke-width="2"/>
+          <path d="M 96 52 L 110 24 L 82 40 Z" fill="#FBBF24" stroke="#991B1B" stroke-width="2"/>
+          <rect x="28" y="36" width="64" height="62" rx="14" fill="#DC2626" stroke="#7F1D1D" stroke-width="3"/>
+          <!-- Fierce Eyes -->
+          <polygon points="36,56 54,62 38,67" fill="#FEF08A"/>
+          <polygon points="84,56 66,62 82,67" fill="#FEF08A"/>
+          <rect x="44" y="76" width="32" height="10" rx="2" fill="#1E293B"/>
+          <line x1="52" y1="76" x2="52" y2="86" stroke="#FFF" stroke-width="2"/>
+          <line x1="60" y1="76" x2="60" y2="86" stroke="#FFF" stroke-width="2"/>
+          <line x1="68" y1="76" x2="68" y2="86" stroke="#FFF" stroke-width="2"/>
+          <!-- Broken Ruler Sword -->
+          <polygon points="94,30 108,30 104,68 98,62 92,70" fill="#94A3B8" stroke="#334155" stroke-width="2"/>
+          ${dizzyOverlay}
+        </svg>`;
+      } else if (monsterId === 'phantom_eye') {
+        return `
+        <svg viewBox="0 0 120 120" class="w-full h-full" style="opacity:${opacity}">
+          <path d="M 30 98 Q 24 34 60 30 Q 96 34 90 98 L 76 88 L 60 98 L 44 88 Z" fill="#4F46E5" stroke="#312E81" stroke-width="3"/>
+          <circle cx="46" cy="58" r="10" fill="#FFFFFF"/>
+          <circle cx="46" cy="58" r="4" fill="#EF4444"/>
+          <circle cx="74" cy="58" r="10" fill="#FFFFFF"/>
+          <circle cx="74" cy="58" r="4" fill="#EF4444"/>
+          <ellipse cx="60" cy="76" rx="10" ry="6" fill="#1E1B4B"/>
+          ${dizzyOverlay}
+        </svg>`;
+      } else if (monsterId === 'twin_illusion') {
+        return `
+        <svg viewBox="0 0 120 120" class="w-full h-full" style="opacity:${opacity}">
+          <!-- Twin Heads -->
+          <circle cx="42" cy="58" r="24" fill="#0D9488" stroke="#115E59" stroke-width="3"/>
+          <circle cx="78" cy="58" r="24" fill="#0284C7" stroke="#075985" stroke-width="3"/>
+          <!-- Crown -->
+          <polygon points="36,34 60,16 84,34" fill="#FBBF24" stroke="#B45309" stroke-width="2.5"/>
+          <circle cx="38" cy="56" r="4" fill="#FEF08A"/>
+          <circle cx="82" cy="56" r="4" fill="#FEF08A"/>
+          <path d="M 34 68 Q 42 74 48 68" fill="none" stroke="#FFF" stroke-width="2.5"/>
+          <path d="M 72 68 Q 78 62 86 68" fill="none" stroke="#FFF" stroke-width="2.5"/>
+          ${dizzyOverlay}
+        </svg>`;
+      } else if (monsterId === 'maze_demon') {
+        return `
+        <svg viewBox="0 0 120 120" class="w-full h-full" style="opacity:${opacity}">
+          <polygon points="60,22 98,58 84,98 36,98 22,58" fill="#E11D48" stroke="#881337" stroke-width="3"/>
+          <rect x="38" y="52" width="16" height="10" rx="2" fill="#FEF08A"/>
+          <rect x="66" y="52" width="16" height="10" rx="2" fill="#FEF08A"/>
+          <circle cx="46" cy="57" r="3" fill="#1E293B"/>
+          <circle cx="74" cy="57" r="3" fill="#1E293B"/>
+          <path d="M 44 78 L 52 72 L 60 78 L 68 72 L 76 78" fill="none" stroke="#FEF08A" stroke-width="3"/>
+          ${dizzyOverlay}
+        </svg>`;
+      } else {
+        // Final Boss: chaos_lord
+        return `
+        <svg viewBox="0 0 120 120" class="w-full h-full" style="opacity:${opacity}">
+          <!-- Chaos Ruler Halo -->
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#EF4444" stroke-width="3" stroke-dasharray="8 4"/>
+          <path d="M 20 44 L 8 16 L 38 32 Z" fill="#F59E0B" stroke="#78350F" stroke-width="2"/>
+          <path d="M 100 44 L 112 16 L 82 32 Z" fill="#F59E0B" stroke="#78350F" stroke-width="2"/>
+          <path d="M 26 98 L 26 42 Q 60 24 94 42 L 94 98 Z" fill="#1E293B" stroke="#EF4444" stroke-width="3"/>
+          <!-- Glowing Three Eyes -->
+          <circle cx="60" cy="44" r="5" fill="#FBBF24"/>
+          <polygon points="36,56 54,62 38,68" fill="#EF4444"/>
+          <polygon points="84,56 66,62 82,68" fill="#EF4444"/>
+          <path d="M 42 80 Q 60 70 78 80" fill="none" stroke="#FBBF24" stroke-width="3.5" stroke-linecap="round"/>
+          ${dizzyOverlay}
+        </svg>`;
+      }
+    }
+
+    /* --------------------------------------------------
+       3. 10-QUESTION BANK & GAME STATE CONTROLLER
+    -------------------------------------------------- */
+    const GAME_QUESTIONS = [
+      {
+        stageLabel: '第1關',
+        monsterName: '迷糊小尺怪',
+        monsterId: 'slime_ruler',
+        isBoss: false,
+        items: [
+          { type: 'pencil', label: '鉛筆', startMm: 20, endMm: 90 }
+        ],
+        prompt: '觀察上方的厘米尺圖，這支鉛筆的實際長度是多少？',
+        options: [
+          { label: 'A. 實際長 9 cm', correct: false },
+          { label: 'B. 實際長 7 cm', correct: true },
+          { label: 'C. 實際長 2 cm', correct: false },
+          { label: 'D. 實際長 11 cm', correct: false }
+        ],
+        calc: '鉛筆由 2 cm 量到 9 cm，實際長度是 9 − 2 = 7 cm。'
+      },
+      {
+        stageLabel: '第1關',
+        monsterName: '迷糊小尺怪',
+        monsterId: 'slime_ruler',
+        isBoss: false,
+        items: [
+          { type: 'eraser', label: '擦膠', startMm: 30, endMm: 80 }
+        ],
+        prompt: '這塊擦膠的實際長度是多少 mm？',
+        options: [
+          { label: 'A. 實際長 80 mm', correct: false },
+          { label: 'B. 實際長 30 mm', correct: false },
+          { label: 'C. 實際長 50 mm', correct: true },
+          { label: 'D. 實際長 5 mm', correct: false }
+        ],
+        calc: '擦膠長 8 − 3 = 5 cm；因為 1 cm = 10 mm，所以是 50 mm。'
+      },
+      {
+        stageLabel: '第1關',
+        monsterName: '迷糊小尺怪',
+        monsterId: 'slime_ruler',
+        isBoss: false,
+        items: [
+          { type: 'clip', label: '萬字夾', startMm: 45, endMm: 75 }
+        ],
+        prompt: '這個萬字夾的實際長度是多少 mm？',
+        options: [
+          { label: 'A. 實際長 30 mm', correct: true },
+          { label: 'B. 實際長 75 mm', correct: false },
+          { label: 'C. 實際長 45 mm', correct: false },
+          { label: 'D. 實際長 35 mm', correct: false }
+        ],
+        calc: '萬字夾由 4.5 cm 到 7.5 cm，共有 3 大格（7.5 − 4.5 = 3 cm），即 30 mm。'
+      },
+      {
+        stageLabel: '第1關',
+        monsterName: '斷尺大將軍',
+        monsterId: 'general_broken',
+        isBoss: true,
+        items: [
+          { type: 'key', label: '小鑰匙', startMm: 15, endMm: 52 }
+        ],
+        prompt: '【Boss 戰】這把小鑰匙的實際長度是多少 mm？',
+        options: [
+          { label: 'A. 實際長 52 mm', correct: false },
+          { label: 'B. 實際長 47 mm', correct: false },
+          { label: 'C. 實際長 33 mm', correct: false },
+          { label: 'D. 實際長 37 mm', correct: true }
+        ],
+        calc: '1.5 cm 是 15 mm，5.2 cm 是 52 mm，實際長度是 52 − 15 = 37 mm。'
+      },
+      {
+        stageLabel: '第2關',
+        monsterName: '幻影障眼怪',
+        monsterId: 'phantom_eye',
+        isBoss: false,
+        items: [
+          { type: 'pen_red', label: '紅筆', startMm: 10, endMm: 80 },
+          { type: 'pen_blue', label: '藍筆', startMm: 30, endMm: 90 }
+        ],
+        prompt: '比較紅筆和藍筆，哪一支較長？長多少？',
+        options: [
+          { label: 'A. 藍筆較長，長 1 cm', correct: false },
+          { label: 'B. 紅筆較長，長 1 cm', correct: true },
+          { label: 'C. 紅筆較長，長 2 cm', correct: false },
+          { label: 'D. 藍筆較長，長 2 cm', correct: false }
+        ],
+        calc: '紅筆長 8 − 1 = 7 cm，藍筆長 9 − 3 = 6 cm。紅筆比藍筆長 1 cm。'
+      },
+      {
+        stageLabel: '第2關',
+        monsterName: '幻影障眼怪',
+        monsterId: 'phantom_eye',
+        isBoss: false,
+        items: [
+          { type: 'strip_pink', label: '紙條甲', startMm: 20, endMm: 75 },
+          { type: 'strip_blue', label: '紙條乙', startMm: 50, endMm: 90 }
+        ],
+        prompt: '較長的紙條比另一條長多少 mm？',
+        options: [
+          { label: 'A. 長 15 mm', correct: true },
+          { label: 'B. 長 25 mm', correct: false },
+          { label: 'C. 長 30 mm', correct: false },
+          { label: 'D. 長 20 mm', correct: false }
+        ],
+        calc: '紙條甲長 75 − 20 = 55 mm，紙條乙長 90 − 50 = 40 mm，相差 55 − 40 = 15 mm。'
+      },
+      {
+        stageLabel: '第2關',
+        monsterName: '雙子錯覺王',
+        monsterId: 'twin_illusion',
+        isBoss: true,
+        items: [
+          { type: 'wood_p', label: '木棒 P', startMm: 25, endMm: 83 },
+          { type: 'wood_q', label: '木棒 Q', startMm: 40, endMm: 106 }
+        ],
+        prompt: '【Boss 戰】較長的木棒比另一支長多少 mm？',
+        options: [
+          { label: 'A. 長 23 mm', correct: false },
+          { label: 'B. 長 18 mm', correct: false },
+          { label: 'C. 長 8 mm', correct: true },
+          { label: 'D. 長 12 mm', correct: false }
+        ],
+        calc: '木棒 P 長 83 − 25 = 58 mm，木棒 Q 長 106 − 40 = 66 mm，Q 比 P 長 66 − 58 = 8 mm。'
+      },
+      {
+        stageLabel: '第3關',
+        monsterName: '迷宮幻尺妖',
+        monsterId: 'maze_demon',
+        isBoss: false,
+        items: [
+          { type: 'ribbon_a', label: '絲帶甲', startMm: 10, endMm: 70 },
+          { type: 'ribbon_b', label: '絲帶乙', startMm: 40, endMm: 115 },
+          { type: 'ribbon_c', label: '絲帶丙', startMm: 35, endMm: 90 }
+        ],
+        prompt: '觀察三條絲帶的起點和終點，哪一條最長？哪一條最短？',
+        options: [
+          { label: 'A. 絲帶乙最長，絲帶甲最短', correct: false },
+          { label: 'B. 絲帶丙最長，絲帶甲最短', correct: false },
+          { label: 'C. 絲帶甲最長，絲帶丙最短', correct: false },
+          { label: 'D. 絲帶乙最長，絲帶丙最短', correct: true }
+        ],
+        calc: '甲長 60 mm，乙長 75 mm（最長），丙長 55 mm（最短）。'
+      },
+      {
+        stageLabel: '第3關',
+        monsterName: '迷宮幻尺妖',
+        monsterId: 'maze_demon',
+        isBoss: false,
+        items: [
+          { type: 'flag_a', label: '小旗 A', startMm: 30, endMm: 94 },
+          { type: 'flag_b', label: '小旗 B', startMm: 15, endMm: 85 },
+          { type: 'flag_c', label: '小旗 C', startMm: 50, endMm: 108 }
+        ],
+        prompt: '最長的小旗比最短的小旗長多少 mm？',
+        options: [
+          { label: 'A. 長 14 mm', correct: false },
+          { label: 'B. 長 12 mm', correct: true },
+          { label: 'C. 長 6 mm', correct: false },
+          { label: 'D. 長 23 mm', correct: false }
+        ],
+        calc: 'A 長 64 mm，B 長 70 mm（最長），C 長 58 mm（最短）。最長比最短長 70 − 58 = 12 mm。'
+      },
+      {
+        stageLabel: '第3關',
+        monsterName: '混沌尺界大魔王',
+        monsterId: 'chaos_lord',
+        isBoss: true,
+        items: [
+          { type: 'fork_a', label: '膠叉 A', startMm: 45, endMm: 117 },
+          { type: 'fork_b', label: '膠叉 B', startMm: 20, endMm: 105 },
+          { type: 'fork_c', label: '膠叉 C', startMm: 45, endMm: 113 }
+        ],
+        prompt: '【最終決戰】最長的膠叉比最短的膠叉長多少 mm？',
+        options: [
+          { label: 'A. 長 12 mm', correct: false },
+          { label: 'B. 長 4 mm', correct: false },
+          { label: 'C. 長 17 mm', correct: true },
+          { label: 'D. 長 18 mm', correct: false }
+        ],
+        calc: '膠叉 A 長 117 − 45 = 72 mm，膠叉 B 長 105 − 20 = 85 mm（最長），膠叉 C 長 113 − 45 = 68 mm（最短）。最長比最短長 85 − 68 = 17 mm！'
+      }
+    ];
+
+    let currentQIndex = 0;
+    let heroStage = 1;
+    let heroHP = 100;
+    let monsterHP = 100;
+    let comboCount = 0;
+    let maxCombo = 0;
+    let firstTryCorrectCount = 0;
+    let questionAttempted = false;
+    let timerSeconds = 0;
+    let timerInterval = null;
+    let isPaused = false;
+    let loupeItemIndex = 0;
+    let loupeFocus = 'start';
+
+    function startGameAdventure() {
+      initAudio();
+      playSound('click');
+      document.getElementById('screen-intro').classList.add('hidden');
+      document.getElementById('screen-main-menu').classList.add('hidden');
+      document.getElementById('screen-report').classList.add('hidden');
+      document.getElementById('screen-game').classList.remove('hidden');
+
+      currentQIndex = 0;
+      heroStage = 1;
+      heroHP = 100;
+      monsterHP = 100;
+      comboCount = 0;
+      maxCombo = 0;
+      firstTryCorrectCount = 0;
+      timerSeconds = 0;
+      isPaused = false;
+      loupeItemIndex = 0;
+      document.getElementById('modal-pause').classList.add('hidden');
+
+      document.getElementById('combo-text').textContent = '0 Combo';
+      startTimer();
+      loadQuestion(0);
+    }
+
+    function formatTimer(total) {
+      const mins = Math.floor(total / 60);
+      const secs = total % 60;
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      document.getElementById('timer-text').textContent = formatTimer(timerSeconds);
+      timerInterval = setInterval(() => {
+        if (isPaused) return;
+        timerSeconds++;
+        document.getElementById('timer-text').textContent = formatTimer(timerSeconds);
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function pauseGame() {
+      if (isPaused) return;
+      playSound('click');
+      isPaused = true;
+      stopTimer();
+      document.getElementById('modal-pause').classList.remove('hidden');
+    }
+
+    function resumeGame() {
+      playSound('click');
+      isPaused = false;
+      document.getElementById('modal-pause').classList.add('hidden');
+      startTimer();
+    }
+
+    function quitToMainMenu() {
+      playSound('click');
+      isPaused = false;
+      stopTimer();
+      document.getElementById('modal-pause').classList.add('hidden');
+      document.getElementById('modal-revive').classList.add('hidden');
+      document.getElementById('overlay-evolution').classList.add('hidden');
+      document.getElementById('screen-game').classList.add('hidden');
+      document.getElementById('screen-report').classList.add('hidden');
+      document.getElementById('screen-intro').classList.add('hidden');
+      document.getElementById('screen-main-menu').classList.remove('hidden');
+    }
+
+    function loadQuestion(qIndex) {
+      const q = GAME_QUESTIONS[qIndex];
+      monsterHP = 100;
+      questionAttempted = false;
+      isDivineEyeActive = false;
+      isZeroAligned = false;
+      loupeItemIndex = 0;
+      loupeFocus = 'start';
+
+      // Reset zoom smoothly without extra click audio
+      setZoomLevel(1, true);
+
+      // Update Header & Battle UI
+      document.getElementById('badge-stage').textContent = q.stageLabel;
+      document.getElementById('label-q-num').textContent = `題目 ${qIndex + 1} / ${GAME_QUESTIONS.length}`;
+      document.getElementById('monster-name').textContent = q.monsterName;
+      document.getElementById('boss-crown').classList.toggle('hidden', !q.isBoss);
+      document.getElementById('battle-monster-svg').innerHTML = getMonsterSVG(q.monsterId, false);
+      document.getElementById('question-text').textContent = q.prompt;
+
+      updateHeroState('normal');
+      updateHPBars();
+      updateRulerDisplay();
+
+      // Hide Feedback Box
+      document.getElementById('feedback-box').classList.add('hidden');
+
+      // Render 4 Options
+      const optionsGrid = document.getElementById('options-grid');
+      optionsGrid.innerHTML = '';
+      q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'min-h-[48px] px-2.5 py-2 bg-slate-50 hover:bg-sky-50 border-2 border-slate-200 hover:border-sky-400 rounded-xl font-bold text-xs sm:text-sm text-slate-800 text-left transition active:scale-95 shadow-sm';
+        btn.textContent = opt.label;
+        btn.onclick = () => handleAnswerChoice(opt, btn);
+        optionsGrid.appendChild(btn);
+      });
+    }
+
+    /* --------------------------------------------------
+       4. DYNAMIC SVG RULER RENDERER WITH PERMANENT DASHED LINES & ZOOM
+    -------------------------------------------------- */
+    let isDivineEyeActive = false;
+    let currentZoom = 1; // 1x, 2x, 4x
+    let isZeroAligned = false;
+
+    // Distinct soft color palette for vertical tick lines for multi-item questions
+    const ITEM_LINE_COLORS = [
+      { stroke: '#F97316', bg: '#FFEDD5', text: '#C2410C' }, // Coral Orange
+      { stroke: '#0EA5E9', bg: '#E0F2FE', text: '#0369A1' }, // Sky Blue
+      { stroke: '#10B981', bg: '#D1FAE5', text: '#047857' }  // Emerald Green
+    ];
+
+    function renderSVGRuler(qIndex) {
+      const q = GAME_QUESTIONS[qIndex];
+      const svgWidth = 620; 
+      const marginLeft = 35;
+      const mmScale = 3.6; // 1mm = 3.6px
+      const numItems = q.items.length;
+      const rowHeight = 30;
+      const topPad = 26;
+      const rulerY = topPad + numItems * rowHeight + 16;
+      const rulerHeight = 48;
+      const svgHeight = rulerY + rulerHeight + 6;
+
+      let itemsSVG = '';
+      const startBaseY = topPad;
+
+      q.items.forEach((item, idx) => {
+        const itemY = startBaseY + idx * rowHeight;
+        const origStartX = marginLeft + item.startMm * mmScale;
+        const origEndX = marginLeft + item.endMm * mmScale;
+        const lengthMm = item.endMm - item.startMm;
+        const lengthPx = lengthMm * mmScale;
+
+        // Color theme per item
+        const theme = ITEM_LINE_COLORS[idx % ITEM_LINE_COLORS.length];
+
+        // Calculate offset if zero-aligned animation is active
+        const shiftX = isZeroAligned ? -(item.startMm * mmScale) : 0;
+
+        // Render specific item graphics
+        let shapeContent = '';
+        if (item.type === 'pencil') {
+          shapeContent = `
+            <polygon points="0,7 12,0 12,14" fill="#FCD34D"/>
+            <polygon points="0,7 4,4.5 4,9.5" fill="#78350F"/>
+            <rect x="12" y="0" width="${lengthPx - 24}" height="14" fill="#F59E0B" rx="1"/>
+            <line x1="12" y1="4" x2="${lengthPx - 12}" y2="4" stroke="#D97706" stroke-width="1"/>
+            <rect x="${lengthPx - 12}" y="0" width="4" height="14" fill="#94A3B8"/>
+            <rect x="${lengthPx - 8}" y="0" width="8" height="14" fill="#F43F5E" rx="2"/>
+          `;
+        } else if (item.type === 'eraser') {
+          shapeContent = `
+            <rect x="0" y="0" width="${lengthPx}" height="16" rx="3" fill="#38BDF8" stroke="#0284C7" stroke-width="1.5"/>
+            <rect x="0" y="0" width="${lengthPx * 0.55}" height="16" fill="#FFFFFF" rx="2"/>
+            <text x="6" y="11" font-size="8" font-weight="bold" fill="#0284C7">ERASER</text>
+          `;
+        } else if (item.type === 'clip') {
+          shapeContent = `
+            <rect x="0" y="0" width="${lengthPx}" height="14" rx="7" fill="none" stroke="#64748B" stroke-width="3"/>
+            <rect x="6" y="3" width="${lengthPx - 10}" height="8" rx="4" fill="none" stroke="#94A3B8" stroke-width="2"/>
+          `;
+        } else if (item.type === 'key') {
+          shapeContent = `
+            <circle cx="8" cy="7" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
+            <circle cx="8" cy="7" r="3" fill="#FFFBEB"/>
+            <rect x="14" y="5" width="${lengthPx - 14}" height="4" fill="#F59E0B"/>
+            <rect x="${lengthPx - 10}" y="9" width="3" height="4" fill="#F59E0B"/>
+            <rect x="${lengthPx - 4}" y="9" width="3" height="5" fill="#F59E0B"/>
+          `;
+        } else if (item.type.startsWith('pen_')) {
+          const color = item.type === 'pen_red' ? '#EF4444' : '#2563EB';
+          shapeContent = `
+            <polygon points="0,6 10,0 10,12" fill="#334155"/>
+            <rect x="10" y="0" width="${lengthPx - 16}" height="12" fill="${color}" rx="1"/>
+            <rect x="${lengthPx - 6}" y="0" width="6" height="12" fill="#CBD5E1" rx="1"/>
+          `;
+        } else if (item.type.startsWith('strip_')) {
+          const fill = item.type === 'strip_pink' ? '#F472B6' : '#38BDF8';
+          shapeContent = `
+            <rect x="0" y="0" width="${lengthPx}" height="14" fill="${fill}" rx="2" stroke="#FFFFFF" stroke-width="1"/>
+            <line x1="0" y1="7" x2="${lengthPx}" y2="7" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="4 2"/>
+          `;
+        } else if (item.type.startsWith('wood_')) {
+          const fill = item.type === 'wood_p' ? '#D97706' : '#78350F';
+          shapeContent = `
+            <rect x="0" y="0" width="${lengthPx}" height="14" fill="${fill}" rx="3"/>
+            <line x1="5" y1="4" x2="${lengthPx - 5}" y2="4" stroke="#FEF3C7" stroke-width="1" opacity="0.5"/>
+          `;
+        } else if (item.type.startsWith('ribbon_')) {
+          const fill = item.type === 'ribbon_a' ? '#8B5CF6' : (item.type === 'ribbon_b' ? '#EC4899' : '#10B981');
+          shapeContent = `
+            <rect x="0" y="2" width="${lengthPx}" height="10" fill="${fill}" rx="2"/>
+            <circle cx="8" cy="7" r="2" fill="#FFF" opacity="0.6"/>
+            <circle cx="${lengthPx - 8}" cy="7" r="2" fill="#FFF" opacity="0.6"/>
+          `;
+        } else if (item.type.startsWith('flag_')) {
+          const fill = item.type === 'flag_a' ? '#F59E0B' : (item.type === 'flag_b' ? '#06B6D4' : '#84CC16');
+          shapeContent = `
+            <line x1="0" y1="0" x2="0" y2="16" stroke="#475569" stroke-width="2.5"/>
+            <polygon points="0,0 ${lengthPx},7 0,14" fill="${fill}"/>
+          `;
+        } else if (item.type.startsWith('fork_')) {
+          const headFill = item.type === 'fork_a' ? '#3B82F6' : (item.type === 'fork_b' ? '#10B981' : '#F59E0B');
+          shapeContent = `
+            <path d="M 0 0 L 15 0 L 15 14 L 0 14 Z" fill="${headFill}"/>
+            <line x1="0" y1="3.5" x2="10" y2="3.5" stroke="#FFF" stroke-width="1.5"/>
+            <line x1="0" y1="7" x2="10" y2="7" stroke="#FFF" stroke-width="1.5"/>
+            <line x1="0" y1="10.5" x2="10" y2="10.5" stroke="#FFF" stroke-width="1.5"/>
+            <rect x="15" y="4" width="${lengthPx - 15}" height="6" fill="${headFill}" opacity="0.8"/>
+            <circle cx="${lengthPx - 5}" cy="7" r="5" fill="${headFill}"/>
+          `;
+        }
+
+        itemsSVG += `
+          <g class="ruler-object-group" style="transform: translate(${origStartX + shiftX}px, ${itemY}px);">
+            <!-- Base Object Shape -->
+            ${shapeContent}
+
+            <!-- Label Tag -->
+            <rect x="-2" y="-13" width="38" height="11" rx="3" fill="${theme.stroke}"/>
+            <text x="17" y="-5" font-size="8" font-weight="bold" fill="#FFFFFF" text-anchor="middle">${item.label}</text>
+
+            <!-- PERMANENT Vertical Dashed Lines Connecting to Ruler Ticks (Left Start & Right End) -->
+            <!-- Left Start Line -->
+            <line x1="0" y1="14" x2="0" y2="${rulerY - itemY}" stroke="${theme.stroke}" stroke-width="${isDivineEyeActive ? '2.5' : '1.8'}" stroke-dasharray="3 2"/>
+            <circle cx="0" cy="14" r="2.5" fill="${theme.stroke}"/>
+            <circle cx="0" cy="${rulerY - itemY}" r="2.5" fill="${theme.stroke}"/>
+
+            <!-- Right End Line -->
+            <line x1="${lengthPx}" y1="14" x2="${lengthPx}" y2="${rulerY - itemY}" stroke="${theme.stroke}" stroke-width="${isDivineEyeActive ? '2.5' : '1.8'}" stroke-dasharray="3 2"/>
+            <circle cx="${lengthPx}" cy="14" r="2.5" fill="${theme.stroke}"/>
+            <circle cx="${lengthPx}" cy="${rulerY - itemY}" r="2.5" fill="${theme.stroke}"/>
+
+            ${isZeroAligned ? `
+              <!-- Zero Alignment Length Tag -->
+              <rect x="${lengthPx / 2 - 20}" y="16" width="40" height="12" rx="3" fill="#059669"/>
+              <text x="${lengthPx / 2}" y="25" font-size="8" font-weight="bold" fill="#FFFFFF" text-anchor="middle">${lengthMm} mm</text>
+            ` : ''}
+
+            <!-- DIVINE EYE OVERLAY BADGES & TRAP AREA -->
+            ${(isDivineEyeActive && !isZeroAligned) ? `
+              <!-- Start Badge -->
+              <rect x="-28" y="${(rulerY - itemY) - 22}" width="56" height="12" rx="3" fill="${theme.stroke}"/>
+              <text x="0" y="${(rulerY - itemY) - 13}" font-size="7.5" font-weight="bold" fill="#FFF" text-anchor="middle">起點 ${item.startMm / 10}cm</text>
+
+              <!-- End Badge -->
+              <rect x="${lengthPx - 28}" y="${(rulerY - itemY) - 22}" width="56" height="12" rx="3" fill="${theme.stroke}"/>
+              <text x="${lengthPx}" y="${(rulerY - itemY) - 13}" font-size="7.5" font-weight="bold" fill="#FFF" text-anchor="middle">終點 ${item.endMm / 10}cm</text>
+            ` : ''}
+          </g>
+
+          <!-- Non-Zero Red Trap Warning Area (Under Divine Eye mode) -->
+          ${(isDivineEyeActive && !isZeroAligned) ? `
+            <rect x="${marginLeft}" y="${itemY}" width="${item.startMm * mmScale}" height="14" fill="url(#trap-stripe-pattern)" opacity="0.65" rx="2"/>
+            <rect x="${marginLeft + (item.startMm * mmScale)/2 - 30}" y="${itemY + 1}" width="60" height="12" rx="3" fill="#DC2626"/>
+            <text x="${marginLeft + (item.startMm * mmScale)/2}" y="${itemY + 10}" font-size="7.5" font-weight="bold" fill="#FFFFFF" text-anchor="middle">⚠️ 零點陷阱區</text>
+          ` : ''}
+        `;
+      });
+
+      // Ruler Markings Generator (0 to 15 cm -> 0 to 150 mm)
+      let rulerTicksSVG = '';
+      for (let mm = 0; mm <= 150; mm++) {
+        const x = marginLeft + mm * mmScale;
+        const isCm = (mm % 10 === 0);
+        const isHalf = (mm % 5 === 0 && !isCm);
+        const tickH = isCm ? 22 : isHalf ? 15 : 8;
+        const stroke = isCm ? '#1E293B' : (isHalf ? '#334155' : '#94A3B8');
+        const sw = isCm ? '1.8' : (isHalf ? '1.2' : '1');
+
+        rulerTicksSVG += `<line x1="${x}" y1="${rulerY}" x2="${x}" y2="${rulerY + tickH}" stroke="${stroke}" stroke-width="${sw}"/>`;
+
+        if (isCm) {
+          rulerTicksSVG += `<text x="${x}" y="${rulerY + 36}" font-size="12" font-weight="bold" fill="#1E293B" text-anchor="middle">${mm / 10}</text>`;
+        }
+      }
+
+      // Complete SVG Output String
+      return `
+      <svg viewBox="0 0 ${svgWidth} ${svgHeight}" class="w-full h-auto">
+        <defs>
+          <!-- Red Trap Hatching Pattern -->
+          <pattern id="trap-stripe-pattern" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="#FCA5A5" stroke-width="4" />
+          </pattern>
+        </defs>
+
+        <!-- Ruler Body Base -->
+        <rect x="${marginLeft - 10}" y="${rulerY}" width="${150 * mmScale + 20}" height="${rulerHeight}" fill="#FEF08A" stroke="#CA8A04" stroke-width="2" rx="4"/>
+        <text x="${marginLeft + 150 * mmScale + 4}" y="${rulerY + 26}" font-size="9" font-weight="black" fill="#854D0E">cm</text>
+
+        <!-- Zero Alignment Reference Line -->
+        ${isZeroAligned ? `
+          <line x1="${marginLeft}" y1="10" x2="${marginLeft}" y2="${rulerY + 40}" stroke="#059669" stroke-width="2.5" stroke-dasharray="4 2"/>
+          <rect x="${marginLeft - 22}" y="2" width="44" height="14" rx="3" fill="#059669"/>
+          <text x="${marginLeft}" y="12" font-size="8" font-weight="bold" fill="#FFFFFF" text-anchor="middle">0 cm 基準</text>
+        ` : ''}
+
+        <!-- Ruler Ticks -->
+        ${rulerTicksSVG}
+
+        <!-- Objects, Permanent Dashed Lines & Divine Eye Overlays -->
+        ${itemsSVG}
+
+        <!-- Divine Eye Tip Badge -->
+        ${isDivineEyeActive ? `
+          <g transform="translate(${svgWidth - 115}, 6)">
+            <rect width="110" height="18" rx="9" fill="#0EA5E9"/>
+            <text x="55" y="12" font-size="8.5" font-weight="bold" fill="#FFF" text-anchor="middle">💡 1大格 = 1cm = 10mm</text>
+          </g>
+        ` : ''}
+      </svg>`;
+    }
+
+    /* --------------------------------------------------
+       5. 3-STAGE ZOOM (1x, 2x, 4x) & AUTO SCROLL JUMP LOGIC
+    -------------------------------------------------- */
+    function getItemVisibleEnds(item) {
+      if (isZeroAligned) {
+        return { startMm: 0, endMm: item.endMm - item.startMm };
+      }
+      return { startMm: item.startMm, endMm: item.endMm };
+    }
+
+    function setZoomLevel(level, silent = false) {
+      if (!silent) playSound('click');
+      currentZoom = level;
+      
+      const wrapper = document.getElementById('ruler-svg-wrapper');
+
+      // Update button visual styles
+      [1, 2, 4].forEach(l => {
+        const btn = document.getElementById(`btn-zoom-${l}`);
+        if (l === level) {
+          btn.className = "px-2 py-0.5 rounded-md bg-amber-500 text-white shadow-sm transition font-bold";
+        } else {
+          btn.className = "px-2 py-0.5 rounded-md text-amber-900 hover:bg-amber-200 transition font-bold";
+        }
+      });
+
+      if (level === 1) {
+        wrapper.style.minWidth = '100%';
+      } else if (level === 2) {
+        wrapper.style.minWidth = '200%';
+        jumpToItemTick('start', loupeItemIndex);
+      } else if (level === 4) {
+        wrapper.style.minWidth = '400%';
+        jumpToItemTick('start', loupeItemIndex);
+      }
+    }
+
+    function jumpToItemTick(targetType, itemIdx) {
+      const q = GAME_QUESTIONS[currentQIndex];
+      if (!q || !q.items || q.items.length === 0) return;
+      const idx = (typeof itemIdx === 'number') ? itemIdx : loupeItemIndex;
+      const item = q.items[idx] || q.items[0];
+      const ends = getItemVisibleEnds(item);
+      const targetMm = (targetType === 'start') ? ends.startMm : ends.endMm;
+      scrollToMmTick(targetMm);
+    }
+
+    function selectLoupeItem(idx) {
+      playSound('click');
+      loupeItemIndex = idx;
+      renderTickNav();
+      renderLoupePanes();
+      if (currentZoom > 1) jumpToItemTick(loupeFocus, idx);
+    }
+
+    function focusLoupeTick(which) {
+      playSound('click');
+      loupeFocus = which;
+      renderTickNav();
+      if (currentZoom > 1) jumpToItemTick(which, loupeItemIndex);
+    }
+
+    function renderTickNav() {
+      const q = GAME_QUESTIONS[currentQIndex];
+      const tabs = document.getElementById('loupe-item-tabs');
+      const jumps = document.getElementById('loupe-jump-buttons');
+      if (!q || !tabs || !jumps) return;
+      if (loupeItemIndex >= q.items.length) loupeItemIndex = 0;
+
+      if (q.items.length > 1) {
+        tabs.innerHTML = q.items.map((item, idx) => {
+          const on = idx === loupeItemIndex;
+          const cls = on
+            ? 'px-2 py-0.5 rounded-md font-bold border bg-amber-500 text-white border-amber-600'
+            : 'px-2 py-0.5 rounded-md font-bold border bg-white text-amber-900 border-amber-300';
+          return `<button type="button" onclick="selectLoupeItem(${idx})" class="${cls}">${item.label}</button>`;
+        }).join('');
+      } else {
+        tabs.innerHTML = '';
+      }
+
+      const item = q.items[loupeItemIndex];
+      const startOn = loupeFocus === 'start';
+      const startCls = startOn
+        ? 'px-2 py-0.5 bg-sky-600 text-white font-bold rounded-md border border-sky-700'
+        : 'px-2 py-0.5 bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold rounded-md border border-sky-300';
+      const endCls = !startOn
+        ? 'px-2 py-0.5 bg-rose-600 text-white font-bold rounded-md border border-rose-700'
+        : 'px-2 py-0.5 bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold rounded-md border border-rose-300';
+      jumps.innerHTML = `
+        <button type="button" onclick="focusLoupeTick('start')" class="${startCls}">📍 ${item.label}起點</button>
+        <button type="button" onclick="focusLoupeTick('end')" class="${endCls}">📍 ${item.label}終點</button>
+      `;
+    }
+
+    function renderLoupePanes() {
+      const q = GAME_QUESTIONS[currentQIndex];
+      const container = document.getElementById('loupe-panes');
+      if (!q || !container) return;
+      const item = q.items[loupeItemIndex] || q.items[0];
+      const ends = getItemVisibleEnds(item);
+      container.innerHTML = `
+        <div>
+          <div class="text-[10px] font-black text-sky-800 mb-0.5">${item.label}・起點</div>
+          ${renderLoupeSVG(ends.startMm, 'start', item)}
+        </div>
+        <div>
+          <div class="text-[10px] font-black text-rose-800 mb-0.5">${item.label}・終點</div>
+          ${renderLoupeSVG(ends.endMm, 'end', item)}
+        </div>
+      `;
+    }
+
+    function renderLoupeSVG(centerMm, role, item) {
+      const windowMm = 20;
+      const pxPerMm = 9;
+      const padL = 16;
+      const padR = 16;
+      const width = windowMm * pxPerMm + padL + padR;
+      const height = 74;
+      const rulerY = 22;
+
+      let startWin = centerMm - windowMm / 2;
+      let endWin = centerMm + windowMm / 2;
+      if (startWin < 0) { endWin -= startWin; startWin = 0; }
+      if (endWin > 150) { startWin -= (endWin - 150); endWin = 150; }
+      if (startWin < 0) startWin = 0;
+
+      const xOf = (mm) => padL + (mm - startWin) * pxPerMm;
+      const ends = getItemVisibleEnds(item);
+
+      let ticks = '';
+      for (let mm = Math.ceil(startWin); mm <= Math.floor(endWin); mm++) {
+        const x = xOf(mm);
+        const isCm = mm % 10 === 0;
+        const isHalf = mm % 5 === 0 && !isCm;
+        const h = isCm ? 24 : isHalf ? 16 : 9;
+        const stroke = isCm ? '#1E293B' : (isHalf ? '#334155' : '#64748B');
+        ticks += `<line x1="${x}" y1="${rulerY}" x2="${x}" y2="${rulerY + h}" stroke="${stroke}" stroke-width="${isCm ? 2 : 1.2}"/>`;
+        if (isCm) {
+          ticks += `<text x="${x}" y="${rulerY + 36}" font-size="12" font-weight="bold" text-anchor="middle" fill="#1E293B">${mm / 10}</text>`;
+        } else if (isHalf) {
+          ticks += `<text x="${x}" y="${rulerY + 34}" font-size="9" text-anchor="middle" fill="#475569">${(mm / 10).toFixed(1)}</text>`;
+        }
+      }
+
+      const markerX = xOf(centerMm);
+      const objX1 = xOf(Math.max(ends.startMm, startWin));
+      const objX2 = xOf(Math.min(ends.endMm, endWin));
+      let obj = '';
+      if (objX2 > objX1) {
+        const fill = role === 'start' ? '#0EA5E9' : '#F43F5E';
+        obj = `<rect x="${objX1}" y="${rulerY - 12}" width="${Math.max(objX2 - objX1, 2)}" height="10" rx="2" fill="${fill}" opacity="0.9"/>`;
+      }
+      const marker = role === 'start' ? '#0284C7' : '#E11D48';
+
+      return `<svg viewBox="0 0 ${width} ${height}" class="w-full h-auto bg-amber-50 rounded-lg border border-amber-200" aria-label="${item.label}${role === 'start' ? '起點' : '終點'}放大">
+        <rect x="${padL - 6}" y="${rulerY}" width="${windowMm * pxPerMm + 12}" height="40" fill="#FEF08A" stroke="#CA8A04" stroke-width="1.5" rx="3"/>
+        ${obj}
+        ${ticks}
+        <line x1="${markerX}" y1="2" x2="${markerX}" y2="${rulerY + 40}" stroke="${marker}" stroke-width="2"/>
+        <polygon points="${markerX - 5},2 ${markerX + 5},2 ${markerX},11" fill="${marker}"/>
+        <text x="${width - 6}" y="${height - 3}" font-size="8" text-anchor="end" fill="#854D0E" font-weight="bold">cm</text>
+      </svg>`;
+    }
+
+    function scrollToMmTick(mm) {
+      const viewport = document.getElementById('ruler-viewport');
+      const wrapper = document.getElementById('ruler-svg-wrapper');
+      
+      // Calculate scroll position ratio
+      const totalMm = 150;
+      const mmRatio = (mm + 10) / (totalMm + 20); // include margins
+      const targetScrollLeft = (wrapper.scrollWidth * mmRatio) - (viewport.clientWidth / 2);
+
+      viewport.scrollTo({
+        left: Math.max(0, targetScrollLeft),
+        behavior: 'smooth'
+      });
+    }
+
+    function updateRulerDisplay() {
+      const wrapper = document.getElementById('ruler-svg-wrapper');
+      wrapper.innerHTML = renderSVGRuler(currentQIndex);
+      renderTickNav();
+      renderLoupePanes();
+    }
+
+    function toggleDivineEye() {
+      playSound('click');
+      isDivineEyeActive = !isDivineEyeActive;
+      updateRulerDisplay();
+    }
+
+    function updateHeroState(state) {
+      document.getElementById('battle-hero-svg').innerHTML = getHeroSVG(heroStage, state);
+      document.getElementById('hero-name').textContent = heroStage === 1 ? '尺尺獸' : (heroStage === 2 ? '神眼尺靈' : '黃金度量王');
+      document.getElementById('hero-stage-tag').textContent = heroStage === 1 ? '初階' : (heroStage === 2 ? '中階' : '終極');
+    }
+
+    function updateHPBars() {
+      document.getElementById('hero-hp-bar').style.width = `${heroHP}%`;
+      document.getElementById('monster-hp-bar').style.width = `${monsterHP}%`;
+      const expPercent = ((currentQIndex % 4) / 4) * 100;
+      document.getElementById('hero-exp-bar').style.width = `${expPercent}%`;
+    }
+
+    /* --------------------------------------------------
+       6. ANSWER HANDLING & ANIMATIONS
+    -------------------------------------------------- */
+    function handleAnswerChoice(opt, btnElem) {
+      if (isPaused || btnElem.disabled) return;
+      const q = GAME_QUESTIONS[currentQIndex];
+
+      if (opt.correct) {
+        // --- CORRECT ANSWER ---
+        const allBtns = document.getElementById('options-grid').querySelectorAll('button');
+        allBtns.forEach(b => { b.disabled = true; });
+        btnElem.classList.remove('bg-slate-50', 'border-slate-200');
+        btnElem.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-900');
+
+        playSound('attack');
+        if (!questionAttempted) {
+          firstTryCorrectCount++;
+          comboCount++;
+          if (comboCount > maxCombo) maxCombo = comboCount;
+        }
+
+        document.getElementById('combo-text').textContent = `${comboCount} Combo`;
+
+        // Hero Attack Animation FX
+        updateHeroState('attack');
+        const heroSvg = document.getElementById('battle-hero-svg');
+        heroSvg.classList.add('animate-attack');
+
+        setTimeout(() => {
+          heroSvg.classList.remove('animate-attack');
+          updateHeroState('normal');
+
+          // Monster Hurt & Explosion
+          playSound('win');
+          monsterHP = 0;
+          updateHPBars();
+          document.getElementById('battle-monster-svg').innerHTML = getMonsterSVG(q.monsterId, true);
+
+          // Zero-Alignment Animation for Q5 to Q10
+          if (currentQIndex >= 4) {
+            isZeroAligned = true;
+            updateRulerDisplay();
+          }
+
+          // Show Formula Feedback Box
+          const fbBox = document.getElementById('feedback-box');
+          document.getElementById('feedback-title').textContent = `✨ 答對了！${comboCount > 1 ? comboCount + ' 連勝 Combo！' : ''}`;
+          document.getElementById('feedback-detail').textContent = q.calc;
+          fbBox.classList.remove('hidden');
+        }, 300);
+
+      } else {
+        // --- WRONG ANSWER ---
+        btnElem.disabled = true;
+        btnElem.classList.remove('bg-slate-50');
+        btnElem.classList.add('bg-rose-100', 'border-rose-400', 'text-rose-900');
+
+        questionAttempted = true;
+        comboCount = 0;
+        document.getElementById('combo-text').textContent = `0 Combo`;
+
+        playSound('hurt');
+        heroHP = Math.max(0, heroHP - 20);
+        updateHPBars();
+
+        // Hero Hurt Animation
+        updateHeroState('hurt');
+        const heroSvg = document.getElementById('battle-hero-svg');
+        heroSvg.classList.add('animate-hero-hurt');
+
+        // Auto Open Divine Eye Assist
+        isDivineEyeActive = true;
+        updateRulerDisplay();
+
+        setTimeout(() => {
+          heroSvg.classList.remove('animate-hero-hurt');
+          if (heroHP <= 0) {
+            // HP Zero Friendly Encouragement Modal (No alert())
+            heroHP = 60; // Restore 60 HP
+            updateHPBars();
+            updateHeroState('normal');
+            document.getElementById('modal-revive').classList.remove('hidden');
+          } else {
+            updateHeroState('normal');
+          }
+        }, 500);
+      }
+    }
+
+    function closeReviveModal() {
+      playSound('click');
+      document.getElementById('modal-revive').classList.add('hidden');
+    }
+
+    function handleNextQuestion() {
+      playSound('click');
+
+      // Check stage evolution triggers after Bosses (Q4 & Q7)
+      if (currentQIndex === 3) {
+        // Trigger Evolution 1 -> Stage 2
+        heroStage = 2;
+        heroHP = 100;
+        showEvolutionOverlay(2);
+        return;
+      } else if (currentQIndex === 6) {
+        // Trigger Evolution 2 -> Stage 3
+        heroStage = 3;
+        heroHP = 100;
+        showEvolutionOverlay(3);
+        return;
+      }
+
+      currentQIndex++;
+      if (currentQIndex >= GAME_QUESTIONS.length) {
+        finishGame();
+      } else {
+        loadQuestion(currentQIndex);
+      }
+    }
+
+    /* --------------------------------------------------
+       7. EVOLUTION & END GAME REPORT
+    -------------------------------------------------- */
+    function showEvolutionOverlay(targetStage) {
+      playSound('evolve');
+      const overlay = document.getElementById('overlay-evolution');
+      const evoSvgContainer = document.getElementById('evo-svg-container');
+      const title = document.getElementById('evo-title');
+      const evoName = document.getElementById('evo-name');
+      const evoDesc = document.getElementById('evo-desc');
+
+      evoSvgContainer.innerHTML = getHeroSVG(targetStage, 'normal');
+      if (targetStage === 2) {
+        title.textContent = "尺尺獸 進化！";
+        evoName.textContent = "【中階】神眼尺靈";
+        evoDesc.textContent = "解鎖「神眼游標翼」，全能力大提升並回復滿血 100 HP！";
+      } else {
+        title.textContent = "神眼尺靈 終極進化！";
+        evoName.textContent = "【終極】黃金度量王";
+        evoDesc.textContent = "解鎖「黃金度量權杖」，看破一切長度陷阱並回復滿血 100 HP！";
+      }
+
+      overlay.classList.remove('hidden');
+      isPaused = true;
+      stopTimer();
+    }
+
+    function closeEvolutionOverlay() {
+      playSound('click');
+      document.getElementById('overlay-evolution').classList.add('hidden');
+      isPaused = false;
+      startTimer();
+      currentQIndex++;
+      loadQuestion(currentQIndex);
+    }
+
+    function finishGame() {
+      isPaused = false;
+      stopTimer();
+      playSound('win');
+
+      document.getElementById('screen-game').classList.add('hidden');
+      document.getElementById('screen-report').classList.remove('hidden');
+
+      // Final Stats Calculation
+      const mins = Math.floor(timerSeconds / 60);
+      const secs = timerSeconds % 60;
+      const timeStr = `${String(mins).padStart(2, '0')}分 ${String(secs).padStart(2, '0')}秒`;
+      const accuracy = Math.round((firstTryCorrectCount / 10) * 100);
+      const score = Math.max(1000, 10000 - timerSeconds * 15 + maxCombo * 200 + accuracy * 20);
+
+      document.getElementById('report-hero-svg').innerHTML = getHeroSVG(3, 'normal');
+      document.getElementById('report-time').textContent = timeStr;
+      document.getElementById('report-combo').textContent = `${maxCombo} 連勝`;
+      document.getElementById('report-accuracy').textContent = `${accuracy}%`;
+      document.getElementById('report-score').textContent = `${score} PTS`;
+
+      // Title Rank Assignment
+      let titleRank = "神眼無雙度量王";
+      if (accuracy === 100) titleRank = "👑 零點破陣大宗師";
+      else if (accuracy >= 80) titleRank = "⚡ 神眼刻度大師";
+      document.getElementById('report-title-rank').textContent = titleRank;
+
+      // Save Record to LocalStorage
+      saveRecordToLocalStorage({
+        date: new Date().toLocaleDateString('zh-HK'),
+        timeStr: timeStr,
+        seconds: timerSeconds,
+        combo: maxCombo,
+        score: score
+      });
+
+      renderLeaderboardTab('speed');
+    }
+
+    /* --------------------------------------------------
+       8. LOCALSTORAGE LEADERBOARD
+    -------------------------------------------------- */
+    const STORAGE_KEY = 'god_eye_scale_records';
+
+    function getStoredRecords() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveRecordToLocalStorage(record) {
+      const list = getStoredRecords();
+      list.push(record);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {}
+    }
+
+    function renderLeaderboardTab(type) {
+      const list = getStoredRecords();
+      const container = document.getElementById('leaderboard-list');
+
+      document.getElementById('btn-tab-speed').className = type === 'speed' ? 'px-2 py-0.5 rounded bg-sky-500 text-white font-bold' : 'px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold';
+      document.getElementById('btn-tab-combo').className = type === 'combo' ? 'px-2 py-0.5 rounded bg-orange-500 text-white font-bold' : 'px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold';
+
+      if (type === 'speed') {
+        list.sort((a, b) => a.seconds - b.seconds);
+      } else {
+        list.sort((a, b) => b.combo - a.combo);
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = `<p class="text-slate-400 text-center py-2">尚無紀錄，快來成為第一名！</p>`;
+        return;
+      }
+
+      container.innerHTML = list.slice(0, 5).map((item, idx) => `
+        <div class="flex items-center justify-between p-1.5 rounded ${idx === 0 ? 'bg-amber-100 font-bold text-amber-900' : 'bg-slate-50 text-slate-700'}">
+          <span class="w-6 text-center">${idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : idx + 1))}</span>
+          <span class="font-mono">${item.timeStr}</span>
+          <span class="text-orange-600 font-bold">${item.combo} 連勝</span>
+          <span class="text-[10px] text-slate-400">${item.date}</span>
+        </div>
+      `).join('');
+    }
+
+    function openLeaderboardModal() {
+      playSound('click');
+      document.getElementById('modal-leaderboard').classList.remove('hidden');
+      renderModalLeaderboard('speed');
+    }
+
+    function closeLeaderboardModal() {
+      playSound('click');
+      document.getElementById('modal-leaderboard').classList.add('hidden');
+    }
+
+    function renderModalLeaderboard(type) {
+      const list = getStoredRecords();
+      const container = document.getElementById('modal-leaderboard-list');
+
+      document.getElementById('btn-modal-speed').className = type === 'speed' ? 'flex-1 py-1.5 rounded-xl font-bold text-xs bg-sky-500 text-white' : 'flex-1 py-1.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600';
+      document.getElementById('btn-modal-combo').className = type === 'combo' ? 'flex-1 py-1.5 rounded-xl font-bold text-xs bg-orange-500 text-white' : 'flex-1 py-1.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600';
+
+      if (type === 'speed') list.sort((a, b) => a.seconds - b.seconds);
+      else list.sort((a, b) => b.combo - a.combo);
+
+      if (list.length === 0) {
+        container.innerHTML = `<p class="text-slate-400 text-center py-4">本機暫無通關數據</p>`;
+        return;
+      }
+
+      container.innerHTML = list.slice(0, 10).map((item, idx) => `
+        <div class="flex items-center justify-between p-2 rounded-xl ${idx === 0 ? 'bg-amber-100 font-bold text-amber-900 border border-amber-300' : 'bg-slate-50 text-slate-700'}">
+          <span class="w-6 font-bold text-center">${idx + 1}</span>
+          <span class="font-mono">${item.timeStr}</span>
+          <span class="text-orange-600 font-bold">${item.combo} Combo</span>
+          <span class="text-[10px] text-slate-400">${item.date}</span>
+        </div>
+      `).join('');
+    }
+
+    /* --------------------------------------------------
+       9. NAVIGATION HELPERS
+    -------------------------------------------------- */
+    function goToIntroScreen() {
+      initAudio();
+      playSound('click');
+      document.getElementById('screen-main-menu').classList.add('hidden');
+      document.getElementById('screen-intro').classList.remove('hidden');
+    }
+
+    function backToMainMenu() {
+      playSound('click');
+      document.getElementById('screen-intro').classList.add('hidden');
+      document.getElementById('screen-main-menu').classList.remove('hidden');
+    }
+
+    function restartGame() {
+      playSound('click');
+      document.getElementById('screen-report').classList.add('hidden');
+      document.getElementById('screen-main-menu').classList.remove('hidden');
+    }
+
+    // Initialize Main Menu Hero Display on Window Load
+    window.onload = function() {
+      document.getElementById('hero-svg-container-menu').innerHTML = getHeroSVG(1, 'normal');
+    };
+  </script>
+</body>
+</html>
